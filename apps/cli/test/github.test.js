@@ -26,6 +26,19 @@ test('CLI refuses ambiguous GitHub listing arguments', async () => {
   assert.equal(errors.length, 2);
 });
 
+test('CLI displays a selected PR patch without changing GitHub', async () => {
+  const lines = [];
+  const github = { pullRequestDiff: async (repository, number) => {
+    assert.equal(repository, 'owner/repo');
+    assert.equal(number, 42);
+    return 'diff --git a/file b/file\n+change\n';
+  } };
+  const output = { log: (line) => lines.push(line), error: () => assert.fail('unexpected usage error') };
+  assert.equal(await main(['pr-diff', 'owner/repo', '42'], output, undefined, github), 0);
+  assert.match(lines[0], /\+change/);
+  assert.equal(await main(['pr-diff', 'owner/repo', '0x2a'], { log: () => assert.fail(), error: () => {} }), 2);
+});
+
 test('CLI creates an issue only through its explicit command and body file', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'codovyn-cli-issue-'));
   try {

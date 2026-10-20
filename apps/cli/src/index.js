@@ -9,7 +9,7 @@ import { TaskStore } from '../../../packages/storage/src/index.js';
 import { TaskEngine } from '../../../packages/task-engine/src/index.js';
 import { commitStaged, pushCurrentBranch, repositoryDiff, repositorySnapshot, stagePaths } from '../../../packages/git-engine/src/index.js';
 import { createClaudeAdapter, createCodexAdapter } from '../../../packages/agent-adapters/src/index.js';
-import { createIssue, listIssues, listPullRequests } from '../../../packages/github-integration/src/index.js';
+import { createIssue, listIssues, listPullRequests, pullRequestDiff } from '../../../packages/github-integration/src/index.js';
 
 const usage = `Usage:
   codovyn demo <repository> <request>
@@ -24,6 +24,7 @@ const usage = `Usage:
   codovyn push <repository> [remote]
   codovyn issues <owner/repo>
   codovyn prs <owner/repo>
+  codovyn pr-diff <owner/repo> <number>
   codovyn issue-create <owner/repo> <title> <body-file> [labels]
 
 The demo simulates a quota handoff and makes no code changes.
@@ -31,11 +32,17 @@ The Codex and Claude commands run installed CLIs in read-only modes.
 Auto tries Codex first, then Claude after a confirmed eligible failure.`;
 
 export async function main(args = process.argv.slice(2), output = console, signal,
-  github = { createIssue, listIssues, listPullRequests },
+  github = { createIssue, listIssues, listPullRequests, pullRequestDiff },
   adapters = { createCodexAdapter, createClaudeAdapter }) {
   const [mode, value, ...rest] = args;
-  if (!['demo', 'codex', 'claude', 'auto', 'tasks', 'history', 'diff', 'stage', 'commit', 'push', 'issues', 'prs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
+  if (!['demo', 'codex', 'claude', 'auto', 'tasks', 'history', 'diff', 'stage', 'commit', 'push', 'issues', 'prs', 'pr-diff', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
   const stream = process.env.CODOVYN_EVENT_STREAM === '1';
+  if (mode === 'pr-diff') {
+    if (!value || rest.length !== 1 || !/^[1-9]\d*$/.test(rest[0])) { output.error(usage); return 2; }
+    const patch = await github.pullRequestDiff(value, Number(rest[0]));
+    output.log(stream ? JSON.stringify({ type: 'result', patch }) : patch);
+    return 0;
+  }
   if (mode === 'issue-create') {
     const [title, bodyFile, ...labels] = rest;
     if (!value || !title || !bodyFile || labels.length > 10) { output.error(usage); return 2; }
