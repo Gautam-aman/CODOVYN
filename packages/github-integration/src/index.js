@@ -102,6 +102,21 @@ export async function pullRequestDetails(repository, number, { run = runGh } = {
     author: pullRequest.author?.login ?? null, reviewDecision: pullRequest.reviewDecision ?? null };
 }
 
+/** Recent GitHub Actions runs for one repository, optionally filtered by branch. */
+export async function listWorkflowRuns(repository, { branch, limit = 20, run = runGh } = {}) {
+  validateRepository(repository);
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) throw new RangeError('Run limit must be between 1 and 100');
+  if (branch !== undefined && (typeof branch !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._/-]{0,99}$/.test(branch))) {
+    throw new TypeError('Invalid branch filter');
+  }
+  const output = await run(['run', 'list', '--repo', repository, '--limit', String(limit),
+    ...(branch ? ['--branch', branch] : []), '--json',
+    'databaseId,workflowName,status,conclusion,headSha,headBranch,url,createdAt']);
+  return parseList(output).map((item) => ({ id: item.databaseId, workflow: item.workflowName,
+    status: item.status, conclusion: item.conclusion, commit: item.headSha, branch: item.headBranch,
+    url: item.url, createdAt: item.createdAt }));
+}
+
 /** A bounded read-only PR patch for review, with no checkout or PR code execution. */
 export async function pullRequestDiff(repository, number, { run = runGh } = {}) {
   validateRepository(repository);
