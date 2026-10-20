@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { createExtension } = require('../extension.cjs');
+const { createExtension, runCli } = require('../extension.cjs');
 
 test('extension starts a repository task and exposes a safe handoff timeline', async () => {
   let command;
@@ -64,4 +64,14 @@ test('extension blocks Codex execution in an untrusted workspace', async () => {
   command();
   await handler({ type: 'run', mode: 'codex', request: 'Inspect' });
   assert.match(sent.at(-1).text, /Trust this workspace/);
+});
+
+test('extension process bridge forwards JSONL progress before the final result', async () => {
+  const progress = [];
+  const script = `console.log(JSON.stringify({type:'event',event:{kind:'handoff',data:{from:'a',to:'b'}}})); console.log(JSON.stringify({type:'result',status:'completed',taskId:'one'}));`;
+  const result = await runCli(process.execPath, ['-e', script], {
+    cwd: process.cwd(), env: process.env, onChild: () => {}, onEvent: (event) => progress.push(event.kind),
+  });
+  assert.deepEqual(progress, ['handoff']);
+  assert.equal(result.status, 'completed');
 });

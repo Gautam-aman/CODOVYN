@@ -25,6 +25,14 @@ window.addEventListener('message', ({ data }) => {
     cancel.disabled = false;
     timeline.replaceChildren();
     empty.textContent = 'Waiting for agent activity…';
+  } else if (data.type === 'progress') {
+    for (const item of data.entries || []) {
+      const row = document.createElement('li');
+      row.className = item.type;
+      row.textContent = item.text;
+      timeline.append(row);
+    }
+    if (data.entries?.length) empty.textContent = '';
   } else if (data.type === 'result') {
     status.textContent = data.status === 'completed' ? 'Completed' : data.status;
     run.disabled = false;

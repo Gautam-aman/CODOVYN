@@ -1,6 +1,7 @@
 const { spawn } = require('node:child_process');
 const { randomBytes } = require('node:crypto');
 const { join } = require('node:path');
+const { StringDecoder } = require('node:string_decoder');
 
 function timeline(events) {
   return events.flatMap((entry) => {
@@ -18,18 +19,38 @@ function runCli(command, args, options) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, { cwd: options.cwd, env: options.env, shell: false, stdio: ['ignore', 'pipe', 'pipe'] });
     options.onChild(child);
-    let stdout = '';
-    let oversized = false;
+    let buffer = '';
+    let totalBytes = 0;
+    let result = null;
+    let failed = false;
+    const decoder = new StringDecoder('utf8');
+    const consume = (line) => {
+      if (!line) return;
+      const message = JSON.parse(line);
+      if (message.type === 'event') options.onEvent(message.event);
+      if (message.type === 'result') result = message;
+    };
     child.stdout.on('data', (chunk) => {
-      stdout += chunk;
-      if (stdout.length > 10 * 1024 * 1024) { oversized = true; child.kill(); }
+      if (failed) return;
+      totalBytes += chunk.length;
+      if (totalBytes > 10 * 1024 * 1024) { failed = true; child.kill(); reject(new Error('Task output exceeded the display limit')); return; }
+      buffer += decoder.write(chunk);
+      try {
+        let newline;
+        while ((newline = buffer.indexOf('\n')) !== -1) {
+          consume(buffer.slice(0, newline));
+          buffer = buffer.slice(newline + 1);
+        }
+      } catch { failed = true; child.kill(); reject(new Error('Task emitted invalid progress data')); }
     });
     child.stderr.resume();
     child.on('error', reject);
     child.on('close', (code) => {
-      if (oversized) return reject(new Error('Task output exceeded the display limit'));
-      try { resolve(JSON.parse(stdout)); }
-      catch { reject(new Error(`Task process exited without a result (status ${code})`)); }
+      if (failed) return;
+      try { consume((buffer + decoder.end()).trim()); }
+      catch { return reject(new Error('Task emitted invalid progress data')); }
+      if (result) resolve(result);
+      else reject(new Error(`Task process exited without a result (status ${code})`));
     });
   });
 }
@@ -61,14 +82,20 @@ function createExtension(api, runner = runCli) {
           panel.webview.postMessage({ type: 'running' });
           const nodePath = api.workspace.getConfiguration('codovyn').get('nodePath', 'node');
           const script = join(context.extensionPath, 'apps', 'cli', 'src', 'index.js');
+          const activity = [];
           try {
             const result = await runner(nodePath, [script, message.mode, folder.uri.fsPath, request], {
               cwd: folder.uri.fsPath,
-              env: { ...process.env, CODOVYN_DATA_DIR: context.globalStorageUri.fsPath },
+              env: { ...process.env, CODOVYN_DATA_DIR: context.globalStorageUri.fsPath, CODOVYN_EVENT_STREAM: '1' },
               onChild: (child) => { active = child; },
+              onEvent: (event) => {
+                const entries = timeline([event]);
+                activity.push(...entries);
+                if (entries.length) panel.webview.postMessage({ type: 'progress', entries });
+              },
             });
             panel.webview.postMessage({ type: 'result', status: result.status, taskId: result.taskId,
-              activeAgent: result.activeAgent, timeline: timeline(result.events || []) });
+              activeAgent: result.activeAgent, timeline: result.events ? timeline(result.events) : activity });
           } catch (error) { panel.webview.postMessage({ type: 'error', text: error.message }); }
           finally { active = null; }
         });
@@ -80,4 +107,4 @@ function createExtension(api, runner = runCli) {
 }
 
 function activate(context) { createExtension(require('vscode')).activate(context); }
-module.exports = { activate, createExtension, timeline };
+module.exports = { activate, createExtension, runCli, timeline };
