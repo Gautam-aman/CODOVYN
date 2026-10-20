@@ -7,6 +7,6 @@
   "workspaces": ["packages/*", "apps/*"],
   "scripts": {
     "test": "node --test",
-    "check": "node --check packages/agent-core/src/index.js && node --test"
+    "check": "node scripts/check-syntax.js && node --test"
   }
 }
