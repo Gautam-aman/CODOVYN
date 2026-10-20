@@ -88,6 +88,20 @@ export async function listPullRequests(repository, { limit = 30, run = runGh } =
   }));
 }
 
+/** Inspect one PR's metadata and description without checking out its branch. */
+export async function pullRequestDetails(repository, number, { run = runGh } = {}) {
+  validateRepository(repository);
+  validateNumber(number, 'Pull request');
+  const pullRequest = parseObject(await run(['pr', 'view', String(number), '--repo', repository,
+    '--json', 'number,title,body,state,url,headRefName,baseRefName,isDraft,author,reviewDecision']));
+  if (pullRequest.number !== number || typeof pullRequest.title !== 'string' || typeof pullRequest.body !== 'string') {
+    throw new Error('GitHub CLI returned invalid pull request details');
+  }
+  return { number, title: pullRequest.title, body: pullRequest.body, state: pullRequest.state, url: pullRequest.url,
+    headRefName: pullRequest.headRefName, baseRefName: pullRequest.baseRefName, isDraft: pullRequest.isDraft,
+    author: pullRequest.author?.login ?? null, reviewDecision: pullRequest.reviewDecision ?? null };
+}
+
 /** A bounded read-only PR patch for review, with no checkout or PR code execution. */
 export async function pullRequestDiff(repository, number, { run = runGh } = {}) {
   validateRepository(repository);
