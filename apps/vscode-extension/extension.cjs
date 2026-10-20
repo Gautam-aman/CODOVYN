@@ -77,7 +77,7 @@ function createExtension(api, runner = runCli) {
           try {
             const result = await runner(nodePath, [script, 'tasks', folder.uri.fsPath], {
               cwd: folder.uri.fsPath,
-              env: { ...process.env, CODOVYN_DATA_DIR: context.globalStorageUri.fsPath, CODOVYN_EVENT_STREAM: '1' },
+              env: { ...process.env, CODOVYN_DATA_DIR: join(context.globalStorageUri.fsPath, 'private'), CODOVYN_EVENT_STREAM: '1' },
               onChild: () => {}, onEvent: () => {},
             });
             panel.webview.postMessage({ type: 'tasks', tasks: result.tasks || [] });
@@ -108,7 +108,7 @@ function createExtension(api, runner = runCli) {
             try {
               const result = await runner(nodePath, [script, 'history', message.id, folder.uri.fsPath], {
                 cwd: folder.uri.fsPath,
-                env: { ...process.env, CODOVYN_DATA_DIR: context.globalStorageUri.fsPath, CODOVYN_EVENT_STREAM: '1' },
+                env: { ...process.env, CODOVYN_DATA_DIR: join(context.globalStorageUri.fsPath, 'private'), CODOVYN_EVENT_STREAM: '1' },
                 onChild: () => {}, onEvent: () => {},
               });
               panel.webview.postMessage({ type: 'history', request: result.task.request, status: result.task.status,
@@ -132,7 +132,7 @@ function createExtension(api, runner = runCli) {
           try {
             const result = await runner(nodePath, [script, message.mode, folder.uri.fsPath, request], {
               cwd: folder.uri.fsPath,
-              env: { ...process.env, CODOVYN_DATA_DIR: context.globalStorageUri.fsPath, CODOVYN_EVENT_STREAM: '1' },
+              env: { ...process.env, CODOVYN_DATA_DIR: join(context.globalStorageUri.fsPath, 'private'), CODOVYN_EVENT_STREAM: '1' },
               onChild: (child) => { active = child; },
               onEvent: (event) => {
                 const entries = timeline([event]);

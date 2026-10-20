@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
+import { join } from 'node:path';
 
 const require = createRequire(import.meta.url);
 const { createExtension, runCli } = require('../extension.cjs');
@@ -39,7 +40,7 @@ test('extension starts a repository task and exposes a safe handoff timeline', a
     assert.equal(args[1], 'demo');
     assert.equal(args[2], '/project');
     assert.equal(args[3], 'Inspect');
-    assert.equal(options.env.CODOVYN_DATA_DIR, '/data');
+    assert.equal(options.env.CODOVYN_DATA_DIR, join('/data', 'private'));
     return { status: 'completed', taskId: 'task-1', activeAgent: 'backup', events: [
       { kind: 'handoff', data: { from: 'primary', to: 'backup' } },
       { kind: 'checkpoint', data: { repository: { root: '/private/project' } } },
