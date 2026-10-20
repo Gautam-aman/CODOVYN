@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, statSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { TaskStore } from '../src/index.js';
@@ -46,5 +46,17 @@ test('adds repository association to an existing task database', () => {
     const store = new TaskStore(filename);
     assert.equal(store.create({ id: 'new', request: 'Inspect', repositoryRoot: '/repo', primaryAgent: 'agent' }).repositoryRoot, '/repo');
     store.close();
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('task database rejects a shared directory that could expose WAL sidecars', () => {
+  if (process.platform === 'win32') return;
+  const directory = mkdtempSync(join(tmpdir(), 'codovyn-public-'));
+  try {
+    const shared = join(directory, 'shared');
+    mkdirSync(shared, { mode: 0o755 });
+    chmodSync(shared, 0o755);
+    assert.throws(() => new TaskStore(join(shared, 'tasks.sqlite')), /must be private/);
+    assert.throws(() => statSync(join(shared, 'tasks.sqlite')), /ENOENT/);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });

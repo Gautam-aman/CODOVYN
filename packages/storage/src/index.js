@@ -1,4 +1,4 @@
-import { chmodSync, mkdirSync } from 'node:fs';
+import { chmodSync, mkdirSync, statSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
@@ -13,7 +13,13 @@ export class TaskStore {
   #db;
 
   constructor(filename) {
-    if (filename !== ':memory:') mkdirSync(dirname(filename), { recursive: true, mode: 0o700 });
+    if (filename !== ':memory:') {
+      const directory = dirname(filename);
+      mkdirSync(directory, { recursive: true, mode: 0o700 });
+      if (process.platform !== 'win32' && (statSync(directory).mode & 0o077)) {
+        throw new Error('Task database directory must be private (mode 0700)');
+      }
+    }
     this.#db = new DatabaseSync(filename);
     if (filename !== ':memory:' && process.platform !== 'win32') chmodSync(filename, 0o600);
     this.#db.exec('PRAGMA journal_mode = WAL');
