@@ -4,3 +4,4 @@ coverage/
 .codovyn/
 .DS_Store
 *.log
+*.vsix

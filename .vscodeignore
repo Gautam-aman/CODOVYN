@@ -1,0 +1,9 @@
+.github/**
+docs/**
+scripts/**
+**/test/**
+package-lock.json
+.gitignore
+.vscodeignore
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md

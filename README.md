@@ -14,8 +14,9 @@ CODOVYN is an open-source project building a local-first development environment
 - A read-only Codex CLI adapter consumes JSONL events using the user's existing Codex installation and authentication. Its live provider path has **not** been exercised in CI.
 - A deterministic demo flow lets contributors inspect a simulated quota handoff without provider credentials or code edits.
 - A CLI opens real Git repositories and displays saved task history.
+- A VS Code extension panel starts local tasks from an open repository, shows a handoff timeline, and offers cancellation. Host behavior is covered by automated tests; a live VS Code launch has not been verified here.
 
-No screenshots are included because there is no application interface to capture yet. The VS Code extension, desktop IDE, GitHub bots, routing UI, and website remain planned work.
+No screenshot is included because the extension has not been captured in a running VS Code host. The desktop IDE, GitHub bots, routing UI, and website remain planned work.
 
 ## Quick start
 
@@ -43,6 +44,8 @@ node apps/cli/src/index.js codex . "Explain the task engine"
 
 The Codex command is intentionally read-only and may use the provider account configured in the Codex CLI. CODOVYN does not provide model access or an API entitlement. No CODOVYN account is needed.
 
+To build a local VS Code extension archive, run `npm ci --ignore-scripts` and `npm run package:extension`. This produces `codovyn-dev.vsix`. Install it through VS Code's **Extensions → Install from VSIX…** action, open a Git repository folder, and run **CODOVYN: Open Agent Workspace** from the Command Palette. The extension needs a Node.js 26 executable on your `PATH`; set `codovyn.nodePath` if necessary. The `codovyn-local` publisher identifier is for development packaging and is not a verified Marketplace publisher.
+
 ## Agent compatibility
 
 | Agent | Authentication | Current behavior | Status |
@@ -55,7 +58,7 @@ The [Codex CLI reference](https://learn.chatgpt.com/docs/developer-commands?surf
 
 ## Architecture
 
-`packages/agent-core` defines the adapter registry and failure categories. `packages/agent-adapters` contains the Codex CLI bridge. `packages/storage` owns durable SQLite state. `packages/task-engine` coordinates runs and handoffs. `packages/git-engine` reads repository state. `apps/cli` provides the first executable interface.
+`packages/agent-core` defines the adapter registry and failure categories. `packages/agent-adapters` contains the Codex CLI bridge. `packages/storage` owns durable SQLite state. `packages/task-engine` coordinates runs and handoffs. `packages/git-engine` reads repository state. `apps/cli` exposes the runtime, and `apps/vscode-extension` provides the editor panel.
 
 The [architecture decision](docs/architecture/0001-local-runtime.md) explains the local runtime boundary. The [roadmap](docs/development/roadmap.md) records dependencies and the requested 100-commit target. Current progress must be read from Git history.
 
@@ -72,7 +75,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution steps and [SECURITY.md](
 
 ## Roadmap
 
-The next release gates are a VS Code extension with a real workspace UI, a second supported agent integration, permission-aware editing, primary-agent restoration, complete Git/GitHub workflows, and security and accessibility verification. A standalone desktop application and optional cloud services follow a separate technical evaluation. The current runtime must not be described as release-ready.
+The next release gates are live VS Code host validation and streaming progress, a second supported agent integration, permission-aware editing, primary-agent restoration, complete Git/GitHub workflows, and security and accessibility verification. A standalone desktop application and optional cloud services follow a separate technical evaluation. The current runtime must not be described as release-ready.
 
 ## License
 
