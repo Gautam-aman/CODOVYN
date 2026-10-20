@@ -1,0 +1,6 @@
+node_modules/
+dist/
+coverage/
+.codovyn/
+.DS_Store
+*.log

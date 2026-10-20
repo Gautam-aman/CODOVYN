@@ -1,0 +1,12 @@
+{
+  "name": "codovyn",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "workspaces": ["packages/*", "apps/*"],
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check packages/agent-core/src/index.js && node --test"
+  }
+}
