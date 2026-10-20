@@ -51,6 +51,8 @@ test('extension starts a repository task and exposes a safe handoff timeline', a
   assert.equal(context.subscriptions.length, 1);
   command();
   assert.match(panel.webview.html, /Content-Security-Policy/);
+  assert.match(panel.webview.html, /Claude Code/);
+  assert.match(panel.webview.html, /Codex → Claude/);
   await messageHandler({ type: 'run', mode: 'demo', request: 'Inspect' });
   const result = sent.find((message) => message.type === 'result');
   assert.equal(result.status, 'completed');
@@ -64,7 +66,7 @@ test('extension starts a repository task and exposes a safe handoff timeline', a
   assert.match(sent.at(-1).text, /\+changed/);
 });
 
-test('extension blocks Codex execution in an untrusted workspace', async () => {
+test('extension blocks provider execution in an untrusted workspace', async () => {
   let command;
   let handler;
   const sent = [];
@@ -77,8 +79,10 @@ test('extension blocks Codex execution in an untrusted workspace', async () => {
   };
   createExtension(api, () => { throw new Error('Must not run'); }).activate({ extensionUri: 'root', subscriptions: [] });
   command();
-  await handler({ type: 'run', mode: 'codex', request: 'Inspect' });
-  assert.match(sent.at(-1).text, /Trust this workspace/);
+  for (const mode of ['codex', 'claude', 'auto']) {
+    await handler({ type: 'run', mode, request: 'Inspect' });
+    assert.match(sent.at(-1).text, /Trust this workspace/);
+  }
 });
 
 test('extension process bridge forwards JSONL progress before the final result', async () => {
