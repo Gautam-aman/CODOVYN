@@ -1,0 +1,50 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { AgentRegistry, AgentFailure } from '../../agent-core/src/index.js';
+import { TaskStore } from '../../storage/src/index.js';
+import { TaskEngine } from '../src/index.js';
+
+const agent = (id, run) => ({ id, capabilities: { resume: true, tools: true }, availability: async () => 'available', run });
+const setup = () => {
+  const store = new TaskStore(':memory:');
+  store.create({ id: 'task', request: 'Repair tests', primaryAgent: 'primary', fallbackAgents: ['backup'] });
+  const registry = new AgentRegistry();
+  return { store, registry, engine: new TaskEngine({ store, registry, snapshot: async () => ({ branch: 'feature', commit: 'abc' }) }) };
+};
+
+test('confirmed quota failure checkpoints then hands off to ordered backup', async () => {
+  const { store, registry, engine } = setup();
+  registry.register(agent('primary', async function* () { yield { type: 'text', text: 'started' }; throw new AgentFailure('quota', 'limit'); }));
+  registry.register(agent('backup', async function* ({ handoff }) {
+    assert.equal(handoff.request, 'Repair tests');
+    assert.equal(handoff.snapshot.branch, 'feature');
+    assert.ok(handoff.history.some((entry) => entry.kind === 'checkpoint'));
+    yield { type: 'completed', text: 'fixed' };
+  }));
+  const result = await engine.run('task');
+  assert.equal(result.status, 'completed');
+  assert.equal(result.activeAgent, 'backup');
+  assert.deepEqual(store.events('task').filter((e) => ['checkpoint', 'handoff'].includes(e.kind)).map((e) => e.kind), ['checkpoint', 'handoff']);
+  store.close();
+});
+
+test('does not repeat an unfinished tool action on fallback', async () => {
+  const { store, registry, engine } = setup();
+  let backupCalls = 0;
+  registry.register(agent('primary', async function* () { yield { type: 'tool-start', actionId: 'write-1' }; throw new AgentFailure('quota', 'limit'); }));
+  registry.register(agent('backup', async function* () { backupCalls++; yield { type: 'completed' }; }));
+  assert.equal((await engine.run('task')).status, 'interrupted');
+  assert.equal(backupCalls, 0);
+  assert.equal(store.events('task').find((e) => e.kind === 'checkpoint').data.pendingTool, 'write-1');
+  store.close();
+});
+
+test('authentication failures stop automatic switching', async () => {
+  const { store, registry, engine } = setup();
+  let backupCalls = 0;
+  registry.register(agent('primary', async function* () { throw new AgentFailure('authentication', 'login required'); }));
+  registry.register(agent('backup', async function* () { backupCalls++; yield { type: 'completed' }; }));
+  assert.equal((await engine.run('task')).status, 'interrupted');
+  assert.equal(backupCalls, 0);
+  store.close();
+});
