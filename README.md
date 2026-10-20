@@ -61,6 +61,7 @@ node apps/cli/src/index.js issue OWNER/REPO ISSUE_NUMBER
 node apps/cli/src/index.js prs OWNER/REPO
 node apps/cli/src/index.js pr OWNER/REPO PR_NUMBER
 node apps/cli/src/index.js pr-diff OWNER/REPO PR_NUMBER
+node apps/cli/src/index.js pr-preview OWNER/REPO BASE HEAD
 node apps/cli/src/index.js runs OWNER/REPO BRANCH
 ```
 
@@ -68,7 +69,7 @@ These commands query only the repository you name. They return bounded metadata 
 
 To create an issue deliberately, write its body to a Markdown file and run `node apps/cli/src/index.js issue-create OWNER/REPO "Issue title" path/to/body.md bug`. Label names are optional trailing arguments. This operation posts to GitHub with the user's `gh` authorization. Review the body and target repository before running it.
 
-To create a PR from two branches in the same GitHub repository, prepare a body file and run `node apps/cli/src/index.js pr-create OWNER/REPO BASE HEAD "PR title" path/to/body.md` in an interactive terminal. CODOVYN displays the target, title, body, and bounded GitHub comparison diff, then requires typing `create`. It checks the diff again before submitting. This path has only simulated creation tests; no live PR was created during CODOVYN development. See the [GitHub guide](docs/integrations/github.md) for limits.
+To inspect the outgoing diff without creating anything, use `node apps/cli/src/index.js pr-preview OWNER/REPO BASE HEAD`. To create a PR from two branches in the same GitHub repository, prepare a body file and run `node apps/cli/src/index.js pr-create OWNER/REPO BASE HEAD "PR title" path/to/body.md` in an interactive terminal. CODOVYN displays the target, title, body, and bounded GitHub comparison diff, then requires typing `create`. It checks the diff again before submitting. This path has only simulated creation tests; no live PR was created during CODOVYN development. See the [GitHub guide](docs/integrations/github.md) for limits.
 
 To build a local VS Code extension archive, run `npm ci --ignore-scripts` and `npm run package:extension`. This produces `codovyn-dev.vsix`. Install it through VS Code's **Extensions → Install from VSIX…** action, open a Git repository folder, and run **CODOVYN: Open Agent Workspace** from the Command Palette. The panel streams task activity and lists saved tasks for that repository. The extension needs a Node.js 26 executable on your `PATH`; set `codovyn.nodePath` if necessary. The `codovyn-local` publisher identifier is for development packaging and is not a verified Marketplace publisher.
 
@@ -96,7 +97,7 @@ npm test
 npm run check
 ```
 
-The project currently has no third-party npm dependencies. Node 26 supplies the SQLite module and test runner. Tests include a real temporary Git repository and a simulated CLI process; they do not spend provider quota. The CI workflow is configured for Linux, macOS, and Windows, but platform results must be checked in GitHub Actions.
+The runtime currently has no third-party npm dependencies; packaging uses the `@vscode/vsce` development dependency. Node 26 supplies the SQLite module and test runner. Tests include a real temporary Git repository and a simulated CLI process; they do not spend provider quota. The CI workflow is configured for Linux, macOS, and Windows, but platform results must be checked in GitHub Actions.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution steps and [SECURITY.md](SECURITY.md) for vulnerability reporting. Good first issues will be labeled in the [issue tracker](https://github.com/Gautam-aman/CODOVYN/issues).
 
