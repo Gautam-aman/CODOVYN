@@ -35,6 +35,11 @@ test('CLI opens a real repository and persists a simulated handoff', async () =>
     }));
     assert.equal(streamedHistory.type, 'result');
     assert.equal(streamedHistory.task.repositoryRoot, (await repositorySnapshot(repository)).root);
+    writeFileSync(join(repository, 'file.txt'), 'changed');
+    const patch = JSON.parse(execFileSync(process.execPath, [script, 'diff', repository], {
+      encoding: 'utf8', env: { ...env, CODOVYN_EVENT_STREAM: '1' },
+    }));
+    assert.match(patch.diff, /\+changed/);
     const another = join(directory, 'another');
     mkdirSync(another);
     execFileSync('git', ['-C', another, 'init', '-q', '-b', 'other']);
