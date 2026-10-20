@@ -78,6 +78,18 @@ test('CLI displays a selected PR patch without changing GitHub', async () => {
   assert.equal(await main(['pr-diff', 'owner/repo', '0x2a'], { log: () => assert.fail(), error: () => {} }), 2);
 });
 
+test('CLI previews an outgoing same-repository PR diff without creating it', async () => {
+  const lines = [];
+  const github = { previewPullRequest: async (repository, branches) => {
+    assert.equal(repository, 'owner/repo');
+    assert.deepEqual(branches, { base: 'main', head: 'feature/work' });
+    return { repository, ...branches, diff: 'diff --git a/file b/file\n+fix\n' };
+  } };
+  const output = { log: (line) => lines.push(line), error: () => assert.fail('unexpected usage error') };
+  assert.equal(await main(['pr-preview', 'owner/repo', 'main', 'feature/work'], output, undefined, github), 0);
+  assert.match(JSON.parse(lines[0]).diff, /\+fix/);
+});
+
 test('CLI creates an issue only through its explicit command and body file', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'codovyn-cli-issue-'));
   try {

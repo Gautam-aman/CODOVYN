@@ -10,7 +10,7 @@ import { TaskStore } from '../../../packages/storage/src/index.js';
 import { TaskEngine } from '../../../packages/task-engine/src/index.js';
 import { commitStaged, createBranch, fetchRemote, pullFastForward, pushCurrentBranch, repositoryDiff, repositorySnapshot, stagePaths } from '../../../packages/git-engine/src/index.js';
 import { createClaudeAdapter, createCodexAdapter } from '../../../packages/agent-adapters/src/index.js';
-import { createIssue, createPullRequest, issueDetails, listIssues, listPullRequests, listWorkflowRuns, pullRequestDetails, pullRequestDiff } from '../../../packages/github-integration/src/index.js';
+import { createIssue, createPullRequest, issueDetails, listIssues, listPullRequests, listWorkflowRuns, previewPullRequest, pullRequestDetails, pullRequestDiff } from '../../../packages/github-integration/src/index.js';
 
 const usage = `Usage:
   codovyn demo <repository> <request>
@@ -34,6 +34,7 @@ const usage = `Usage:
   codovyn prs <owner/repo>
   codovyn pr <owner/repo> <number>
   codovyn pr-diff <owner/repo> <number>
+  codovyn pr-preview <owner/repo> <base> <head>
   codovyn pr-create <owner/repo> <base> <head> <title> <body-file>
   codovyn runs <owner/repo> [branch]
   codovyn issue-create <owner/repo> <title> <body-file> [labels]
@@ -50,10 +51,10 @@ async function confirmAction(word) {
 }
 
 export async function main(args = process.argv.slice(2), output = console, signal,
-  github = { createIssue, createPullRequest, issueDetails, listIssues, listPullRequests, listWorkflowRuns, pullRequestDetails, pullRequestDiff },
+  github = { createIssue, createPullRequest, issueDetails, listIssues, listPullRequests, listWorkflowRuns, previewPullRequest, pullRequestDetails, pullRequestDiff },
   adapters = { createCodexAdapter, createClaudeAdapter }, confirm = confirmAction) {
   const [mode, value, ...rest] = args;
-  if (!['demo', 'codex', 'claude', 'auto', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'pr-create', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
+  if (!['demo', 'codex', 'claude', 'auto', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'pr-preview', 'pr-create', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
   const stream = process.env.CODOVYN_EVENT_STREAM === '1';
   if (mode === 'issue') {
     if (!value || rest.length !== 1 || !/^[1-9]\d*$/.test(rest[0])) { output.error(usage); return 2; }
@@ -77,6 +78,12 @@ export async function main(args = process.argv.slice(2), output = console, signa
     if (!value || rest.length !== 1 || !/^[1-9]\d*$/.test(rest[0])) { output.error(usage); return 2; }
     const patch = await github.pullRequestDiff(value, Number(rest[0]));
     output.log(stream ? JSON.stringify({ type: 'result', patch }) : patch);
+    return 0;
+  }
+  if (mode === 'pr-preview') {
+    if (!value || rest.length !== 2) { output.error(usage); return 2; }
+    const preview = await github.previewPullRequest(value, { base: rest[0], head: rest[1] });
+    output.log(JSON.stringify(stream ? { type: 'result', preview } : preview, null, stream ? 0 : 2));
     return 0;
   }
   if (mode === 'pr-create') {
