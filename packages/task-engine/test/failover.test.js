@@ -78,3 +78,18 @@ test('cancellation records a terminal state and never starts a fallback', async 
   assert.equal(store.events('task').at(-1).kind, 'task-cancelled');
   store.close();
 });
+
+test('emits progress only after the corresponding event is durable', async () => {
+  const { store, registry } = setup();
+  const notified = [];
+  const engine = new TaskEngine({ store, registry, onEvent: (event) => {
+    assert.equal(store.events('task').at(-1).seq, event.seq);
+    notified.push(event.kind);
+    throw new Error('Renderer disconnected');
+  } });
+  registry.register(agent('primary', async function* () { yield { type: 'completed', text: 'done' }; }));
+  registry.register(agent('backup', async function* () { yield { type: 'completed' }; }));
+  assert.equal((await engine.run('task')).status, 'completed');
+  assert.deepEqual(notified, ['agent-started', 'agent-event', 'task-completed']);
+  store.close();
+});

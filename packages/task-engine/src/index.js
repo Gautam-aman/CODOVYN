@@ -4,10 +4,18 @@ import { AgentFailure } from '../../agent-core/src/index.js';
 export class TaskEngine {
   #running = new Set();
 
-  constructor({ registry, store, snapshot = async () => ({}) }) {
+  constructor({ registry, store, snapshot = async () => ({}), onEvent = () => {} }) {
     this.registry = registry;
     this.store = store;
     this.snapshot = snapshot;
+    this.onEvent = onEvent;
+  }
+
+  #record(taskId, kind, data = {}) {
+    const seq = this.store.append(taskId, kind, data);
+    try { this.onEvent({ seq, kind, data }); }
+    catch { /* Rendering must never change task execution after persistence. */ }
+    return seq;
   }
 
   async run(id, { signal } = {}) {
@@ -28,7 +36,7 @@ export class TaskEngine {
         throw new Error(`Task has unresolved tool action: ${pendingTool}`);
       }
       if (task.status === 'running') {
-        this.store.append(id, 'process-recovered', { agent: task.activeAgent });
+        this.#record(id, 'process-recovered', { agent: task.activeAgent });
         this.store.update(id, { status: 'interrupted', activeAgent: task.activeAgent, step: task.step });
       }
     }
@@ -45,13 +53,13 @@ export class TaskEngine {
       const agent = this.registry.require(id);
       const availability = await agent.availability();
       if (availability !== 'available') {
-        this.store.append(task.id, 'agent-unavailable', { agent: id, availability });
+        this.#record(task.id, 'agent-unavailable', { agent: id, availability });
         previous = id;
         continue;
       }
-      if (previous) this.store.append(task.id, 'handoff', { from: previous, to: id });
+      if (previous) this.#record(task.id, 'handoff', { from: previous, to: id });
       task = this.store.update(task.id, { status: 'running', activeAgent: id, step: task.step });
-      this.store.append(task.id, 'agent-started', { agent: id });
+      this.#record(task.id, 'agent-started', { agent: id });
       let pendingTool = null;
       let completed = false;
       try {
@@ -70,31 +78,31 @@ export class TaskEngine {
             if (pendingTool) throw new Error('Cannot complete with a pending tool action');
             completed = true;
           }
-          this.store.append(task.id, 'agent-event', { agent: id, event });
+          this.#record(task.id, 'agent-event', { agent: id, event });
           if (completed) break;
         }
         if (!completed) throw new AgentFailure('temporary', 'Agent stream ended without completion');
         task = this.store.update(task.id, { status: 'completed', activeAgent: id, step: task.step + 1 });
-        this.store.append(task.id, 'task-completed', { agent: id });
+        this.#record(task.id, 'task-completed', { agent: id });
         return task;
       } catch (error) {
         if (signal?.aborted) return this.#cancel(task, id);
         const kind = error instanceof AgentFailure ? error.kind : 'fatal';
-        this.store.append(task.id, 'agent-failed', { agent: id, kind, message: error.message });
+        this.#record(task.id, 'agent-failed', { agent: id, kind, message: error.message });
         const checkpoint = { failedAgent: id, step: task.step, pendingTool, repository: await this.snapshot() };
-        this.store.append(task.id, 'checkpoint', checkpoint);
+        this.#record(task.id, 'checkpoint', checkpoint);
         if (pendingTool || !['quota', 'temporary'].includes(kind)) {
           return this.store.update(task.id, { status: 'interrupted', activeAgent: id, step: task.step });
         }
         previous = id;
       }
     }
-    this.store.append(task.id, 'fallback-exhausted');
+    this.#record(task.id, 'fallback-exhausted');
     return this.store.update(task.id, { status: 'interrupted', activeAgent: previous, step: task.step });
   }
 
   #cancel(task, agent) {
-    this.store.append(task.id, 'task-cancelled', { agent });
+    this.#record(task.id, 'task-cancelled', { agent });
     return this.store.update(task.id, { status: 'cancelled', activeAgent: agent, step: task.step });
   }
 }
