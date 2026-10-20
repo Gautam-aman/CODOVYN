@@ -78,6 +78,7 @@ export class TaskEngine {
         this.store.append(task.id, 'task-completed', { agent: id });
         return task;
       } catch (error) {
+        if (signal?.aborted) return this.#cancel(task, id);
         const kind = error instanceof AgentFailure ? error.kind : 'fatal';
         this.store.append(task.id, 'agent-failed', { agent: id, kind, message: error.message });
         const checkpoint = { failedAgent: id, step: task.step, pendingTool, repository: await this.snapshot() };

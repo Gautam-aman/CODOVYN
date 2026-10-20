@@ -63,3 +63,18 @@ test('authentication failures stop automatic switching', async () => {
   assert.equal(backupCalls, 0);
   store.close();
 });
+
+test('cancellation records a terminal state and never starts a fallback', async () => {
+  const { store, registry, engine } = setup();
+  const controller = new AbortController();
+  registry.register(agent('primary', async function* () {
+    yield { type: 'text', text: 'started' };
+    controller.abort();
+    yield { type: 'text', text: 'ignored' };
+  }));
+  registry.register(agent('backup', async function* () { throw new Error('Must not run'); }));
+  const result = await engine.run('task', { signal: controller.signal });
+  assert.equal(result.status, 'cancelled');
+  assert.equal(store.events('task').at(-1).kind, 'task-cancelled');
+  store.close();
+});

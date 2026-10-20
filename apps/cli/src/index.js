@@ -17,7 +17,7 @@ const usage = `Usage:
 The demo simulates a quota handoff and makes no code changes.
 The Codex command runs the installed CLI in read-only mode.`;
 
-export async function main(args = process.argv.slice(2), output = console) {
+export async function main(args = process.argv.slice(2), output = console, signal) {
   const [mode, value, ...rest] = args;
   if (!['demo', 'codex', 'history'].includes(mode)) { output.error(usage); return 2; }
   const dataDirectory = process.env.CODOVYN_DATA_DIR || join(homedir(), '.codovyn');
@@ -49,14 +49,17 @@ export async function main(args = process.argv.slice(2), output = console) {
     const id = randomUUID();
     store.create({ id, request, primaryAgent, fallbackAgents });
     const engine = new TaskEngine({ store, registry, snapshot: () => repositorySnapshot(repository) });
-    const task = await engine.run(id);
+    const task = await engine.run(id, { signal });
     output.log(JSON.stringify({ taskId: id, status: task.status, activeAgent: task.activeAgent, events: store.events(id) }, null, 2));
     return task.status === 'completed' ? 0 : 1;
   } finally { store.close(); }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().then((code) => { process.exitCode = code; }).catch((error) => {
+  const controller = new AbortController();
+  process.on('SIGTERM', () => controller.abort());
+  process.on('SIGINT', () => controller.abort());
+  main(process.argv.slice(2), console, controller.signal).then((code) => { process.exitCode = code; }).catch((error) => {
     console.error(error.message);
     process.exitCode = 1;
   });
