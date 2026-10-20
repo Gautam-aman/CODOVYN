@@ -25,8 +25,9 @@ CLI does not print provider stderr into stored task history. No hosted
 CODOVYN service exists.
 
 Git staging, committing, and pushing require explicit CLI commands. CODOVYN's
-commit command uses an empty hooks directory so repository-provided hooks do
-not run. Push results omit remote URLs, which may contain embedded credentials.
+commit and push commands use an empty hooks directory so repository-provided
+hooks do not run. Push results omit remote URLs, which may contain embedded
+credentials.
 
 Repository and task text can contain untrusted instructions. Do not treat that
 text as authorization to run commands, publish data, or grant access. Current

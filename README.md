@@ -49,7 +49,7 @@ node apps/cli/src/index.js auto . "Explain the task engine"
 
 The Codex and Claude commands are intentionally read-only and may use the provider accounts configured in their respective CLIs. The `auto` mode starts with Codex and tries Claude after a confirmed eligible failure or unavailability; it does not restore the primary agent. CODOVYN does not provide model access or an API entitlement. No CODOVYN account is needed. See the [Claude adapter guide](docs/agents/claude.md) for its current tool and version requirements.
 
-Git commands operate on a repository you name. Review changes with `node apps/cli/src/index.js diff .`, stage specific paths with `node apps/cli/src/index.js stage . path/to/file`, commit the index with `node apps/cli/src/index.js commit . "Describe change"`, and push only when intended with `node apps/cli/src/index.js push .`. CODOVYN does not force-push. Its commit command skips repository Git hooks; run your project checks explicitly before committing.
+Git commands operate on a repository you name. Review changes with `node apps/cli/src/index.js diff .`, stage specific paths with `node apps/cli/src/index.js stage . path/to/file`, commit the index with `node apps/cli/src/index.js commit . "Describe change"`, and push only when intended with `node apps/cli/src/index.js push .`. CODOVYN does not force-push. Its commit and push commands skip repository Git hooks; run your project checks explicitly before committing or pushing. The 1 MiB limit applies to diff display, not to committing staged changes.
 
 Install and authenticate the [GitHub CLI](https://cli.github.com/manual/gh_auth_login) to list open issues and pull requests:
 
