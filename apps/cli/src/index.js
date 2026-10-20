@@ -10,7 +10,7 @@ import { TaskStore } from '../../../packages/storage/src/index.js';
 import { TaskEngine } from '../../../packages/task-engine/src/index.js';
 import { commitStaged, createBranch, fetchRemote, pullFastForward, pushCurrentBranch, repositoryDiff, repositorySnapshot, stagePaths } from '../../../packages/git-engine/src/index.js';
 import { createClaudeAdapter, createCodexAdapter } from '../../../packages/agent-adapters/src/index.js';
-import { createIssue, issueDetails, listIssues, listPullRequests, pullRequestDetails, pullRequestDiff } from '../../../packages/github-integration/src/index.js';
+import { createIssue, issueDetails, listIssues, listPullRequests, listWorkflowRuns, pullRequestDetails, pullRequestDiff } from '../../../packages/github-integration/src/index.js';
 
 const usage = `Usage:
   codovyn demo <repository> <request>
@@ -34,6 +34,7 @@ const usage = `Usage:
   codovyn prs <owner/repo>
   codovyn pr <owner/repo> <number>
   codovyn pr-diff <owner/repo> <number>
+  codovyn runs <owner/repo> [branch]
   codovyn issue-create <owner/repo> <title> <body-file> [labels]
 
 The demo simulates a quota handoff and makes no code changes.
@@ -48,10 +49,10 @@ async function confirmDeletion() {
 }
 
 export async function main(args = process.argv.slice(2), output = console, signal,
-  github = { createIssue, issueDetails, listIssues, listPullRequests, pullRequestDetails, pullRequestDiff },
+  github = { createIssue, issueDetails, listIssues, listPullRequests, listWorkflowRuns, pullRequestDetails, pullRequestDiff },
   adapters = { createCodexAdapter, createClaudeAdapter }) {
   const [mode, value, ...rest] = args;
-  if (!['demo', 'codex', 'claude', 'auto', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
+  if (!['demo', 'codex', 'claude', 'auto', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
   const stream = process.env.CODOVYN_EVENT_STREAM === '1';
   if (mode === 'issue') {
     if (!value || rest.length !== 1 || !/^[1-9]\d*$/.test(rest[0])) { output.error(usage); return 2; }
@@ -63,6 +64,12 @@ export async function main(args = process.argv.slice(2), output = console, signa
     if (!value || rest.length !== 1 || !/^[1-9]\d*$/.test(rest[0])) { output.error(usage); return 2; }
     const pullRequest = await github.pullRequestDetails(value, Number(rest[0]));
     output.log(JSON.stringify(stream ? { type: 'result', pullRequest } : pullRequest, null, stream ? 0 : 2));
+    return 0;
+  }
+  if (mode === 'runs') {
+    if (!value || rest.length > 1) { output.error(usage); return 2; }
+    const runs = await github.listWorkflowRuns(value, { branch: rest[0] });
+    output.log(JSON.stringify(stream ? { type: 'result', runs } : runs, null, stream ? 0 : 2));
     return 0;
   }
   if (mode === 'pr-diff') {
