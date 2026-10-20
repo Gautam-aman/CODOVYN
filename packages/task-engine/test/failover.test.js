@@ -108,3 +108,15 @@ test('emits progress only after the corresponding event is durable', async () =>
   assert.deepEqual(notified, ['agent-started', 'agent-event', 'task-completed']);
   store.close();
 });
+
+test('failed repository verification interrupts the task without switching agents', async () => {
+  const { store, registry } = setup();
+  let backupCalls = 0;
+  registry.register(agent('primary', async function* () { yield { type: 'completed' }; }));
+  registry.register(agent('backup', async function* () { backupCalls++; yield { type: 'completed' }; }));
+  const engine = new TaskEngine({ store, registry, snapshot: async () => { throw new Error('Git unavailable'); } });
+  assert.equal((await engine.run('task')).status, 'interrupted');
+  assert.equal(backupCalls, 0);
+  assert.equal(store.events('task').find((entry) => entry.kind === 'checkpoint').data.repository.verified, false);
+  store.close();
+});

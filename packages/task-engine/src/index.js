@@ -58,14 +58,15 @@ export class TaskEngine {
         previous = id;
         continue;
       }
-      if (previous) this.#record(task.id, 'handoff', { from: previous, to: id });
       task = this.store.update(task.id, { status: 'running', activeAgent: id, step: task.step });
-      this.#record(task.id, 'agent-started', { agent: id });
       let pendingTool = null;
       let usedTool = false;
       let completed = false;
       try {
-        const handoff = { request: task.request, step: task.step, history: this.store.events(task.id), snapshot: await this.snapshot() };
+        const snapshot = await this.snapshot();
+        if (previous) this.#record(task.id, 'handoff', { from: previous, to: id });
+        this.#record(task.id, 'agent-started', { agent: id });
+        const handoff = { request: task.request, step: task.step, history: this.store.events(task.id), snapshot };
         for await (const event of agent.run({ taskId: task.id, handoff, signal })) {
           if (signal?.aborted) return this.#cancel(task, id);
           if (!event || typeof event.type !== 'string') throw new Error('Malformed agent event');
@@ -92,9 +93,17 @@ export class TaskEngine {
         if (signal?.aborted) return this.#cancel(task, id);
         const kind = error instanceof AgentFailure ? error.kind : 'fatal';
         this.#record(task.id, 'agent-failed', { agent: id, kind, message: error.message });
-        const checkpoint = { failedAgent: id, step: task.step, pendingTool, usedTool, repository: await this.snapshot() };
+        let repository;
+        let snapshotVerified = true;
+        try { repository = await this.snapshot(); }
+        catch {
+          repository = { verified: false };
+          snapshotVerified = false;
+          this.#record(task.id, 'snapshot-failed', { agent: id });
+        }
+        const checkpoint = { failedAgent: id, step: task.step, pendingTool, usedTool, repository };
         this.#record(task.id, 'checkpoint', checkpoint);
-        if (usedTool || !['quota', 'temporary'].includes(kind)) {
+        if (!snapshotVerified || usedTool || !['quota', 'temporary'].includes(kind)) {
           return this.store.update(task.id, { status: 'interrupted', activeAgent: id, step: task.step });
         }
         previous = id;
