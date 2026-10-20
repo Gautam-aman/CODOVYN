@@ -28,6 +28,19 @@ test('confirmed quota failure checkpoints then hands off to ordered backup', asy
   store.close();
 });
 
+test('agent exception messages are not persisted or passed to the next agent', async () => {
+  const { store, registry, engine } = setup();
+  const secret = 'provider-token-should-not-appear';
+  registry.register(agent('primary', async function* () { throw new AgentFailure('quota', secret); }));
+  registry.register(agent('backup', async function* ({ handoff }) {
+    assert.ok(!JSON.stringify(handoff.history).includes(secret));
+    yield { type: 'completed' };
+  }));
+  assert.equal((await engine.run('task')).status, 'completed');
+  assert.ok(!JSON.stringify(store.events('task')).includes(secret));
+  store.close();
+});
+
 test('unavailable primary is checkpointed before the backup starts', async () => {
   const { store, registry, engine } = setup();
   registry.register({ id: 'primary', capabilities: {}, availability: async () => { throw new Error('CLI missing'); },

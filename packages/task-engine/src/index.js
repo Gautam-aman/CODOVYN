@@ -110,7 +110,7 @@ export class TaskEngine {
       } catch (error) {
         if (signal?.aborted) return this.#cancel(task, id);
         const kind = error instanceof AgentFailure ? error.kind : 'fatal';
-        this.#record(task.id, 'agent-failed', { agent: id, kind, message: error.message });
+        this.#record(task.id, 'agent-failed', { agent: id, kind });
         const snapshotVerified = await this.#checkpoint(task, id, pendingTool, usedTool);
         if (!snapshotVerified || usedTool || !['quota', 'temporary'].includes(kind)) {
           return this.store.update(task.id, { status: 'interrupted', activeAgent: id, step: task.step });
