@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { realpath } from 'node:fs/promises';
+import { isAbsolute } from 'node:path';
 
 const execute = promisify(execFile);
 
@@ -32,4 +33,16 @@ export async function repositoryDiff(directory, { staged = false } = {}) {
     if (error.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') throw new Error('Diff exceeds the 1 MiB display limit');
     throw error;
   }
+}
+
+/** Stage only caller-selected repository-relative paths. */
+export async function stagePaths(directory, paths) {
+  if (!Array.isArray(paths) || paths.length === 0 || paths.some((path) =>
+    typeof path !== 'string' || !path || isAbsolute(path) || path.includes('\0') ||
+    path.split(/[\\/]/).some((part) => part === '..'))) {
+    throw new TypeError('Stage paths must be repository-relative and cannot contain parent traversal');
+  }
+  const root = (await repositorySnapshot(directory)).root;
+  await execute('git', ['-C', root, 'add', '-A', '--', ...paths], { timeout: 30_000, maxBuffer: 1024 * 1024 });
+  return repositorySnapshot(root);
 }

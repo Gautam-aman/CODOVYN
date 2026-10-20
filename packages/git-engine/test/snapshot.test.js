@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { repositoryDiff, repositorySnapshot } from '../src/index.js';
+import { repositoryDiff, repositorySnapshot, stagePaths } from '../src/index.js';
 
 test('records real branch, commit and working-tree changes', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'codovyn-git-'));
@@ -49,5 +49,18 @@ test('reads staged and unstaged patches without invoking external diff tools', a
     assert.equal(await repositoryDiff(directory, { staged: true }), '');
     git('add', 'file.txt');
     assert.match(await repositoryDiff(directory, { staged: true }), /\+second/);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('stages selected repository files and rejects traversal', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'codovyn-stage-'));
+  try {
+    execFileSync('git', ['-C', directory, 'init', '-q', '-b', 'main']);
+    writeFileSync(join(directory, 'chosen.txt'), 'chosen');
+    writeFileSync(join(directory, 'other.txt'), 'other');
+    await stagePaths(directory, ['chosen.txt']);
+    assert.match(await repositoryDiff(directory, { staged: true }), /chosen/);
+    assert.ok(!(await repositoryDiff(directory, { staged: true })).includes('other.txt'));
+    await assert.rejects(stagePaths(directory, ['../outside']), /repository-relative/);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
