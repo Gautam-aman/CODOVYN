@@ -105,3 +105,57 @@ export function parseClaudeEvent(raw) {
   }
   return null;
 }
+
+/** Uses Claude Code's authenticated CLI with only read/search tools available. */
+export function createClaudeAdapter({ cwd, command = 'claude', prefixArgs = [] }) {
+  if (typeof cwd !== 'string' || !cwd) throw new TypeError('Workspace directory is required');
+  return {
+    id: 'claude',
+    capabilities: { streaming: true, resume: false, tools: false, writes: false,
+      authenticationStatus: false, usage: true },
+    async availability() {
+      try { await execute(command, [...prefixArgs, '--version'], { timeout: 5000 }); return 'available'; }
+      catch { return 'unavailable'; }
+    },
+    async *run({ handoff, signal }) {
+      if (signal?.aborted) throw new AgentFailure('cancelled', 'Claude Code was cancelled');
+      const prompt = formatHandoffPrompt(handoff);
+      const args = [...prefixArgs, '--bare', '-p',
+        'Continue the task described on stdin. Inspect repository files as needed and report the result.',
+        '--output-format', 'stream-json', '--verbose', '--include-partial-messages',
+        '--permission-mode', 'plan', '--permission-prompts', 'none',
+        '--tools', 'Read,Glob,Grep', '--no-session-persistence'];
+      const child = spawn(command, args, { cwd, stdio: ['pipe', 'pipe', 'pipe'], signal, shell: false });
+      let processError = null;
+      child.on('error', (error) => { processError = error; });
+      child.stdin.on('error', (error) => { processError = error; });
+      const closed = new Promise((resolve) => child.once('close', resolve));
+      child.stdin.end(prompt);
+      // Provider diagnostics can contain secrets and must not enter task history.
+      child.stderr.resume();
+      let sawText = false;
+      try {
+        for await (const line of createInterface({ input: child.stdout, crlfDelay: Infinity })) {
+          if (line.length > 1024 * 1024) throw new AgentFailure('fatal', 'Claude Code event exceeds size limit');
+          let raw;
+          try { raw = JSON.parse(line); }
+          catch { throw new AgentFailure('fatal', 'Claude Code emitted malformed JSONL'); }
+          const event = parseClaudeEvent(raw);
+          if (event?.type === 'text') sawText = true;
+          if (event?.type === 'completed' && !sawText && typeof raw.result === 'string') {
+            yield { type: 'text', text: raw.result };
+          }
+          if (event) yield event;
+        }
+        const code = await closed;
+        if (processError) throw processError;
+        if (code !== 0) throw new AgentFailure('fatal', `Claude Code exited with status ${code}`);
+      } catch (error) {
+        if (signal?.aborted) throw new AgentFailure('cancelled', 'Claude Code was cancelled');
+        throw error;
+      } finally {
+        if (child.exitCode === null && !child.killed) child.kill();
+      }
+    },
+  };
+}
