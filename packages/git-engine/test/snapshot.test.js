@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { repositorySnapshot } from '../src/index.js';
+import { repositoryDiff, repositorySnapshot } from '../src/index.js';
 
 test('records real branch, commit and working-tree changes', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'codovyn-git-'));
@@ -33,5 +33,21 @@ test('opens a newly initialized repository before its first commit', async () =>
     assert.equal(snapshot.branch, 'new-project');
     assert.equal(snapshot.commit, null);
     assert.equal(snapshot.dirty, false);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('reads staged and unstaged patches without invoking external diff tools', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'codovyn-diff-'));
+  const git = (...args) => execFileSync('git', ['-C', directory, ...args], { stdio: 'pipe' });
+  try {
+    git('init', '-q', '-b', 'main');
+    writeFileSync(join(directory, 'file.txt'), 'first\n');
+    git('add', 'file.txt');
+    git('-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '-qm', 'initial');
+    writeFileSync(join(directory, 'file.txt'), 'second\n');
+    assert.match(await repositoryDiff(directory), /\+second/);
+    assert.equal(await repositoryDiff(directory, { staged: true }), '');
+    git('add', 'file.txt');
+    assert.match(await repositoryDiff(directory, { staged: true }), /\+second/);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });

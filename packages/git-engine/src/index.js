@@ -20,3 +20,16 @@ export async function repositorySnapshot(directory) {
   const changedPaths = porcelain.split('\0').filter(Boolean).map((record) => record.slice(3));
   return { root, branch: branch || null, commit, dirty: changedPaths.length > 0, changedPaths };
 }
+
+/** A bounded, read-only patch for the active repository. */
+export async function repositoryDiff(directory, { staged = false } = {}) {
+  const cwd = await realpath(directory);
+  const args = ['-C', cwd, 'diff', ...(staged ? ['--cached'] : []), '--no-ext-diff', '--no-textconv', '--no-color', '--no-renames', '--'];
+  try {
+    return (await execute('git', args, { encoding: 'utf8', timeout: 10_000, maxBuffer: 1024 * 1024,
+      env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' } })).stdout;
+  } catch (error) {
+    if (error.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') throw new Error('Diff exceeds the 1 MiB display limit');
+    throw error;
+  }
+}
