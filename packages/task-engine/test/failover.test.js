@@ -28,6 +28,20 @@ test('confirmed quota failure checkpoints then hands off to ordered backup', asy
   store.close();
 });
 
+test('unavailable primary is checkpointed before the backup starts', async () => {
+  const { store, registry, engine } = setup();
+  registry.register({ id: 'primary', capabilities: {}, availability: async () => { throw new Error('CLI missing'); },
+    async *run() { throw new Error('Must not run'); } });
+  registry.register(agent('backup', async function* ({ handoff }) {
+    assert.ok(handoff.history.some((entry) => entry.kind === 'checkpoint'));
+    yield { type: 'completed' };
+  }));
+  assert.equal((await engine.run('task')).activeAgent, 'backup');
+  assert.deepEqual(store.events('task').filter((entry) => ['agent-unavailable', 'checkpoint', 'handoff'].includes(entry.kind))
+    .map((entry) => entry.kind), ['agent-unavailable', 'checkpoint', 'handoff']);
+  store.close();
+});
+
 test('does not repeat an unfinished tool action on fallback', async () => {
   const { store, registry, engine } = setup();
   let backupCalls = 0;

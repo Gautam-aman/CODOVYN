@@ -18,6 +18,19 @@ export class TaskEngine {
     return seq;
   }
 
+  async #checkpoint(task, agent, pendingTool, usedTool) {
+    let repository;
+    let verified = true;
+    try { repository = await this.snapshot(); }
+    catch {
+      repository = { verified: false };
+      verified = false;
+      this.#record(task.id, 'snapshot-failed', { agent });
+    }
+    this.#record(task.id, 'checkpoint', { failedAgent: agent, step: task.step, pendingTool, usedTool, repository });
+    return verified;
+  }
+
   async run(id, { signal } = {}) {
     if (this.#running.has(id)) throw new Error(`Task already running: ${id}`);
     const task = this.store.get(id);
@@ -52,9 +65,14 @@ export class TaskEngine {
     for (const id of candidates) {
       if (signal?.aborted) return this.#cancel(task, id);
       const agent = this.registry.require(id);
-      const availability = await agent.availability();
+      let availability;
+      try { availability = await agent.availability(); }
+      catch { availability = 'unavailable'; }
       if (availability !== 'available') {
         this.#record(task.id, 'agent-unavailable', { agent: id, availability });
+        if (!await this.#checkpoint(task, id, null, false)) {
+          return this.store.update(task.id, { status: 'interrupted', activeAgent: id, step: task.step });
+        }
         previous = id;
         continue;
       }
@@ -93,16 +111,7 @@ export class TaskEngine {
         if (signal?.aborted) return this.#cancel(task, id);
         const kind = error instanceof AgentFailure ? error.kind : 'fatal';
         this.#record(task.id, 'agent-failed', { agent: id, kind, message: error.message });
-        let repository;
-        let snapshotVerified = true;
-        try { repository = await this.snapshot(); }
-        catch {
-          repository = { verified: false };
-          snapshotVerified = false;
-          this.#record(task.id, 'snapshot-failed', { agent: id });
-        }
-        const checkpoint = { failedAgent: id, step: task.step, pendingTool, usedTool, repository };
-        this.#record(task.id, 'checkpoint', checkpoint);
+        const snapshotVerified = await this.#checkpoint(task, id, pendingTool, usedTool);
         if (!snapshotVerified || usedTool || !['quota', 'temporary'].includes(kind)) {
           return this.store.update(task.id, { status: 'interrupted', activeAgent: id, step: task.step });
         }
