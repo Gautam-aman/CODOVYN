@@ -17,10 +17,16 @@ button:hover:not(:disabled) { background: var(--vscode-button-hoverBackground); 
 button:disabled { opacity: .5; cursor: default; }
 #cancel { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
 .activity { margin-top: 38px; padding-top: 18px; border-top: 1px solid var(--vscode-panel-border); }
+.recent { margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--vscode-panel-border); }
 .section-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 h2 { margin: 0; font-size: 14px; }
 #status { color: var(--vscode-descriptionForeground); font-size: 12px; }
 ol { margin: 20px 0 0; padding-left: 22px; }
+ul { list-style: none; padding: 0; margin: 16px 0 0; }
+ul li { padding: 0; }
+.task { display: block; width: 100%; margin-bottom: 8px; text-align: left; background: var(--vscode-list-inactiveSelectionBackground, var(--vscode-input-background)); color: var(--vscode-editor-foreground); font-weight: 400; overflow-wrap: anywhere; }
+.task:hover { background: var(--vscode-list-hoverBackground); }
+#refresh { padding: 5px 10px; background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); font-size: 12px; }
 li { padding: 0 0 14px 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
 li.handoff { color: var(--vscode-textLink-foreground); font-weight: 600; }
 li.error { color: var(--vscode-errorForeground); }

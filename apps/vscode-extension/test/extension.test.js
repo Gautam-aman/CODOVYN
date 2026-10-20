@@ -28,6 +28,10 @@ test('extension starts a repository task and exposes a safe handoff timeline', a
   const context = { extensionUri: 'root', extensionPath: '/extension', globalStorageUri: { fsPath: '/data' }, subscriptions: [] };
   const runner = async (executable, args, options) => {
     assert.equal(executable, 'node');
+    if (args[1] === 'tasks') return { tasks: [{ id: 'task-1', request: 'Inspect', status: 'completed' }] };
+    if (args[1] === 'history') return { task: { request: 'Inspect', status: 'completed', repositoryRoot: '/project' }, events: [
+      { kind: 'handoff', data: { from: 'primary', to: 'backup' } },
+    ] };
     assert.equal(args[1], 'demo');
     assert.equal(args[2], '/project');
     assert.equal(args[3], 'Inspect');
@@ -43,10 +47,14 @@ test('extension starts a repository task and exposes a safe handoff timeline', a
   command();
   assert.match(panel.webview.html, /Content-Security-Policy/);
   await messageHandler({ type: 'run', mode: 'demo', request: 'Inspect' });
-  const result = sent.at(-1);
+  const result = sent.find((message) => message.type === 'result');
   assert.equal(result.status, 'completed');
   assert.deepEqual(result.timeline.map((item) => item.text), ['Switched from primary to backup', 'Done']);
   assert.ok(!JSON.stringify(result).includes('/private/project'));
+  assert.equal(sent.at(-1).type, 'tasks');
+  await messageHandler({ type: 'history', id: 'task-1' });
+  assert.equal(sent.at(-1).type, 'history');
+  assert.equal(sent.at(-1).request, 'Inspect');
 });
 
 test('extension blocks Codex execution in an untrusted workspace', async () => {

@@ -6,6 +6,17 @@ const cancel = document.getElementById('cancel');
 const status = document.getElementById('status');
 const timeline = document.getElementById('timeline');
 const empty = document.getElementById('empty');
+const tasks = document.getElementById('tasks');
+const refresh = document.getElementById('refresh');
+
+function appendActivity(items) {
+  for (const item of items || []) {
+    const row = document.createElement('li');
+    row.className = item.type;
+    row.textContent = item.text;
+    timeline.append(row);
+  }
+}
 
 run.addEventListener('click', () => {
   const value = request.value.trim();
@@ -13,6 +24,7 @@ run.addEventListener('click', () => {
   vscode.postMessage({ type: 'run', mode: agent.value, request: value });
 });
 cancel.addEventListener('click', () => vscode.postMessage({ type: 'cancel' }));
+refresh.addEventListener('click', () => vscode.postMessage({ type: 'tasks' }));
 request.addEventListener('keydown', (event) => {
   if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); run.click(); }
 });
@@ -26,25 +38,38 @@ window.addEventListener('message', ({ data }) => {
     timeline.replaceChildren();
     empty.textContent = 'Waiting for agent activity…';
   } else if (data.type === 'progress') {
-    for (const item of data.entries || []) {
-      const row = document.createElement('li');
-      row.className = item.type;
-      row.textContent = item.text;
-      timeline.append(row);
-    }
+    appendActivity(data.entries);
     if (data.entries?.length) empty.textContent = '';
-  } else if (data.type === 'result') {
+  } else if (data.type === 'result' || data.type === 'history') {
     status.textContent = data.status === 'completed' ? 'Completed' : data.status;
     run.disabled = false;
     cancel.disabled = true;
     timeline.replaceChildren();
-    for (const item of data.timeline || []) {
-      const row = document.createElement('li');
-      row.className = item.type;
-      row.textContent = item.text;
-      timeline.append(row);
-    }
+    appendActivity(data.timeline);
+    if (data.type === 'history') request.value = data.request || '';
     empty.textContent = data.timeline?.length ? '' : 'No activity was recorded.';
+  } else if (data.type === 'tasks') {
+    tasks.replaceChildren();
+    for (const task of data.tasks || []) {
+      const row = document.createElement('li');
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'task';
+      button.textContent = `${task.request} · ${task.status}`;
+      button.addEventListener('click', () => vscode.postMessage({ type: 'history', id: task.id }));
+      row.append(button);
+      tasks.append(row);
+    }
+    if (!data.tasks?.length) {
+      const row = document.createElement('li');
+      row.textContent = 'No saved tasks for this repository.';
+      tasks.append(row);
+    }
+  } else if (data.type === 'tasks-error') {
+    tasks.replaceChildren();
+    const row = document.createElement('li');
+    row.textContent = data.text;
+    tasks.append(row);
   } else if (data.type === 'error') {
     status.textContent = 'Error';
     run.disabled = false;
@@ -52,3 +77,5 @@ window.addEventListener('message', ({ data }) => {
     empty.textContent = data.text;
   }
 });
+
+vscode.postMessage({ type: 'ready' });
