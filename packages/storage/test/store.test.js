@@ -60,3 +60,33 @@ test('task database rejects a shared directory that could expose WAL sidecars', 
     assert.throws(() => statSync(join(shared, 'tasks.sqlite')), /ENOENT/);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
+
+test('deletes a finished task and its event history durably', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'codovyn-delete-'));
+  const filename = join(directory, 'tasks.sqlite');
+  try {
+    const first = new TaskStore(filename);
+    first.create({ id: 'old', request: 'Done', primaryAgent: 'alpha' });
+    first.append('old', 'checkpoint', { private: 'history' });
+    first.create({ id: 'keep', request: 'Keep', primaryAgent: 'alpha' });
+    assert.equal(first.delete('old'), true);
+    assert.equal(first.delete('old'), false);
+    assert.equal(first.get('old'), undefined);
+    assert.deepEqual(first.events('old'), []);
+    assert.ok(first.get('keep'));
+    first.close();
+    const reopened = new TaskStore(filename);
+    assert.equal(reopened.get('old'), undefined);
+    assert.deepEqual(reopened.events('old'), []);
+    reopened.close();
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('refuses to delete a running task', () => {
+  const store = new TaskStore(':memory:');
+  store.create({ id: 'live', request: 'Work', primaryAgent: 'alpha' });
+  store.update('live', { status: 'running', activeAgent: 'alpha', step: 0 });
+  assert.throws(() => store.delete('live'), /Cannot delete a running task/);
+  assert.ok(store.get('live'));
+  store.close();
+});
