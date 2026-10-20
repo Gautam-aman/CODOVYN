@@ -140,3 +140,19 @@ export async function fetchRemote(directory, remote = 'origin') {
   finally { await rm(emptyHooks, { recursive: true, force: true }); }
   return { remote, snapshot: await repositorySnapshot(snapshot.root) };
 }
+
+/** Update a clean local branch only when the remote can fast-forward it. */
+export async function pullFastForward(directory, remote = 'origin') {
+  const snapshot = await repositorySnapshot(directory);
+  if (!snapshot.branch || !snapshot.commit) throw new Error('A committed branch is required before pulling');
+  if (snapshot.dirty) throw new Error('Commit or remove working-tree changes before pulling');
+  await configuredRemote(snapshot.root, remote);
+  const emptyHooks = await mkdtemp(join(tmpdir(), 'codovyn-hooks-'));
+  try {
+    await execute('git', ['-C', snapshot.root, '-c', `core.hooksPath=${emptyHooks}`, '-c', 'protocol.ext.allow=never',
+      'pull', '--ff-only', '--no-rebase', remote, snapshot.branch], { timeout: 60_000, maxBuffer: 1024 * 1024,
+      env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } });
+  } catch { throw new Error('Git pull failed; the branch may have diverged or remote access may be unavailable'); }
+  finally { await rm(emptyHooks, { recursive: true, force: true }); }
+  return repositorySnapshot(snapshot.root);
+}

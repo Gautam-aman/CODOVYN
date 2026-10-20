@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { commitStaged, createBranch, fetchRemote, pushCurrentBranch, repositoryDiff, repositorySnapshot, stagePaths } from '../src/index.js';
+import { commitStaged, createBranch, fetchRemote, pullFastForward, pushCurrentBranch, repositoryDiff, repositorySnapshot, stagePaths } from '../src/index.js';
 
 test('records real branch, commit and working-tree changes', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'codovyn-git-'));
@@ -177,6 +177,57 @@ test('fetches remote changes without changing the active branch or working tree'
     assert.equal(result.remote, 'origin');
     assert.notEqual(git('rev-parse', 'refs/remotes/origin/main').toString().trim(), before.commit);
     await assert.rejects(fetchRemote(directory, '--force'), /configured Git remote name/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+    rmSync(remote, { recursive: true, force: true });
+    rmSync(contributor, { recursive: true, force: true });
+  }
+});
+
+test('pulls only a clean fast-forward branch and skips merge hooks', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'codovyn-pull-'));
+  const remote = mkdtempSync(join(tmpdir(), 'codovyn-pull-bare-'));
+  const contributor = mkdtempSync(join(tmpdir(), 'codovyn-pull-contributor-'));
+  const git = (...args) => execFileSync('git', ['-C', directory, ...args], { stdio: 'pipe' });
+  try {
+    execFileSync('git', ['-C', remote, 'init', '--bare', '-q']);
+    git('init', '-q', '-b', 'main');
+    git('remote', 'add', 'origin', remote);
+    git('config', 'user.name', 'Test');
+    git('config', 'user.email', 'test@example.invalid');
+    writeFileSync(join(directory, 'file.txt'), 'initial');
+    git('add', 'file.txt');
+    git('commit', '-qm', 'initial');
+    await pushCurrentBranch(directory);
+    execFileSync('git', ['-C', remote, 'symbolic-ref', 'HEAD', 'refs/heads/main']);
+    execFileSync('git', ['clone', '-q', remote, contributor]);
+    execFileSync('git', ['-C', contributor, 'config', 'user.name', 'Test']);
+    execFileSync('git', ['-C', contributor, 'config', 'user.email', 'test@example.invalid']);
+    writeFileSync(join(contributor, 'file.txt'), 'remote edit');
+    execFileSync('git', ['-C', contributor, 'add', 'file.txt']);
+    execFileSync('git', ['-C', contributor, 'commit', '-qm', 'remote edit']);
+    execFileSync('git', ['-C', contributor, 'push', '-q', 'origin', 'main']);
+    if (process.platform !== 'win32') {
+      const hook = join(directory, '.git', 'hooks', 'post-merge');
+      writeFileSync(hook, '#!/bin/sh\ntouch hook-ran\n');
+      chmodSync(hook, 0o755);
+    }
+    writeFileSync(join(directory, 'untracked.txt'), 'keep');
+    await assert.rejects(pullFastForward(directory), /working-tree changes/);
+    unlinkSync(join(directory, 'untracked.txt'));
+    const pulled = await pullFastForward(directory);
+    assert.equal(pulled.commit, execFileSync('git', ['-C', remote, 'rev-parse', 'refs/heads/main'], { encoding: 'utf8' }).trim());
+    assert.equal(existsSync(join(directory, 'hook-ran')), false);
+    writeFileSync(join(directory, 'local.txt'), 'local');
+    git('add', 'local.txt');
+    git('commit', '-qm', 'local edit');
+    writeFileSync(join(contributor, 'remote.txt'), 'remote');
+    execFileSync('git', ['-C', contributor, 'add', 'remote.txt']);
+    execFileSync('git', ['-C', contributor, 'commit', '-qm', 'another remote edit']);
+    execFileSync('git', ['-C', contributor, 'push', '-q', 'origin', 'main']);
+    const before = await repositorySnapshot(directory);
+    await assert.rejects(pullFastForward(directory), /may have diverged/);
+    assert.equal((await repositorySnapshot(directory)).commit, before.commit);
   } finally {
     rmSync(directory, { recursive: true, force: true });
     rmSync(remote, { recursive: true, force: true });
