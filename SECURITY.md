@@ -9,10 +9,19 @@ contact channel without disclosing the vulnerability.
 
 ## Current boundary
 
-Task history is stored locally in SQLite. On Unix-like systems the database
-file is restricted to the current user. The Codex adapter delegates
-authentication to the installed Codex CLI and requests read-only execution.
-The CLI does not print provider stderr into stored task history. No hosted
+Task history is stored locally in SQLite. On Unix-like systems CODOVYN requires
+a private database directory (mode 0700) and restricts the main database file
+to the current user. The private directory also protects SQLite WAL and shared
+memory sidecar files, which SQLite may create with broader file modes. New VS
+Code task history uses a `private` subdirectory in extension storage; an older
+journal remains accessible in its original location only if that directory is
+already private. Task history is not encrypted. Windows filesystem ACLs are
+not independently audited by CODOVYN.
+
+The Codex and Claude adapters delegate authentication to their installed CLIs
+and request read-only execution. The Claude adapter disables discovered hooks,
+plugins, MCP servers, and write-capable tools for its noninteractive run. The
+CLI does not print provider stderr into stored task history. No hosted
 CODOVYN service exists.
 
 Git staging, committing, and pushing require explicit CLI commands. CODOVYN's
