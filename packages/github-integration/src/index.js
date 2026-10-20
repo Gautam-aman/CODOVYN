@@ -49,6 +49,14 @@ function validateNumber(number, kind) {
   if (!Number.isSafeInteger(number) || number < 1) throw new TypeError(`${kind} number must be positive`);
 }
 
+function validateBranch(branch) {
+  if (typeof branch !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._/-]{0,99}$/.test(branch) ||
+    branch.includes('..') || branch.includes('//') || branch.endsWith('/') || branch.endsWith('.lock')) {
+    throw new TypeError('Invalid GitHub branch name');
+  }
+  return branch;
+}
+
 /** Read public or authorized repository issues using the user's GitHub CLI session. */
 export async function listIssues(repository, { limit = 30, run = runGh } = {}) {
   validateRepository(repository);
@@ -126,6 +134,20 @@ export async function pullRequestDiff(repository, number, { run = runGh } = {}) 
     throw new Error('GitHub response exceeds the 1 MiB display limit');
   }
   return patch;
+}
+
+/** Preview a same-repository base...head diff before any PR creation request. */
+export async function previewPullRequest(repository, { base, head }, { run = runGh } = {}) {
+  validateRepository(repository);
+  validateBranch(base);
+  validateBranch(head);
+  if (base === head) throw new TypeError('PR base and head must differ');
+  const endpoint = `repos/${repository}/compare/${encodeURIComponent(base)}...${encodeURIComponent(head)}`;
+  const diff = await run(['api', '-H', 'Accept: application/vnd.github.diff', endpoint]);
+  if (typeof diff !== 'string' || !diff.startsWith('diff --git ') || Buffer.byteLength(diff) > 1024 * 1024) {
+    throw new Error('PR preview is unavailable or exceeds the 1 MiB display limit');
+  }
+  return { repository, base, head, diff };
 }
 
 /** Create an issue only when explicitly invoked, using existing gh authorization. */
