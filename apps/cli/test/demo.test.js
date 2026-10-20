@@ -1,12 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { repositorySnapshot } from '../../../packages/git-engine/src/index.js';
 
-test('CLI opens a real repository and persists a simulated handoff', () => {
+test('CLI opens a real repository and persists a simulated handoff', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'codovyn-cli-'));
   const repository = join(directory, 'repo');
   const data = join(directory, 'data');
@@ -33,7 +34,11 @@ test('CLI opens a real repository and persists a simulated handoff', () => {
       encoding: 'utf8', env: { ...env, CODOVYN_EVENT_STREAM: '1' },
     }));
     assert.equal(streamedHistory.type, 'result');
-    assert.equal(streamedHistory.task.repositoryRoot, realpathSync(repository));
+    assert.equal(streamedHistory.task.repositoryRoot, (await repositorySnapshot(repository)).root);
+    const another = join(directory, 'another');
+    mkdirSync(another);
+    execFileSync('git', ['-C', another, 'init', '-q', '-b', 'other']);
+    assert.throws(() => execFileSync(process.execPath, [script, 'history', result.taskId, another], { encoding: 'utf8', env, stdio: 'pipe' }));
 
     const streamed = execFileSync(process.execPath, [script, 'demo', repository, 'Inspect'], {
       encoding: 'utf8', env: { ...env, CODOVYN_EVENT_STREAM: '1' },

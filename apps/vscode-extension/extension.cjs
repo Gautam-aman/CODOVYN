@@ -2,7 +2,6 @@ const { spawn } = require('node:child_process');
 const { randomBytes } = require('node:crypto');
 const { join } = require('node:path');
 const { StringDecoder } = require('node:string_decoder');
-const { realpathSync } = require('node:fs');
 
 function timeline(events) {
   return events.flatMap((entry) => {
@@ -92,14 +91,11 @@ function createExtension(api, runner = runCli) {
             const nodePath = api.workspace.getConfiguration('codovyn').get('nodePath', 'node');
             const script = join(context.extensionPath, 'apps', 'cli', 'src', 'index.js');
             try {
-              const result = await runner(nodePath, [script, 'history', message.id], {
+              const result = await runner(nodePath, [script, 'history', message.id, folder.uri.fsPath], {
                 cwd: folder.uri.fsPath,
                 env: { ...process.env, CODOVYN_DATA_DIR: context.globalStorageUri.fsPath, CODOVYN_EVENT_STREAM: '1' },
                 onChild: () => {}, onEvent: () => {},
               });
-              let root = folder.uri.fsPath;
-              try { root = realpathSync(root); } catch { /* The CLI reports a missing workspace. */ }
-              if (result.task?.repositoryRoot !== root) throw new Error('Task belongs to a different repository');
               panel.webview.postMessage({ type: 'history', request: result.task.request, status: result.task.status,
                 timeline: timeline(result.events || []) });
             } catch (error) { panel.webview.postMessage({ type: 'error', text: error.message }); }

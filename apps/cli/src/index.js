@@ -13,7 +13,7 @@ const usage = `Usage:
   codovyn demo <repository> <request>
   codovyn codex <repository> <request>
   codovyn tasks [repository]
-  codovyn history <task-id>
+  codovyn history <task-id> [repository]
 
 The demo simulates a quota handoff and makes no code changes.
 The Codex command runs the installed CLI in read-only mode.`;
@@ -36,6 +36,10 @@ export async function main(args = process.argv.slice(2), output = console, signa
       if (!value) { output.error(usage); return 2; }
       const task = store.get(value);
       if (!task) { output.error(`Unknown task: ${value}`); return 1; }
+      if (rest[0] && task.repositoryRoot !== (await repositorySnapshot(rest[0])).root) {
+        output.error('Task belongs to a different repository');
+        return 1;
+      }
       output.log(JSON.stringify(stream ? { type: 'result', task, events: store.events(value) }
         : { task, events: store.events(value) }, null, stream ? 0 : 2));
       return 0;

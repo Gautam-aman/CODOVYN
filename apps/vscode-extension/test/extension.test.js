@@ -29,9 +29,12 @@ test('extension starts a repository task and exposes a safe handoff timeline', a
   const runner = async (executable, args, options) => {
     assert.equal(executable, 'node');
     if (args[1] === 'tasks') return { tasks: [{ id: 'task-1', request: 'Inspect', status: 'completed' }] };
-    if (args[1] === 'history') return { task: { request: 'Inspect', status: 'completed', repositoryRoot: '/project' }, events: [
+    if (args[1] === 'history') {
+      assert.equal(args[3], '/project');
+      return { task: { request: 'Inspect', status: 'completed', repositoryRoot: '/project' }, events: [
       { kind: 'handoff', data: { from: 'primary', to: 'backup' } },
-    ] };
+      ] };
+    }
     assert.equal(args[1], 'demo');
     assert.equal(args[2], '/project');
     assert.equal(args[3], 'Inspect');
