@@ -15,6 +15,7 @@ CODOVYN is an open-source project building a local-first development environment
 - A deterministic demo flow lets contributors inspect a simulated quota handoff without provider credentials or code edits.
 - A CLI opens real Git repositories and displays saved task history.
 - A VS Code extension panel starts local tasks from an open repository, shows a handoff timeline, and offers cancellation. Host behavior is covered by automated tests; a live VS Code launch has not been verified here.
+- Read-only Git patches, selected-path staging, local commits, and an explicit branch push work through the CLI. Remote GitHub authentication still comes from the user's Git configuration.
 
 No screenshot is included because the extension has not been captured in a running VS Code host. The desktop IDE, GitHub bots, routing UI, and website remain planned work.
 
@@ -44,6 +45,8 @@ node apps/cli/src/index.js codex . "Explain the task engine"
 ```
 
 The Codex command is intentionally read-only and may use the provider account configured in the Codex CLI. CODOVYN does not provide model access or an API entitlement. No CODOVYN account is needed.
+
+Git commands operate on a repository you name. Review changes with `node apps/cli/src/index.js diff .`, stage specific paths with `node apps/cli/src/index.js stage . path/to/file`, commit the index with `node apps/cli/src/index.js commit . "Describe change"`, and push only when intended with `node apps/cli/src/index.js push .`. CODOVYN does not force-push. Its commit command skips repository Git hooks; run your project checks explicitly before committing.
 
 To build a local VS Code extension archive, run `npm ci --ignore-scripts` and `npm run package:extension`. This produces `codovyn-dev.vsix`. Install it through VS Code's **Extensions → Install from VSIX…** action, open a Git repository folder, and run **CODOVYN: Open Agent Workspace** from the Command Palette. The panel streams task activity and lists saved tasks for that repository. The extension needs a Node.js 26 executable on your `PATH`; set `codovyn.nodePath` if necessary. The `codovyn-local` publisher identifier is for development packaging and is not a verified Marketplace publisher.
 
