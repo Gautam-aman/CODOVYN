@@ -36,6 +36,21 @@ test('does not repeat an unfinished tool action on fallback', async () => {
   assert.equal((await engine.run('task')).status, 'interrupted');
   assert.equal(backupCalls, 0);
   assert.equal(store.events('task').find((e) => e.kind === 'checkpoint').data.pendingTool, 'write-1');
+  await assert.rejects(engine.run('task'), /unresolved tool action: write-1/);
+  store.close();
+});
+
+test('recovers a running task after a process restart when no tool is pending', async () => {
+  const { store, registry } = setup();
+  store.update('task', { status: 'running', activeAgent: 'primary', step: 0 });
+  store.append('task', 'agent-event', { agent: 'primary', event: { type: 'text', text: 'partial' } });
+  registry.register(agent('primary', async function* ({ handoff }) {
+    assert.ok(handoff.history.some((entry) => entry.kind === 'process-recovered'));
+    yield { type: 'completed', text: 'resumed' };
+  }));
+  registry.register(agent('backup', async function* () { yield { type: 'completed' }; }));
+  const restarted = new TaskEngine({ store, registry });
+  assert.equal((await restarted.run('task')).status, 'completed');
   store.close();
 });
 

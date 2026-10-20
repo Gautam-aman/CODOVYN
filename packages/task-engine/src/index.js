@@ -14,7 +14,24 @@ export class TaskEngine {
     if (this.#running.has(id)) throw new Error(`Task already running: ${id}`);
     const task = this.store.get(id);
     if (!task) throw new Error(`Unknown task: ${id}`);
-    if (!['pending', 'interrupted'].includes(task.status)) throw new Error(`Cannot run task in ${task.status} state`);
+    if (!['pending', 'running', 'interrupted'].includes(task.status)) throw new Error(`Cannot run task in ${task.status} state`);
+    if (task.status !== 'pending') {
+      const history = this.store.events(id);
+      let pendingTool = null;
+      for (const entry of history) {
+        if (entry.kind !== 'agent-event') continue;
+        if (entry.data.event.type === 'tool-start') pendingTool = entry.data.event.actionId;
+        if (entry.data.event.type === 'tool-complete' && entry.data.event.actionId === pendingTool) pendingTool = null;
+      }
+      if (pendingTool) {
+        if (task.status === 'running') this.store.update(id, { status: 'interrupted', activeAgent: task.activeAgent, step: task.step });
+        throw new Error(`Task has unresolved tool action: ${pendingTool}`);
+      }
+      if (task.status === 'running') {
+        this.store.append(id, 'process-recovered', { agent: task.activeAgent });
+        this.store.update(id, { status: 'interrupted', activeAgent: task.activeAgent, step: task.step });
+      }
+    }
     this.#running.add(id);
     try { return await this.#run(task, signal); }
     finally { this.#running.delete(id); }
