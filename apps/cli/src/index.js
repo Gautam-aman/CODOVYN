@@ -19,6 +19,7 @@ const usage = `Usage:
   codovyn tasks [repository]
   codovyn history <task-id> [repository]
   codovyn task-delete <task-id> [repository]
+  codovyn task-prune <repository> <before-ISO-time>
   codovyn diff <repository> [--staged]
   codovyn stage <repository> <path> [more paths]
   codovyn commit <repository> <message>
@@ -36,7 +37,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
   github = { createIssue, listIssues, listPullRequests, pullRequestDiff },
   adapters = { createCodexAdapter, createClaudeAdapter }) {
   const [mode, value, ...rest] = args;
-  if (!['demo', 'codex', 'claude', 'auto', 'tasks', 'history', 'task-delete', 'diff', 'stage', 'commit', 'push', 'issues', 'prs', 'pr-diff', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
+  if (!['demo', 'codex', 'claude', 'auto', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'stage', 'commit', 'push', 'issues', 'prs', 'pr-diff', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
   const stream = process.env.CODOVYN_EVENT_STREAM === '1';
   if (mode === 'pr-diff') {
     if (!value || rest.length !== 1 || !/^[1-9]\d*$/.test(rest[0])) { output.error(usage); return 2; }
@@ -85,6 +86,13 @@ export async function main(args = process.argv.slice(2), output = console, signa
       const tasks = store.list({ repositoryRoot }).map(({ id, request, status, activeAgent, updatedAt }) =>
         ({ id, request, status, activeAgent, updatedAt }));
       output.log(JSON.stringify(stream ? { type: 'result', tasks } : tasks, null, stream ? 0 : 2));
+      return 0;
+    }
+    if (mode === 'task-prune') {
+      if (!value || rest.length !== 1) { output.error(usage); return 2; }
+      const repositoryRoot = (await repositorySnapshot(value)).root;
+      const deletedTaskIds = store.prune({ repositoryRoot, before: rest[0] });
+      output.log(JSON.stringify(stream ? { type: 'result', deletedTaskIds } : { deletedTaskIds }, null, stream ? 0 : 2));
       return 0;
     }
     if (mode === 'history' || mode === 'task-delete') {

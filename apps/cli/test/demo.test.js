@@ -66,5 +66,9 @@ test('CLI opens a real repository and persists a simulated handoff', async () =>
     const deleted = JSON.parse(execFileSync(process.execPath, [script, 'task-delete', result.taskId, repository], { encoding: 'utf8', env }));
     assert.deepEqual(deleted, { deleted: true, taskId: result.taskId });
     assert.throws(() => execFileSync(process.execPath, [script, 'history', result.taskId], { encoding: 'utf8', env, stdio: 'pipe' }));
+    const before = new Date(Date.now() + 60_000).toISOString();
+    const pruned = JSON.parse(execFileSync(process.execPath, [script, 'task-prune', repository, before], { encoding: 'utf8', env }));
+    assert.deepEqual(pruned.deletedTaskIds, [streamed.at(-1).taskId]);
+    assert.throws(() => execFileSync(process.execPath, [script, 'history', streamed.at(-1).taskId], { encoding: 'utf8', env, stdio: 'pipe' }));
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
