@@ -22,6 +22,7 @@ export class TaskStore {
       CREATE TABLE IF NOT EXISTS tasks (
         id TEXT PRIMARY KEY,
         request TEXT NOT NULL,
+        repository_root TEXT,
         primary_agent TEXT NOT NULL,
         fallback_agents TEXT NOT NULL,
         active_agent TEXT,
@@ -39,22 +40,26 @@ export class TaskStore {
       );
       CREATE INDEX IF NOT EXISTS events_by_task ON events(task_id, seq);
     `);
+    if (!this.#db.prepare('PRAGMA table_info(tasks)').all().some((column) => column.name === 'repository_root')) {
+      this.#db.exec('ALTER TABLE tasks ADD COLUMN repository_root TEXT');
+    }
   }
 
-  create({ id, request, primaryAgent, fallbackAgents = [] }) {
+  create({ id, request, repositoryRoot = null, primaryAgent, fallbackAgents = [] }) {
     validId(id);
     if (typeof request !== 'string' || !request.trim()) throw new TypeError('Task request is required');
     if (typeof primaryAgent !== 'string' || !primaryAgent) throw new TypeError('Primary agent is required');
+    if (repositoryRoot !== null && (typeof repositoryRoot !== 'string' || !repositoryRoot)) throw new TypeError('Invalid repository root');
     if (!Array.isArray(fallbackAgents) || fallbackAgents.some((value) => typeof value !== 'string')) throw new TypeError('Invalid fallback agents');
     const now = new Date().toISOString();
-    this.#db.prepare('INSERT INTO tasks (id, request, primary_agent, fallback_agents, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-      .run(id, request, primaryAgent, JSON.stringify(fallbackAgents), 'pending', now, now);
+    this.#db.prepare('INSERT INTO tasks (id, request, repository_root, primary_agent, fallback_agents, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(id, request, repositoryRoot, primaryAgent, JSON.stringify(fallbackAgents), 'pending', now, now);
     return this.get(id);
   }
 
   get(id) {
     const row = this.#db.prepare('SELECT * FROM tasks WHERE id = ?').get(validId(id));
-    return row ? { id: row.id, request: row.request, primaryAgent: row.primary_agent,
+    return row ? { id: row.id, request: row.request, repositoryRoot: row.repository_root, primaryAgent: row.primary_agent,
       fallbackAgents: JSON.parse(row.fallback_agents), activeAgent: row.active_agent,
       status: row.status, step: row.step, createdAt: row.created_at, updatedAt: row.updated_at } : undefined;
   }
@@ -82,10 +87,14 @@ export class TaskStore {
       .all(validId(id)).map((row) => ({ seq: row.seq, kind: row.kind, data: JSON.parse(row.data), createdAt: row.created_at }));
   }
 
-  list({ limit = 25 } = {}) {
+  list({ limit = 25, repositoryRoot } = {}) {
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) throw new TypeError('Limit must be between 1 and 100');
-    return this.#db.prepare('SELECT id FROM tasks ORDER BY updated_at DESC, id DESC LIMIT ?')
-      .all(limit).map(({ id }) => this.get(id));
+    if (repositoryRoot !== undefined && (typeof repositoryRoot !== 'string' || !repositoryRoot)) throw new TypeError('Invalid repository root');
+    const statement = repositoryRoot === undefined
+      ? this.#db.prepare('SELECT id FROM tasks ORDER BY updated_at DESC, id DESC LIMIT ?')
+      : this.#db.prepare('SELECT id FROM tasks WHERE repository_root = ? ORDER BY updated_at DESC, id DESC LIMIT ?');
+    const rows = repositoryRoot === undefined ? statement.all(limit) : statement.all(repositoryRoot, limit);
+    return rows.map(({ id }) => this.get(id));
   }
 
   listInterrupted() {
