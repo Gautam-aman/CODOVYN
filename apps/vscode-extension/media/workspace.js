@@ -61,6 +61,15 @@ window.addEventListener('message', ({ data }) => {
       button.textContent = `${task.request} · ${task.status}`;
       button.addEventListener('click', () => vscode.postMessage({ type: 'history', id: task.id }));
       row.append(button);
+      if (task.status !== 'running') {
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'task-delete';
+        remove.textContent = 'Delete';
+        remove.setAttribute('aria-label', `Delete saved task: ${task.request}`);
+        remove.addEventListener('click', () => vscode.postMessage({ type: 'delete-task', id: task.id }));
+        row.append(remove);
+      }
       tasks.append(row);
     }
     if (!data.tasks?.length) {
@@ -73,6 +82,10 @@ window.addEventListener('message', ({ data }) => {
     const row = document.createElement('li');
     row.textContent = data.text;
     tasks.append(row);
+  } else if (data.type === 'task-deleted') {
+    status.textContent = 'Task deleted';
+    timeline.replaceChildren();
+    empty.textContent = 'Select a saved task or start a new one.';
   } else if (data.type === 'diff') {
     diffOutput.textContent = data.text || 'No tracked changes in this diff.';
   } else if (data.type === 'diff-error') {

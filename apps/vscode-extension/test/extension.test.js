@@ -24,6 +24,8 @@ test('extension keeps a private legacy journal visible and isolates new storage'
 test('extension starts a repository task and exposes a safe handoff timeline', async () => {
   let command;
   let messageHandler;
+  let approveDeletion = false;
+  let deletionCalls = 0;
   const sent = [];
   const panel = { webview: {
     cspSource: 'vscode-resource:',
@@ -33,7 +35,8 @@ test('extension starts a repository task and exposes a safe handoff timeline', a
   } };
   const api = {
     commands: { registerCommand: (_id, handler) => { command = handler; return { dispose() {} }; } },
-    window: { createWebviewPanel: () => panel },
+    window: { createWebviewPanel: () => panel,
+      showWarningMessage: async () => approveDeletion ? 'Delete task' : undefined },
     ViewColumn: { Beside: 2 },
     Uri: { joinPath: (_root, ...parts) => parts.join('/') },
     workspace: {
@@ -46,6 +49,11 @@ test('extension starts a repository task and exposes a safe handoff timeline', a
     assert.equal(executable, 'node');
     if (args[1] === 'tasks') return { tasks: [{ id: 'task-1', request: 'Inspect', status: 'completed' }] };
     if (args[1] === 'diff') return { diff: 'diff --git a/file b/file\n+changed' };
+    if (args[1] === 'task-delete') {
+      assert.deepEqual(args.slice(2), ['task-1', '/project', '--yes']);
+      deletionCalls++;
+      return { deleted: true, taskId: 'task-1' };
+    }
     if (args[1] === 'history') {
       assert.equal(args[3], '/project');
       return { task: { request: 'Inspect', status: 'completed', repositoryRoot: '/project' }, events: [
@@ -80,6 +88,14 @@ test('extension starts a repository task and exposes a safe handoff timeline', a
   assert.equal(sent.at(-1).request, 'Inspect');
   await messageHandler({ type: 'diff', staged: false });
   assert.match(sent.at(-1).text, /\+changed/);
+  await messageHandler({ type: 'delete-task', id: '../unsafe' });
+  await messageHandler({ type: 'delete-task', id: 'task-1' });
+  assert.equal(deletionCalls, 0);
+  approveDeletion = true;
+  await messageHandler({ type: 'delete-task', id: 'task-1' });
+  assert.equal(deletionCalls, 1);
+  assert.ok(sent.some((message) => message.type === 'task-deleted' && message.id === 'task-1'));
+  assert.equal(sent.at(-1).type, 'tasks');
 });
 
 test('extension blocks provider execution in an untrusted workspace', async () => {

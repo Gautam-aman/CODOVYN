@@ -101,6 +101,25 @@ function createExtension(api, runner = runCli) {
           if (!message || typeof message !== 'object') return;
           if (message.type === 'cancel') { active?.kill('SIGTERM'); return; }
           if (message.type === 'ready' || message.type === 'tasks') { await refreshTasks(); return; }
+          if (message.type === 'delete-task' && !active && typeof message.id === 'string' && /^[a-zA-Z0-9_-]{1,80}$/.test(message.id)) {
+            const folder = api.workspace.workspaceFolders?.[0];
+            if (!folder) return;
+            const approval = await api.window.showWarningMessage('Delete this CODOVYN task and its saved event history?',
+              { modal: true }, 'Delete task');
+            if (approval !== 'Delete task') return;
+            const nodePath = api.workspace.getConfiguration('codovyn').get('nodePath', 'node');
+            const script = join(context.extensionPath, 'apps', 'cli', 'src', 'index.js');
+            try {
+              await runner(nodePath, [script, 'task-delete', message.id, folder.uri.fsPath, '--yes'], {
+                cwd: folder.uri.fsPath,
+                env: { ...process.env, CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM: '1' },
+                onChild: () => {}, onEvent: () => {},
+              });
+              panel.webview.postMessage({ type: 'task-deleted', id: message.id });
+              await refreshTasks();
+            } catch { panel.webview.postMessage({ type: 'tasks-error', text: 'Could not delete this task.' }); }
+            return;
+          }
           if (message.type === 'diff' && typeof message.staged === 'boolean') {
             const folder = api.workspace.workspaceFolders?.[0];
             if (!folder) { panel.webview.postMessage({ type: 'diff-error', text: 'Open a Git repository folder first.' }); return; }
