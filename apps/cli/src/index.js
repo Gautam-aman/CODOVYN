@@ -8,7 +8,7 @@ import { createInterface } from 'node:readline/promises';
 import { AgentRegistry, AgentFailure } from '../../../packages/agent-core/src/index.js';
 import { TaskStore } from '../../../packages/storage/src/index.js';
 import { TaskEngine } from '../../../packages/task-engine/src/index.js';
-import { commitStaged, createBranch, fetchRemote, pushCurrentBranch, repositoryDiff, repositorySnapshot, stagePaths } from '../../../packages/git-engine/src/index.js';
+import { commitStaged, createBranch, fetchRemote, pullFastForward, pushCurrentBranch, repositoryDiff, repositorySnapshot, stagePaths } from '../../../packages/git-engine/src/index.js';
 import { createClaudeAdapter, createCodexAdapter } from '../../../packages/agent-adapters/src/index.js';
 import { createIssue, listIssues, listPullRequests, pullRequestDiff } from '../../../packages/github-integration/src/index.js';
 
@@ -26,6 +26,7 @@ const usage = `Usage:
   codovyn commit <repository> <message>
   codovyn branch <repository> <new-name>
   codovyn fetch <repository> [remote]
+  codovyn pull <repository> [remote]
   codovyn push <repository> [remote]
   codovyn issues <owner/repo>
   codovyn prs <owner/repo>
@@ -47,7 +48,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
   github = { createIssue, listIssues, listPullRequests, pullRequestDiff },
   adapters = { createCodexAdapter, createClaudeAdapter }) {
   const [mode, value, ...rest] = args;
-  if (!['demo', 'codex', 'claude', 'auto', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'stage', 'commit', 'branch', 'fetch', 'push', 'issues', 'prs', 'pr-diff', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
+  if (!['demo', 'codex', 'claude', 'auto', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'prs', 'pr-diff', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
   const stream = process.env.CODOVYN_EVENT_STREAM === '1';
   if (mode === 'pr-diff') {
     if (!value || rest.length !== 1 || !/^[1-9]\d*$/.test(rest[0])) { output.error(usage); return 2; }
@@ -85,6 +86,12 @@ export async function main(args = process.argv.slice(2), output = console, signa
   if (mode === 'branch') {
     if (!value || rest.length !== 1) { output.error(usage); return 2; }
     const snapshot = await createBranch(value, rest[0]);
+    output.log(JSON.stringify(stream ? { type: 'result', snapshot } : snapshot, null, stream ? 0 : 2));
+    return 0;
+  }
+  if (mode === 'pull') {
+    if (!value || rest.length > 1) { output.error(usage); return 2; }
+    const snapshot = await pullFastForward(value, rest[0] || 'origin');
     output.log(JSON.stringify(stream ? { type: 'result', snapshot } : snapshot, null, stream ? 0 : 2));
     return 0;
   }

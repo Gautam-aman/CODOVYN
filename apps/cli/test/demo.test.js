@@ -54,6 +54,8 @@ test('CLI opens a real repository and persists a simulated handoff', async () =>
     const fetched = JSON.parse(execFileSync(process.execPath, [script, 'fetch', repository], { encoding: 'utf8', env }));
     assert.equal(fetched.remote, 'origin');
     assert.equal(fetched.snapshot.commit, pushed.commit);
+    const pulled = JSON.parse(execFileSync(process.execPath, [script, 'pull', repository], { encoding: 'utf8', env }));
+    assert.equal(pulled.commit, pushed.commit);
     const branched = JSON.parse(execFileSync(process.execPath, [script, 'branch', repository, 'feature/task'], { encoding: 'utf8', env }));
     assert.equal(branched.branch, 'feature/task');
     assert.equal(branched.commit, pushed.commit);
