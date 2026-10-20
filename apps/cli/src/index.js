@@ -4,6 +4,7 @@ import { homedir } from 'node:os';
 import { readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { createInterface } from 'node:readline/promises';
 import { AgentRegistry, AgentFailure } from '../../../packages/agent-core/src/index.js';
 import { TaskStore } from '../../../packages/storage/src/index.js';
 import { TaskEngine } from '../../../packages/task-engine/src/index.js';
@@ -18,7 +19,7 @@ const usage = `Usage:
   codovyn auto <repository> <request>
   codovyn tasks [repository]
   codovyn history <task-id> [repository]
-  codovyn task-delete <task-id> [repository]
+  codovyn task-delete <task-id> [repository] [--yes]
   codovyn task-prune <repository> <before-ISO-time>
   codovyn diff <repository> [--staged]
   codovyn stage <repository> <path> [more paths]
@@ -32,6 +33,13 @@ const usage = `Usage:
 The demo simulates a quota handoff and makes no code changes.
 The Codex and Claude commands run installed CLIs in read-only modes.
 Auto tries Codex first, then Claude after a confirmed eligible failure.`;
+
+async function confirmDeletion() {
+  if (!process.stdin.isTTY || !process.stdout.isTTY) return false;
+  const prompt = createInterface({ input: process.stdin, output: process.stdout });
+  try { return (await prompt.question('Type delete to confirm: ')).trim() === 'delete'; }
+  finally { prompt.close(); }
+}
 
 export async function main(args = process.argv.slice(2), output = console, signal,
   github = { createIssue, listIssues, listPullRequests, pullRequestDiff },
@@ -96,14 +104,18 @@ export async function main(args = process.argv.slice(2), output = console, signa
       return 0;
     }
     if (mode === 'history' || mode === 'task-delete') {
-      if (!value || rest.length > 1) { output.error(usage); return 2; }
+      const confirmed = mode === 'task-delete' && rest.at(-1) === '--yes';
+      const argumentsWithoutFlag = confirmed ? rest.slice(0, -1) : rest;
+      if (!value || argumentsWithoutFlag.length > 1) { output.error(usage); return 2; }
       const task = store.get(value);
       if (!task) { output.error(`Unknown task: ${value}`); return 1; }
-      if (rest[0] && task.repositoryRoot !== (await repositorySnapshot(rest[0])).root) {
+      if (argumentsWithoutFlag[0] && task.repositoryRoot !== (await repositorySnapshot(argumentsWithoutFlag[0])).root) {
         output.error('Task belongs to a different repository');
         return 1;
       }
       if (mode === 'task-delete') {
+        output.error(`Delete task ${task.id} (${task.status}) and its event history from ${task.repositoryRoot || 'unscoped storage'}`);
+        if (!confirmed && !await confirmDeletion()) { output.error('Deletion cancelled; pass --yes for non-interactive use'); return 2; }
         store.delete(value);
         output.log(JSON.stringify(stream ? { type: 'result', deleted: true, taskId: value } : { deleted: true, taskId: value }));
         return 0;
