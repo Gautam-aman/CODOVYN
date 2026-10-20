@@ -40,6 +40,21 @@ test('does not repeat an unfinished tool action on fallback', async () => {
   store.close();
 });
 
+test('does not repeat a completed tool action after a quota failure', async () => {
+  const { store, registry, engine } = setup();
+  let backupCalls = 0;
+  registry.register(agent('primary', async function* () {
+    yield { type: 'tool-start', actionId: 'issue-create-1' };
+    yield { type: 'tool-complete', actionId: 'issue-create-1' };
+    throw new AgentFailure('quota', 'limit');
+  }));
+  registry.register(agent('backup', async function* () { backupCalls++; yield { type: 'completed' }; }));
+  assert.equal((await engine.run('task')).status, 'interrupted');
+  assert.equal(backupCalls, 0);
+  await assert.rejects(engine.run('task'), /requires reconciliation/);
+  store.close();
+});
+
 test('recovers a running task after a process restart when no tool is pending', async () => {
   const { store, registry } = setup();
   store.update('task', { status: 'running', activeAgent: 'primary', step: 0 });

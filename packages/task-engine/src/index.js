@@ -26,14 +26,15 @@ export class TaskEngine {
     if (task.status !== 'pending') {
       const history = this.store.events(id);
       let pendingTool = null;
+      let usedTool = false;
       for (const entry of history) {
         if (entry.kind !== 'agent-event') continue;
-        if (entry.data.event.type === 'tool-start') pendingTool = entry.data.event.actionId;
+        if (entry.data.event.type === 'tool-start') { pendingTool = entry.data.event.actionId; usedTool = true; }
         if (entry.data.event.type === 'tool-complete' && entry.data.event.actionId === pendingTool) pendingTool = null;
       }
-      if (pendingTool) {
+      if (usedTool) {
         if (task.status === 'running') this.store.update(id, { status: 'interrupted', activeAgent: task.activeAgent, step: task.step });
-        throw new Error(`Task has unresolved tool action: ${pendingTool}`);
+        throw new Error(pendingTool ? `Task has unresolved tool action: ${pendingTool}` : 'Task used tools and requires reconciliation before retry');
       }
       if (task.status === 'running') {
         this.#record(id, 'process-recovered', { agent: task.activeAgent });
@@ -61,6 +62,7 @@ export class TaskEngine {
       task = this.store.update(task.id, { status: 'running', activeAgent: id, step: task.step });
       this.#record(task.id, 'agent-started', { agent: id });
       let pendingTool = null;
+      let usedTool = false;
       let completed = false;
       try {
         const handoff = { request: task.request, step: task.step, history: this.store.events(task.id), snapshot: await this.snapshot() };
@@ -71,6 +73,7 @@ export class TaskEngine {
             if (pendingTool) throw new Error('Concurrent tool actions are not supported');
             if (typeof event.actionId !== 'string' || !event.actionId) throw new Error('Tool action requires an id');
             pendingTool = event.actionId;
+            usedTool = true;
           } else if (event.type === 'tool-complete') {
             if (event.actionId !== pendingTool) throw new Error('Tool completion does not match active action');
             pendingTool = null;
@@ -89,9 +92,9 @@ export class TaskEngine {
         if (signal?.aborted) return this.#cancel(task, id);
         const kind = error instanceof AgentFailure ? error.kind : 'fatal';
         this.#record(task.id, 'agent-failed', { agent: id, kind, message: error.message });
-        const checkpoint = { failedAgent: id, step: task.step, pendingTool, repository: await this.snapshot() };
+        const checkpoint = { failedAgent: id, step: task.step, pendingTool, usedTool, repository: await this.snapshot() };
         this.#record(task.id, 'checkpoint', checkpoint);
-        if (pendingTool || !['quota', 'temporary'].includes(kind)) {
+        if (usedTool || !['quota', 'temporary'].includes(kind)) {
           return this.store.update(task.id, { status: 'interrupted', activeAgent: id, step: task.step });
         }
         previous = id;

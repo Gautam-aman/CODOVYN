@@ -9,7 +9,7 @@ CODOVYN is an open-source project building a local-first development environment
 ## What works today
 
 - A local SQLite task journal stores requests, agent events, checkpoints, and handoff history.
-- A task engine switches to an ordered fallback after a structured quota or temporary failure. It stops if a tool action has no recorded completion.
+- A task engine switches to an ordered fallback after a structured quota or temporary failure when no tool action ran. Any prior tool action requires reconciliation before retry or handoff, even if completion was recorded.
 - Restart recovery resumes a task with no unfinished tool action. Repository checkpoints record the real branch, commit, and changed paths.
 - A read-only Codex CLI adapter consumes JSONL events using the user's existing Codex installation and authentication. Its live provider path has **not** been exercised in CI.
 - A deterministic demo flow lets contributors inspect a simulated quota handoff without provider credentials or code edits.
