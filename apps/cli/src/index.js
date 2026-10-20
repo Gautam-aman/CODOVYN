@@ -8,12 +8,14 @@ import { AgentRegistry, AgentFailure } from '../../../packages/agent-core/src/in
 import { TaskStore } from '../../../packages/storage/src/index.js';
 import { TaskEngine } from '../../../packages/task-engine/src/index.js';
 import { commitStaged, pushCurrentBranch, repositoryDiff, repositorySnapshot, stagePaths } from '../../../packages/git-engine/src/index.js';
-import { createCodexAdapter } from '../../../packages/agent-adapters/src/index.js';
+import { createClaudeAdapter, createCodexAdapter } from '../../../packages/agent-adapters/src/index.js';
 import { createIssue, listIssues, listPullRequests } from '../../../packages/github-integration/src/index.js';
 
 const usage = `Usage:
   codovyn demo <repository> <request>
   codovyn codex <repository> <request>
+  codovyn claude <repository> <request>
+  codovyn auto <repository> <request>
   codovyn tasks [repository]
   codovyn history <task-id> [repository]
   codovyn diff <repository> [--staged]
@@ -25,12 +27,14 @@ const usage = `Usage:
   codovyn issue-create <owner/repo> <title> <body-file> [labels]
 
 The demo simulates a quota handoff and makes no code changes.
-The Codex command runs the installed CLI in read-only mode.`;
+The Codex and Claude commands run installed CLIs in read-only modes.
+Auto tries Codex first, then Claude after a confirmed eligible failure.`;
 
 export async function main(args = process.argv.slice(2), output = console, signal,
-  github = { createIssue, listIssues, listPullRequests }) {
+  github = { createIssue, listIssues, listPullRequests },
+  adapters = { createCodexAdapter, createClaudeAdapter }) {
   const [mode, value, ...rest] = args;
-  if (!['demo', 'codex', 'tasks', 'history', 'diff', 'stage', 'commit', 'push', 'issues', 'prs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
+  if (!['demo', 'codex', 'claude', 'auto', 'tasks', 'history', 'diff', 'stage', 'commit', 'push', 'issues', 'prs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
   const stream = process.env.CODOVYN_EVENT_STREAM === '1';
   if (mode === 'issue-create') {
     const [title, bodyFile, ...labels] = rest;
@@ -101,8 +105,10 @@ export async function main(args = process.argv.slice(2), output = console, signa
       registry.register({ id: 'simulated-backup', capabilities: { writes: false }, availability: async () => 'available',
         async *run({ handoff }) { yield { type: 'completed', text: `Simulated continuation: ${handoff.request}` }; } });
     } else {
-      primaryAgent = 'codex';
-      registry.register(createCodexAdapter({ cwd: repository }));
+      primaryAgent = mode === 'claude' ? 'claude' : 'codex';
+      if (mode !== 'claude') registry.register(adapters.createCodexAdapter({ cwd: repository }));
+      if (mode !== 'codex') registry.register(adapters.createClaudeAdapter({ cwd: repository }));
+      if (mode === 'auto') fallbackAgents = ['claude'];
     }
     const id = randomUUID();
     store.create({ id, request, repositoryRoot: repository, primaryAgent, fallbackAgents });
