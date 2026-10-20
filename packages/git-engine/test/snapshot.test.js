@@ -81,6 +81,20 @@ test('commits the selected index and leaves unstaged work alone', async () => {
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 
+test('commits a staged patch larger than the diff display limit', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'codovyn-large-commit-'));
+  try {
+    execFileSync('git', ['-C', directory, 'init', '-q', '-b', 'main']);
+    execFileSync('git', ['-C', directory, 'config', 'user.name', 'Test']);
+    execFileSync('git', ['-C', directory, 'config', 'user.email', 'test@example.invalid']);
+    writeFileSync(join(directory, 'large.txt'), 'long line\n'.repeat(140_000));
+    await stagePaths(directory, ['large.txt']);
+    await assert.rejects(repositoryDiff(directory, { staged: true }), /display limit/);
+    const committed = await commitStaged(directory, 'Store large staged change');
+    assert.match(committed.commit, /^[a-f0-9]{40}$/);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
 test('pushes the current branch to a configured local remote without force', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'codovyn-push-'));
   const remote = mkdtempSync(join(tmpdir(), 'codovyn-bare-'));

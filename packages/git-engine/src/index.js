@@ -54,10 +54,13 @@ export async function commitStaged(directory, message) {
     throw new TypeError('Commit message must contain 1 to 500 characters');
   }
   const root = (await repositorySnapshot(directory)).root;
+  let hasStagedChanges = false;
   try { await execute('git', ['-C', root, 'diff', '--cached', '--quiet'], { timeout: 10_000 }); }
-  catch (error) { if (error.code !== 1) throw error; }
-  const staged = await repositoryDiff(root, { staged: true });
-  if (!staged) throw new Error('No staged changes to commit');
+  catch (error) {
+    if (error.code !== 1) throw error;
+    hasStagedChanges = true;
+  }
+  if (!hasStagedChanges) throw new Error('No staged changes to commit');
   const emptyHooks = await mkdtemp(join(tmpdir(), 'codovyn-hooks-'));
   try {
     await execute('git', ['-C', root, '-c', `core.hooksPath=${emptyHooks}`, 'commit', '-m', message],
