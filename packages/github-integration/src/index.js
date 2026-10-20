@@ -42,3 +42,16 @@ export async function listIssues(repository, { limit = 30, run = runGh } = {}) {
     labels: issue.labels?.map((label) => label.name) ?? [],
   }));
 }
+
+/** List PR metadata without fetching source diffs or executing PR code. */
+export async function listPullRequests(repository, { limit = 30, run = runGh } = {}) {
+  validateRepository(repository);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new RangeError('Pull request limit must be between 1 and 100');
+  const output = await run(['pr', 'list', '--repo', repository, '--state', 'open', '--limit', String(limit),
+    '--json', 'number,title,state,url,headRefName,baseRefName,isDraft']);
+  return parseList(output).map((pullRequest) => ({
+    number: pullRequest.number, title: pullRequest.title, state: pullRequest.state, url: pullRequest.url,
+    headRefName: pullRequest.headRefName, baseRefName: pullRequest.baseRefName,
+    isDraft: pullRequest.isDraft,
+  }));
+}
