@@ -44,6 +44,7 @@ test('extension starts a repository task and exposes a safe handoff timeline', a
       { kind: 'handoff', data: { from: 'primary', to: 'backup' } },
       { kind: 'checkpoint', data: { repository: { root: '/private/project' } } },
       { kind: 'agent-event', data: { event: { type: 'text', text: 'Done' } } },
+      { kind: 'agent-event', data: { event: { type: 'completed', text: 'Final answer' } } },
     ] };
   };
   createExtension(api, runner).activate(context);
@@ -53,7 +54,7 @@ test('extension starts a repository task and exposes a safe handoff timeline', a
   await messageHandler({ type: 'run', mode: 'demo', request: 'Inspect' });
   const result = sent.find((message) => message.type === 'result');
   assert.equal(result.status, 'completed');
-  assert.deepEqual(result.timeline.map((item) => item.text), ['Switched from primary to backup', 'Done']);
+  assert.deepEqual(result.timeline.map((item) => item.text), ['Switched from primary to backup', 'Done', 'Final answer']);
   assert.ok(!JSON.stringify(result).includes('/private/project'));
   assert.equal(sent.at(-1).type, 'tasks');
   await messageHandler({ type: 'history', id: 'task-1' });

@@ -5,7 +5,9 @@ const { StringDecoder } = require('node:string_decoder');
 
 function timeline(events) {
   return events.flatMap((entry) => {
-    if (entry.kind === 'agent-event' && entry.data.event.type === 'text') return [{ type: 'message', text: entry.data.event.text }];
+    if (entry.kind === 'agent-event' && ['text', 'completed'].includes(entry.data.event.type) && entry.data.event.text) {
+      return [{ type: 'message', text: entry.data.event.text }];
+    }
     if (entry.kind === 'agent-started') return [{ type: 'agent', text: `Started ${entry.data.agent}` }];
     if (entry.kind === 'handoff') return [{ type: 'handoff', text: `Switched from ${entry.data.from} to ${entry.data.to}` }];
     if (entry.kind === 'agent-failed') return [{ type: 'error', text: `${entry.data.agent}: ${entry.data.kind}` }];
