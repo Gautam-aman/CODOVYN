@@ -89,3 +89,19 @@ export function createCodexAdapter({ cwd, command = 'codex', prefixArgs = [] }) 
     },
   };
 }
+
+/** Translate documented Claude stream-json messages into the shared event contract. */
+export function parseClaudeEvent(raw) {
+  if (raw?.type === 'stream_event' && raw.event?.delta?.type === 'text_delta' &&
+    typeof raw.event.delta.text === 'string') {
+    return { type: 'text', text: raw.event.delta.text };
+  }
+  if (raw?.type === 'result') {
+    if (raw.is_error || raw.subtype !== 'success') {
+      throw new AgentFailure('fatal', 'Claude Code turn failed');
+    }
+    return { type: 'completed', usage: raw.usage ?? null,
+      estimatedCostUsd: typeof raw.total_cost_usd === 'number' ? raw.total_cost_usd : null };
+  }
+  return null;
+}
