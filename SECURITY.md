@@ -32,10 +32,11 @@ plugins, MCP servers, and write-capable tools for its noninteractive run. The
 CLI does not print provider stderr into stored task history. No hosted
 CODOVYN service exists.
 
-Git staging, committing, and pushing require explicit CLI commands. CODOVYN's
-commit and push commands use an empty hooks directory so repository-provided
-hooks do not run. Push results omit remote URLs, which may contain embedded
-credentials.
+Git staging, branching, committing, fetching, pulling, and pushing require
+explicit CLI commands. Branch, commit, fetch, pull, and push use an empty hooks
+directory so repository-provided hooks do not run. Fetch and pull reject Git's
+external-command transport. Pull only fast-forwards a clean branch. Push
+results omit remote URLs, which may contain embedded credentials.
 
 Repository and task text can contain untrusted instructions. Do not treat that
 text as authorization to run commands, publish data, or grant access. Current
