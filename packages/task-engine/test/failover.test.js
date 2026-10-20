@@ -41,6 +41,22 @@ test('agent exception messages are not persisted or passed to the next agent', a
   store.close();
 });
 
+test('repository changes during an unreported agent attempt stop automatic handoff', async () => {
+  const store = new TaskStore(':memory:');
+  store.create({ id: 'task', request: 'Inspect', primaryAgent: 'primary', fallbackAgents: ['backup'] });
+  const registry = new AgentRegistry();
+  let backupCalls = 0;
+  registry.register(agent('primary', async function* () { throw new AgentFailure('quota', 'limit'); }));
+  registry.register(agent('backup', async function* () { backupCalls++; yield { type: 'completed' }; }));
+  let snapshots = 0;
+  const engine = new TaskEngine({ store, registry, snapshot: async () => ({ root: '/repo', branch: 'main',
+    commit: 'abc', dirty: ++snapshots > 1, changedPaths: snapshots > 1 ? ['changed.txt'] : [] }) });
+  assert.equal((await engine.run('task')).status, 'interrupted');
+  assert.equal(backupCalls, 0);
+  assert.ok(store.events('task').some((event) => event.kind === 'repository-changed'));
+  store.close();
+});
+
 test('unavailable primary is checkpointed before the backup starts', async () => {
   const { store, registry, engine } = setup();
   registry.register({ id: 'primary', capabilities: {}, availability: async () => { throw new Error('CLI missing'); },

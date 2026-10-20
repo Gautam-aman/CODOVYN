@@ -1,5 +1,10 @@
 import { AgentFailure } from '../../agent-core/src/index.js';
 
+function repositoryChanged(before, after) {
+  return ['root', 'branch', 'commit', 'dirty'].some((field) => before?.[field] !== after?.[field]) ||
+    JSON.stringify(before?.changedPaths ?? []) !== JSON.stringify(after?.changedPaths ?? []);
+}
+
 /** Executes a stored task, saving every observable event before advancing. */
 export class TaskEngine {
   #running = new Set();
@@ -18,7 +23,7 @@ export class TaskEngine {
     return seq;
   }
 
-  async #checkpoint(task, agent, pendingTool, usedTool) {
+  async #checkpoint(task, agent, pendingTool, usedTool, baseline) {
     let repository;
     let verified = true;
     try { repository = await this.snapshot(); }
@@ -28,6 +33,10 @@ export class TaskEngine {
       this.#record(task.id, 'snapshot-failed', { agent });
     }
     this.#record(task.id, 'checkpoint', { failedAgent: agent, step: task.step, pendingTool, usedTool, repository });
+    if (verified && baseline && repositoryChanged(baseline, repository)) {
+      this.#record(task.id, 'repository-changed', { agent });
+      return false;
+    }
     return verified;
   }
 
@@ -80,11 +89,12 @@ export class TaskEngine {
       let pendingTool = null;
       let usedTool = false;
       let completed = false;
+      let baseline;
       try {
-        const snapshot = await this.snapshot();
+        baseline = await this.snapshot();
         if (previous) this.#record(task.id, 'handoff', { from: previous, to: id });
         this.#record(task.id, 'agent-started', { agent: id });
-        const handoff = { request: task.request, step: task.step, history: this.store.events(task.id), snapshot };
+        const handoff = { request: task.request, step: task.step, history: this.store.events(task.id), snapshot: baseline };
         for await (const event of agent.run({ taskId: task.id, handoff, signal })) {
           if (signal?.aborted) return this.#cancel(task, id);
           if (!event || typeof event.type !== 'string') throw new Error('Malformed agent event');
@@ -111,7 +121,7 @@ export class TaskEngine {
         if (signal?.aborted) return this.#cancel(task, id);
         const kind = error instanceof AgentFailure ? error.kind : 'fatal';
         this.#record(task.id, 'agent-failed', { agent: id, kind });
-        const snapshotVerified = await this.#checkpoint(task, id, pendingTool, usedTool);
+        const snapshotVerified = await this.#checkpoint(task, id, pendingTool, usedTool, baseline);
         if (!snapshotVerified || usedTool || !['quota', 'temporary'].includes(kind)) {
           return this.store.update(task.id, { status: 'interrupted', activeAgent: id, step: task.step });
         }
