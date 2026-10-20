@@ -11,10 +11,10 @@ CODOVYN is an open-source project building a local-first development environment
 - A local SQLite task journal stores requests, agent events, checkpoints, and handoff history.
 - A task engine switches to an ordered fallback after a structured quota or temporary failure when no tool action ran. Any prior tool action requires reconciliation before retry or handoff, even if completion was recorded.
 - Restart recovery resumes a task with no unfinished tool action. Repository checkpoints record the real branch, commit, and changed paths.
-- A read-only Codex CLI adapter consumes JSONL events using the user's existing Codex installation and authentication. Its live provider path has **not** been exercised in CI.
+- Read-only Codex CLI and Claude Code adapters consume structured stream events using the user's existing CLI authentication. Their live provider paths have **not** been exercised in CI.
 - A deterministic demo flow lets contributors inspect a simulated quota handoff without provider credentials or code edits.
 - A CLI opens real Git repositories and displays saved task history.
-- A VS Code extension panel starts local tasks from an open repository, shows a handoff timeline, and offers cancellation. Host behavior is covered by automated tests; a live VS Code launch has not been verified here.
+- A VS Code extension panel starts local tasks from an open repository, selects Codex, Claude, or automatic Codex-to-Claude fallback, shows a handoff timeline, and offers cancellation. Host behavior is covered by automated tests; a live VS Code launch has not been verified here.
 - Read-only Git patches, selected-path staging, local commits, and an explicit branch push work through the CLI. Remote GitHub authentication still comes from the user's Git configuration.
 - Read-only GitHub issue and pull-request lists work through an installed, authenticated GitHub CLI. An explicit CLI command can create an issue from a local body file. Live listing was checked against this repository; PR creation and GitHub automation are not implemented.
 
@@ -39,13 +39,15 @@ node apps/cli/src/index.js tasks .
 node apps/cli/src/index.js history TASK_ID .
 ```
 
-For an installed and authenticated Codex CLI, a read-only task can be started with:
+For installed and authenticated agent CLIs, read-only tasks can be started with:
 
 ```sh
 node apps/cli/src/index.js codex . "Explain the task engine"
+node apps/cli/src/index.js claude . "Explain the task engine"
+node apps/cli/src/index.js auto . "Explain the task engine"
 ```
 
-The Codex command is intentionally read-only and may use the provider account configured in the Codex CLI. CODOVYN does not provide model access or an API entitlement. No CODOVYN account is needed.
+The Codex and Claude commands are intentionally read-only and may use the provider accounts configured in their respective CLIs. The `auto` mode starts with Codex and tries Claude after a confirmed eligible failure or unavailability; it does not restore the primary agent. CODOVYN does not provide model access or an API entitlement. No CODOVYN account is needed. See the [Claude adapter guide](docs/agents/claude.md) for its current tool and version requirements.
 
 Git commands operate on a repository you name. Review changes with `node apps/cli/src/index.js diff .`, stage specific paths with `node apps/cli/src/index.js stage . path/to/file`, commit the index with `node apps/cli/src/index.js commit . "Describe change"`, and push only when intended with `node apps/cli/src/index.js push .`. CODOVYN does not force-push. Its commit command skips repository Git hooks; run your project checks explicitly before committing.
 
@@ -68,13 +70,14 @@ To build a local VS Code extension archive, run `npm ci --ignore-scripts` and `n
 | --- | --- | --- | --- |
 | Deterministic demo agents | None | Simulated quota event and continuation, no edits | Tested locally |
 | OpenAI Codex CLI | Existing CLI authentication | Read-only JSONL task execution; no session resume | Adapter tested with simulated CLI output; live run unverified |
-| Claude Code, Gemini CLI, OpenCode, ACP, local providers | Provider-specific | None yet | Planned |
+| Claude Code CLI | Existing CLI authentication | Read-only text streaming and usage metadata; no session resume or confirmed quota detection | Adapter tested with simulated CLI output; live run unverified |
+| Gemini CLI, OpenCode, ACP, local providers | Provider-specific | None yet | Planned |
 
-The [Codex CLI reference](https://learn.chatgpt.com/docs/developer-commands?surface=cli) documents `codex exec --json` and read-only sandbox mode. The current adapter never assumes that an unstructured error message proves quota exhaustion.
+The [Codex CLI reference](https://learn.chatgpt.com/docs/developer-commands?surface=cli) documents `codex exec --json` and read-only sandbox mode. [Claude Code's CLI reference](https://code.claude.com/docs/en/cli-reference) documents structured streaming and restricted tools. Neither adapter assumes that an unstructured error message proves quota exhaustion.
 
 ## Architecture
 
-`packages/agent-core` defines the adapter registry and failure categories. `packages/agent-adapters` contains the Codex CLI bridge. `packages/storage` owns durable SQLite state. `packages/task-engine` coordinates runs and handoffs. `packages/git-engine` handles local repository operations. `packages/github-integration` reads issue and PR metadata through the GitHub CLI. `apps/cli` exposes the runtime, and `apps/vscode-extension` provides the editor panel.
+`packages/agent-core` defines the adapter registry and failure categories. `packages/agent-adapters` contains the Codex and Claude CLI bridges. `packages/storage` owns durable SQLite state. `packages/task-engine` coordinates runs and handoffs. `packages/git-engine` handles local repository operations. `packages/github-integration` handles issue and PR metadata through the GitHub CLI. `apps/cli` exposes the runtime, and `apps/vscode-extension` provides the editor panel.
 
 The [architecture decision](docs/architecture/0001-local-runtime.md) explains the local runtime boundary. The [roadmap](docs/development/roadmap.md) records dependencies and the requested 100-commit target. Current progress must be read from Git history.
 
