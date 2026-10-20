@@ -18,6 +18,14 @@ journal remains accessible in its original location only if that directory is
 already private. Task history is not encrypted. Windows filesystem ACLs are
 not independently audited by CODOVYN.
 
+The CLI can delete a selected non-running task and its event history, or prune
+up to 100 old finished tasks per invocation for a selected repository. These
+commands require a terminal confirmation or an explicit `--yes` flag. SQLite
+deletion does not securely erase old database pages or WAL contents; filesystem
+snapshots and backups may retain copies. Backups and copied databases must be
+managed separately. Interrupted tasks are retained by pruning so recovery
+context is not removed automatically.
+
 The Codex and Claude adapters delegate authentication to their installed CLIs
 and request read-only execution. The Claude adapter disables discovered hooks,
 plugins, MCP servers, and write-capable tools for its noninteractive run. The

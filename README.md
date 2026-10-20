@@ -39,6 +39,8 @@ node apps/cli/src/index.js tasks .
 node apps/cli/src/index.js history TASK_ID .
 ```
 
+To remove one task and its events, run `node apps/cli/src/index.js task-delete TASK_ID .`. To remove up to 100 finished tasks from one repository that were last updated before a timestamp, run `node apps/cli/src/index.js task-prune . 2026-01-01T00:00:00Z`. Both commands show what will be removed and require typing `delete` in an interactive terminal; scripts must pass `--yes`. Running or interrupted tasks are excluded from retention pruning. The database is local, but deletion does not erase copies in backups or guarantee secure erasure of SQLite pages. See [SECURITY.md](SECURITY.md).
+
 For installed and authenticated agent CLIs, read-only tasks can be started with:
 
 ```sh
