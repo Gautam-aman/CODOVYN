@@ -20,6 +20,7 @@ The Codex command runs the installed CLI in read-only mode.`;
 export async function main(args = process.argv.slice(2), output = console, signal) {
   const [mode, value, ...rest] = args;
   if (!['demo', 'codex', 'history'].includes(mode)) { output.error(usage); return 2; }
+  const stream = process.env.CODOVYN_EVENT_STREAM === '1';
   const dataDirectory = process.env.CODOVYN_DATA_DIR || join(homedir(), '.codovyn');
   const store = new TaskStore(join(dataDirectory, 'tasks.sqlite'));
   try {
@@ -48,9 +49,12 @@ export async function main(args = process.argv.slice(2), output = console, signa
     }
     const id = randomUUID();
     store.create({ id, request, primaryAgent, fallbackAgents });
-    const engine = new TaskEngine({ store, registry, snapshot: () => repositorySnapshot(repository) });
+    const engine = new TaskEngine({ store, registry, snapshot: () => repositorySnapshot(repository),
+      onEvent: stream ? (event) => output.log(JSON.stringify({ type: 'event', event })) : undefined });
     const task = await engine.run(id, { signal });
-    output.log(JSON.stringify({ taskId: id, status: task.status, activeAgent: task.activeAgent, events: store.events(id) }, null, 2));
+    const result = { taskId: id, status: task.status, activeAgent: task.activeAgent,
+      ...(stream ? {} : { events: store.events(id) }) };
+    output.log(JSON.stringify(stream ? { type: 'result', ...result } : result, null, stream ? 0 : 2));
     return task.status === 'completed' ? 0 : 1;
   } finally { store.close(); }
 }

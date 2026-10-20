@@ -25,5 +25,12 @@ test('CLI opens a real repository and persists a simulated handoff', () => {
     const history = JSON.parse(execFileSync(process.execPath, [script, 'history', result.taskId], { encoding: 'utf8', env }));
     assert.equal(history.task.request, 'Inspect the project');
     assert.equal(history.events.find((event) => event.kind === 'checkpoint').data.repository.branch, 'main');
+
+    const streamed = execFileSync(process.execPath, [script, 'demo', repository, 'Inspect'], {
+      encoding: 'utf8', env: { ...env, CODOVYN_EVENT_STREAM: '1' },
+    }).trim().split('\n').map((line) => JSON.parse(line));
+    assert.ok(streamed.some((line) => line.type === 'event' && line.event.kind === 'handoff'));
+    assert.equal(streamed.at(-1).type, 'result');
+    assert.equal(streamed.at(-1).status, 'completed');
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
