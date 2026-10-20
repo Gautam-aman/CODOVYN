@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -27,6 +27,13 @@ test('CLI opens a real repository and persists a simulated handoff', () => {
     assert.equal(history.events.find((event) => event.kind === 'checkpoint').data.repository.branch, 'main');
     const tasks = JSON.parse(execFileSync(process.execPath, [script, 'tasks'], { encoding: 'utf8', env }));
     assert.ok(tasks.some((task) => task.id === result.taskId && task.status === 'completed'));
+    const scoped = JSON.parse(execFileSync(process.execPath, [script, 'tasks', repository], { encoding: 'utf8', env }));
+    assert.ok(scoped.some((task) => task.id === result.taskId));
+    const streamedHistory = JSON.parse(execFileSync(process.execPath, [script, 'history', result.taskId], {
+      encoding: 'utf8', env: { ...env, CODOVYN_EVENT_STREAM: '1' },
+    }));
+    assert.equal(streamedHistory.type, 'result');
+    assert.equal(streamedHistory.task.repositoryRoot, realpathSync(repository));
 
     const streamed = execFileSync(process.execPath, [script, 'demo', repository, 'Inspect'], {
       encoding: 'utf8', env: { ...env, CODOVYN_EVENT_STREAM: '1' },

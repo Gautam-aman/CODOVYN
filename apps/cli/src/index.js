@@ -12,7 +12,7 @@ import { createCodexAdapter } from '../../../packages/agent-adapters/src/index.j
 const usage = `Usage:
   codovyn demo <repository> <request>
   codovyn codex <repository> <request>
-  codovyn tasks
+  codovyn tasks [repository]
   codovyn history <task-id>
 
 The demo simulates a quota handoff and makes no code changes.
@@ -26,14 +26,18 @@ export async function main(args = process.argv.slice(2), output = console, signa
   const store = new TaskStore(join(dataDirectory, 'tasks.sqlite'));
   try {
     if (mode === 'tasks') {
-      output.log(JSON.stringify(store.list().map(({ id, request, status, activeAgent, updatedAt }) =>
-        ({ id, request, status, activeAgent, updatedAt })), null, 2));
+      const repositoryRoot = value ? (await repositorySnapshot(value)).root : undefined;
+      const tasks = store.list({ repositoryRoot }).map(({ id, request, status, activeAgent, updatedAt }) =>
+        ({ id, request, status, activeAgent, updatedAt }));
+      output.log(JSON.stringify(stream ? { type: 'result', tasks } : tasks, null, stream ? 0 : 2));
       return 0;
     }
     if (mode === 'history') {
+      if (!value) { output.error(usage); return 2; }
       const task = store.get(value);
       if (!task) { output.error(`Unknown task: ${value}`); return 1; }
-      output.log(JSON.stringify({ task, events: store.events(value) }, null, 2));
+      output.log(JSON.stringify(stream ? { type: 'result', task, events: store.events(value) }
+        : { task, events: store.events(value) }, null, stream ? 0 : 2));
       return 0;
     }
     const request = rest.join(' ').trim();
@@ -54,7 +58,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
       registry.register(createCodexAdapter({ cwd: repository }));
     }
     const id = randomUUID();
-    store.create({ id, request, primaryAgent, fallbackAgents });
+    store.create({ id, request, repositoryRoot: repository, primaryAgent, fallbackAgents });
     const engine = new TaskEngine({ store, registry, snapshot: () => repositorySnapshot(repository),
       onEvent: stream ? (event) => output.log(JSON.stringify({ type: 'event', event })) : undefined });
     const task = await engine.run(id, { signal });
