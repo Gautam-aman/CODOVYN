@@ -24,3 +24,14 @@ test('records real branch, commit and working-tree changes', async () => {
     assert.equal(dirty.commit, clean.commit);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
+
+test('opens a newly initialized repository before its first commit', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'codovyn-empty-git-'));
+  try {
+    execFileSync('git', ['-C', directory, 'init', '-q', '-b', 'new-project']);
+    const snapshot = await repositorySnapshot(directory);
+    assert.equal(snapshot.branch, 'new-project');
+    assert.equal(snapshot.commit, null);
+    assert.equal(snapshot.dirty, false);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});

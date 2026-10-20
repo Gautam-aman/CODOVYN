@@ -13,7 +13,9 @@ export async function repositorySnapshot(directory) {
   })).stdout.trimEnd();
   const root = await realpath(await git('rev-parse', '--show-toplevel'));
   const branch = await git('branch', '--show-current');
-  const commit = await git('rev-parse', 'HEAD');
+  let commit = null;
+  try { commit = await git('rev-parse', '--verify', 'HEAD'); }
+  catch (error) { if (error.code !== 128) throw error; }
   const porcelain = await git('status', '--porcelain=v1', '-z', '--no-renames', '--untracked-files=normal');
   const changedPaths = porcelain.split('\0').filter(Boolean).map((record) => record.slice(3));
   return { root, branch: branch || null, commit, dirty: changedPaths.length > 0, changedPaths };
