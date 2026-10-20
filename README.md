@@ -30,10 +30,11 @@ npm run check
 node apps/cli/src/index.js demo . "Inspect this repository"
 ```
 
-The demo creates a local task record in `~/.codovyn/tasks.sqlite` and prints the task ID. Inspect it with:
+The demo creates a local task record in `~/.codovyn/tasks.sqlite` and prints the task ID. List tasks for the current repository and inspect one with:
 
 ```sh
-node apps/cli/src/index.js history TASK_ID
+node apps/cli/src/index.js tasks .
+node apps/cli/src/index.js history TASK_ID .
 ```
 
 For an installed and authenticated Codex CLI, a read-only task can be started with:
@@ -44,7 +45,7 @@ node apps/cli/src/index.js codex . "Explain the task engine"
 
 The Codex command is intentionally read-only and may use the provider account configured in the Codex CLI. CODOVYN does not provide model access or an API entitlement. No CODOVYN account is needed.
 
-To build a local VS Code extension archive, run `npm ci --ignore-scripts` and `npm run package:extension`. This produces `codovyn-dev.vsix`. Install it through VS Code's **Extensions → Install from VSIX…** action, open a Git repository folder, and run **CODOVYN: Open Agent Workspace** from the Command Palette. The extension needs a Node.js 26 executable on your `PATH`; set `codovyn.nodePath` if necessary. The `codovyn-local` publisher identifier is for development packaging and is not a verified Marketplace publisher.
+To build a local VS Code extension archive, run `npm ci --ignore-scripts` and `npm run package:extension`. This produces `codovyn-dev.vsix`. Install it through VS Code's **Extensions → Install from VSIX…** action, open a Git repository folder, and run **CODOVYN: Open Agent Workspace** from the Command Palette. The panel streams task activity and lists saved tasks for that repository. The extension needs a Node.js 26 executable on your `PATH`; set `codovyn.nodePath` if necessary. The `codovyn-local` publisher identifier is for development packaging and is not a verified Marketplace publisher.
 
 ## Agent compatibility
 
