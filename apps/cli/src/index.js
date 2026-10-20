@@ -12,6 +12,7 @@ import { createCodexAdapter } from '../../../packages/agent-adapters/src/index.j
 const usage = `Usage:
   codovyn demo <repository> <request>
   codovyn codex <repository> <request>
+  codovyn tasks
   codovyn history <task-id>
 
 The demo simulates a quota handoff and makes no code changes.
@@ -19,11 +20,16 @@ The Codex command runs the installed CLI in read-only mode.`;
 
 export async function main(args = process.argv.slice(2), output = console, signal) {
   const [mode, value, ...rest] = args;
-  if (!['demo', 'codex', 'history'].includes(mode)) { output.error(usage); return 2; }
+  if (!['demo', 'codex', 'tasks', 'history'].includes(mode)) { output.error(usage); return 2; }
   const stream = process.env.CODOVYN_EVENT_STREAM === '1';
   const dataDirectory = process.env.CODOVYN_DATA_DIR || join(homedir(), '.codovyn');
   const store = new TaskStore(join(dataDirectory, 'tasks.sqlite'));
   try {
+    if (mode === 'tasks') {
+      output.log(JSON.stringify(store.list().map(({ id, request, status, activeAgent, updatedAt }) =>
+        ({ id, request, status, activeAgent, updatedAt })), null, 2));
+      return 0;
+    }
     if (mode === 'history') {
       const task = store.get(value);
       if (!task) { output.error(`Unknown task: ${value}`); return 1; }
