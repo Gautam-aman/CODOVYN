@@ -16,7 +16,7 @@ CODOVYN is an open-source project building a local-first development environment
 - A CLI opens real Git repositories and displays saved task history.
 - A VS Code extension panel starts local tasks from an open repository, selects Codex, Claude, or automatic Codex-to-Claude fallback, shows a handoff timeline, and offers cancellation. Host behavior is covered by automated tests; a live VS Code launch has not been verified here.
 - Read-only Git patches, selected-path staging, local commits, and an explicit branch push work through the CLI. Remote GitHub authentication still comes from the user's Git configuration.
-- Read-only GitHub issue and pull-request lists work through an installed, authenticated GitHub CLI. An explicit CLI command can create an issue from a local body file. Live listing was checked against this repository; PR creation and GitHub automation are not implemented.
+- Read-only GitHub issue and pull-request lists and bounded PR patch inspection work through an installed, authenticated GitHub CLI. An explicit CLI command can create an issue from a local body file. PR creation and GitHub automation are not implemented.
 
 No screenshot is included because the extension has not been captured in a running VS Code host. The desktop IDE, GitHub bots, routing UI, and website remain planned work.
 
@@ -56,9 +56,10 @@ Install and authenticate the [GitHub CLI](https://cli.github.com/manual/gh_auth_
 ```sh
 node apps/cli/src/index.js issues OWNER/REPO
 node apps/cli/src/index.js prs OWNER/REPO
+node apps/cli/src/index.js pr-diff OWNER/REPO PR_NUMBER
 ```
 
-These commands query only the repository you name. They return bounded metadata and do not run code from issues or pull requests. See the [GitHub integration guide](docs/integrations/github.md) for current scope.
+These commands query only the repository you name. They return bounded metadata or a bounded patch and do not run code from issues or pull requests. See the [GitHub integration guide](docs/integrations/github.md) for current scope.
 
 To create an issue deliberately, write its body to a Markdown file and run `node apps/cli/src/index.js issue-create OWNER/REPO "Issue title" path/to/body.md bug`. Label names are optional trailing arguments. This operation posts to GitHub with the user's `gh` authorization. Review the body and target repository before running it.
 
