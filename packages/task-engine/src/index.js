@@ -35,9 +35,9 @@ export class TaskEngine {
     this.#record(task.id, 'checkpoint', { failedAgent: agent, step: task.step, pendingTool, usedTool, repository });
     if (verified && baseline && repositoryChanged(baseline, repository)) {
       this.#record(task.id, 'repository-changed', { agent });
-      return false;
+      return null;
     }
-    return verified;
+    return verified ? repository : null;
   }
 
   async run(id, { signal } = {}) {
@@ -71,6 +71,7 @@ export class TaskEngine {
   async #run(task, signal) {
     const candidates = [...new Set([task.activeAgent || task.primaryAgent, ...task.fallbackAgents])];
     let previous = null;
+    let expectedSnapshot = null;
     for (const id of candidates) {
       if (signal?.aborted) return this.#cancel(task, id);
       const agent = this.registry.require(id);
@@ -79,7 +80,8 @@ export class TaskEngine {
       catch { availability = 'unavailable'; }
       if (availability !== 'available') {
         this.#record(task.id, 'agent-unavailable', { agent: id, availability });
-        if (!await this.#checkpoint(task, id, null, false)) {
+        expectedSnapshot = await this.#checkpoint(task, id, null, false);
+        if (!expectedSnapshot) {
           return this.store.update(task.id, { status: 'interrupted', activeAgent: id, step: task.step });
         }
         previous = id;
@@ -92,6 +94,10 @@ export class TaskEngine {
       let baseline;
       try {
         baseline = await this.snapshot();
+        if (expectedSnapshot && repositoryChanged(expectedSnapshot, baseline)) {
+          this.#record(task.id, 'repository-changed', { agent: id });
+          return this.store.update(task.id, { status: 'interrupted', activeAgent: previous, step: task.step });
+        }
         if (previous) this.#record(task.id, 'handoff', { from: previous, to: id });
         this.#record(task.id, 'agent-started', { agent: id });
         const handoff = { request: task.request, step: task.step, history: this.store.events(task.id), snapshot: baseline };
@@ -121,8 +127,8 @@ export class TaskEngine {
         if (signal?.aborted) return this.#cancel(task, id);
         const kind = error instanceof AgentFailure ? error.kind : 'fatal';
         this.#record(task.id, 'agent-failed', { agent: id, kind });
-        const snapshotVerified = await this.#checkpoint(task, id, pendingTool, usedTool, baseline);
-        if (!snapshotVerified || usedTool || !['quota', 'temporary'].includes(kind)) {
+        expectedSnapshot = await this.#checkpoint(task, id, pendingTool, usedTool, baseline);
+        if (!expectedSnapshot || usedTool || !['quota', 'temporary'].includes(kind)) {
           return this.store.update(task.id, { status: 'interrupted', activeAgent: id, step: task.step });
         }
         previous = id;
