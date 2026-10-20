@@ -10,7 +10,7 @@ import { TaskStore } from '../../../packages/storage/src/index.js';
 import { TaskEngine } from '../../../packages/task-engine/src/index.js';
 import { commitStaged, createBranch, fetchRemote, pullFastForward, pushCurrentBranch, repositoryDiff, repositorySnapshot, stagePaths } from '../../../packages/git-engine/src/index.js';
 import { createClaudeAdapter, createCodexAdapter } from '../../../packages/agent-adapters/src/index.js';
-import { createIssue, issueDetails, listIssues, listPullRequests, listWorkflowRuns, pullRequestDetails, pullRequestDiff } from '../../../packages/github-integration/src/index.js';
+import { createIssue, createPullRequest, issueDetails, listIssues, listPullRequests, listWorkflowRuns, pullRequestDetails, pullRequestDiff } from '../../../packages/github-integration/src/index.js';
 
 const usage = `Usage:
   codovyn demo <repository> <request>
@@ -34,6 +34,7 @@ const usage = `Usage:
   codovyn prs <owner/repo>
   codovyn pr <owner/repo> <number>
   codovyn pr-diff <owner/repo> <number>
+  codovyn pr-create <owner/repo> <base> <head> <title> <body-file>
   codovyn runs <owner/repo> [branch]
   codovyn issue-create <owner/repo> <title> <body-file> [labels]
 
@@ -41,18 +42,18 @@ The demo simulates a quota handoff and makes no code changes.
 The Codex and Claude commands run installed CLIs in read-only modes.
 Auto tries Codex first, then Claude after a confirmed eligible failure.`;
 
-async function confirmDeletion() {
+async function confirmAction(word) {
   if (!process.stdin.isTTY || !process.stdout.isTTY) return false;
   const prompt = createInterface({ input: process.stdin, output: process.stdout });
-  try { return (await prompt.question('Type delete to confirm: ')).trim() === 'delete'; }
+  try { return (await prompt.question(`Type ${word} to confirm: `)).trim() === word; }
   finally { prompt.close(); }
 }
 
 export async function main(args = process.argv.slice(2), output = console, signal,
-  github = { createIssue, issueDetails, listIssues, listPullRequests, listWorkflowRuns, pullRequestDetails, pullRequestDiff },
-  adapters = { createCodexAdapter, createClaudeAdapter }) {
+  github = { createIssue, createPullRequest, issueDetails, listIssues, listPullRequests, listWorkflowRuns, pullRequestDetails, pullRequestDiff },
+  adapters = { createCodexAdapter, createClaudeAdapter }, confirm = confirmAction) {
   const [mode, value, ...rest] = args;
-  if (!['demo', 'codex', 'claude', 'auto', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
+  if (!['demo', 'codex', 'claude', 'auto', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'pr-create', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
   const stream = process.env.CODOVYN_EVENT_STREAM === '1';
   if (mode === 'issue') {
     if (!value || rest.length !== 1 || !/^[1-9]\d*$/.test(rest[0])) { output.error(usage); return 2; }
@@ -77,6 +78,19 @@ export async function main(args = process.argv.slice(2), output = console, signa
     const patch = await github.pullRequestDiff(value, Number(rest[0]));
     output.log(stream ? JSON.stringify({ type: 'result', patch }) : patch);
     return 0;
+  }
+  if (mode === 'pr-create') {
+    const [base, head, title, bodyFile] = rest;
+    if (!value || rest.length !== 4) { output.error(usage); return 2; }
+    const file = await stat(bodyFile);
+    if (!file.isFile() || file.size > 65_536) throw new Error('PR body file must be a regular file up to 65536 bytes');
+    const body = await readFile(bodyFile, 'utf8');
+    const result = await github.createPullRequest(value, { base, head, title, body }, { approve: async (preview) => {
+      output.error(`Repository: ${preview.repository}\nBase: ${preview.base}\nHead: ${preview.head}\nTitle: ${preview.title}\nDraft: ${preview.draft}\n\n${preview.body}\n\n${preview.diff}`);
+      return confirm('create');
+    } });
+    output.log(JSON.stringify(stream ? { type: 'result', ...result } : result, null, stream ? 0 : 2));
+    return result.approved ? 0 : 1;
   }
   if (mode === 'issue-create') {
     const [title, bodyFile, ...labels] = rest;
@@ -153,7 +167,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
         output.log(JSON.stringify(stream ? { type: 'result', deletedTaskIds: [] } : { deletedTaskIds: [] }));
         return 0;
       }
-      if (!confirmed && !await confirmDeletion()) { output.error('Retention cancelled; pass --yes for non-interactive use'); return 2; }
+      if (!confirmed && !await confirm('delete')) { output.error('Retention cancelled; pass --yes for non-interactive use'); return 2; }
       const deletedTaskIds = store.prune(options);
       output.log(JSON.stringify(stream ? { type: 'result', deletedTaskIds } : { deletedTaskIds }, null, stream ? 0 : 2));
       return 0;
@@ -170,7 +184,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
       }
       if (mode === 'task-delete') {
         output.error(`Delete task ${task.id} (${task.status}) and its event history from ${task.repositoryRoot || 'unscoped storage'}`);
-        if (!confirmed && !await confirmDeletion()) { output.error('Deletion cancelled; pass --yes for non-interactive use'); return 2; }
+        if (!confirmed && !await confirm('delete')) { output.error('Deletion cancelled; pass --yes for non-interactive use'); return 2; }
         store.delete(value);
         output.log(JSON.stringify(stream ? { type: 'result', deleted: true, taskId: value } : { deleted: true, taskId: value }));
         return 0;

@@ -94,3 +94,35 @@ test('CLI creates an issue only through its explicit command and body file', asy
     assert.equal(JSON.parse(lines[0]).number, 12);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
+
+test('CLI reviews a PR preview and refuses submission without approval', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'codovyn-cli-pr-'));
+  try {
+    const bodyFile = join(directory, 'pr.md');
+    writeFileSync(bodyFile, 'Fixes #12');
+    const outputLines = [];
+    const previewLines = [];
+    let created = 0;
+    const github = { createPullRequest: async (repository, input, options) => {
+      assert.equal(repository, 'owner/repo');
+      assert.deepEqual(input, { base: 'main', head: 'feature/work', title: 'Fix issue', body: 'Fixes #12' });
+      const approved = await options.approve({ repository, ...input, draft: false, diff: 'diff --git a/file b/file\n+fix\n' });
+      if (!approved) return { approved: false };
+      created++;
+      return { approved: true, number: 42, url: 'https://github.com/owner/repo/pull/42' };
+    } };
+    const output = { log: (line) => outputLines.push(line), error: (line) => previewLines.push(line) };
+    const args = ['pr-create', 'owner/repo', 'main', 'feature/work', 'Fix issue', bodyFile];
+    assert.equal(await main(args, output, undefined, github, undefined, async () => false), 1);
+    assert.equal(created, 0);
+    assert.match(previewLines[0], /Repository: owner\/repo/);
+    assert.match(previewLines[0], /Fixes #12/);
+    assert.match(previewLines[0], /diff --git/);
+    assert.equal(await main(args, output, undefined, github, undefined, async (word) => {
+      assert.equal(word, 'create');
+      return true;
+    }), 0);
+    assert.equal(created, 1);
+    assert.equal(JSON.parse(outputLines.at(-1)).number, 42);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
