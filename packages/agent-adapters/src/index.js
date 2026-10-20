@@ -29,6 +29,23 @@ export function parseCodexEvent(raw) {
   return null;
 }
 
+/** Portable, bounded context made only from observable task events. */
+export function formatHandoffPrompt(handoff) {
+  if (typeof handoff.request !== 'string' || handoff.request.length > 10_000) {
+    throw new AgentFailure('fatal', 'Task request exceeds the Codex handoff limit');
+  }
+  const snapshot = handoff.snapshot || {};
+  const state = { branch: snapshot.branch ?? null, commit: snapshot.commit ?? null,
+    dirty: snapshot.dirty ?? null, changedPaths: Array.isArray(snapshot.changedPaths)
+      ? snapshot.changedPaths.slice(0, 20).map((path) => String(path).slice(0, 100)) : [] };
+  const progress = (handoff.history || []).filter((entry) => entry.kind === 'agent-event' &&
+    ['text', 'completed'].includes(entry.data?.event?.type) && typeof entry.data.event.text === 'string')
+    .slice(-6).map((entry) => `${entry.data.agent}: ${entry.data.event.text.slice(0, 500)}`);
+  return [handoff.request, '', 'Verified repository state:', JSON.stringify(state),
+    '', 'Recorded agent progress (observable output only):', progress.join('\n') || 'None recorded',
+    '', 'Continue from the verified state. Check files before repeating work.'].join('\n');
+}
+
 /** Uses the installed Codex CLI and its own authentication, in read-only mode. */
 export function createCodexAdapter({ cwd, command = 'codex', prefixArgs = [] }) {
   if (typeof cwd !== 'string' || !cwd) throw new TypeError('Workspace directory is required');
@@ -41,7 +58,7 @@ export function createCodexAdapter({ cwd, command = 'codex', prefixArgs = [] }) 
     },
     async *run({ handoff, signal }) {
       if (signal?.aborted) throw new AgentFailure('cancelled', 'Codex was cancelled');
-      const prompt = [handoff.request, '', 'Repository checkpoint:', JSON.stringify(handoff.snapshot)].join('\n');
+      const prompt = formatHandoffPrompt(handoff);
       const child = spawn(command, [...prefixArgs, 'exec', '--json', '--sandbox', 'read-only', '-'], {
         cwd, stdio: ['pipe', 'pipe', 'pipe'], signal, shell: false,
       });

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createCodexAdapter, parseCodexEvent, classifyCodexError } from '../src/index.js';
+import { createCodexAdapter, parseCodexEvent, classifyCodexError, formatHandoffPrompt } from '../src/index.js';
 
 test('maps documented Codex JSONL events without treating text as tool execution', () => {
   assert.deepEqual(parseCodexEvent({ type: 'item.started', item: { id: 'a', type: 'command_execution' } }), { type: 'tool-start', actionId: 'a', action: 'command_execution' });
@@ -13,6 +13,14 @@ test('only structured provider codes confirm quota or authentication failures', 
   assert.equal(classifyCodexError({ status: 429 }), 'quota');
   assert.equal(classifyCodexError({ code: 401 }), 'authentication');
   assert.equal(classifyCodexError({ message: 'rate limit' }), 'fatal');
+});
+
+test('handoff prompt includes bounded observed progress and verified Git state', () => {
+  const prompt = formatHandoffPrompt({ request: 'Repair tests', snapshot: { root: '/private/repo', branch: 'feature', commit: 'abc', dirty: true },
+    history: [{ kind: 'agent-event', data: { agent: 'first', event: { type: 'text', text: 'Found a failing parser test' } } }] });
+  assert.match(prompt, /Found a failing parser test/);
+  assert.match(prompt, /"branch":"feature"/);
+  assert.ok(!prompt.includes('/private/repo'));
 });
 
 test('runs a local JSONL command through the Codex adapter without shell interpolation', async () => {
