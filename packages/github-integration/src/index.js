@@ -1,4 +1,7 @@
 import { execFile } from 'node:child_process';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { promisify } from 'node:util';
 
 const exec = promisify(execFile);
@@ -54,4 +57,32 @@ export async function listPullRequests(repository, { limit = 30, run = runGh } =
     headRefName: pullRequest.headRefName, baseRefName: pullRequest.baseRefName,
     isDraft: pullRequest.isDraft,
   }));
+}
+
+/** Create an issue only when explicitly invoked, using existing gh authorization. */
+export async function createIssue(repository, { title, body, labels = [] }, { run = runGh } = {}) {
+  validateRepository(repository);
+  if (typeof title !== 'string' || !title.trim() || title.length > 256 || title.includes('\0')) {
+    throw new TypeError('Issue title must contain 1 to 256 characters');
+  }
+  if (typeof body !== 'string' || !body.trim() || body.length > 65_536 || body.includes('\0')) {
+    throw new TypeError('Issue body must contain 1 to 65536 characters');
+  }
+  if (!Array.isArray(labels) || labels.length > 10 || labels.some((label) =>
+    typeof label !== 'string' || !label.trim() || label.length > 100 || label.includes('\0'))) {
+    throw new TypeError('Issue labels must be a list of at most 10 names');
+  }
+  const temporary = await mkdtemp(join(tmpdir(), 'codovyn-issue-'));
+  try {
+    const bodyFile = join(temporary, 'body.md');
+    await writeFile(bodyFile, body, { mode: 0o600 });
+    const args = ['issue', 'create', '--repo', repository, '--title', title, '--body-file', bodyFile,
+      ...labels.flatMap((label) => ['--label', label])];
+    const output = (await run(args)).trim();
+    const match = /^https:\/\/github\.com\/[^/]+\/[^/]+\/issues\/([1-9]\d*)$/.exec(output);
+    if (!match || new URL(output).pathname.toLowerCase() !== `/${repository}/issues/${match[1]}`.toLowerCase()) {
+      throw new Error('GitHub CLI did not return a valid issue URL; verify before retrying');
+    }
+    return { number: Number(match[1]), url: output };
+  } finally { await rm(temporary, { recursive: true, force: true }); }
 }
