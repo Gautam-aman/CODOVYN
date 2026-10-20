@@ -37,6 +37,18 @@ function parseList(output) {
   return records;
 }
 
+function parseObject(output) {
+  let record;
+  try { record = JSON.parse(output); }
+  catch { throw new Error('GitHub CLI returned invalid JSON'); }
+  if (!record || typeof record !== 'object' || Array.isArray(record)) throw new Error('GitHub CLI returned an invalid record');
+  return record;
+}
+
+function validateNumber(number, kind) {
+  if (!Number.isSafeInteger(number) || number < 1) throw new TypeError(`${kind} number must be positive`);
+}
+
 /** Read public or authorized repository issues using the user's GitHub CLI session. */
 export async function listIssues(repository, { limit = 30, run = runGh } = {}) {
   validateRepository(repository);
@@ -47,6 +59,20 @@ export async function listIssues(repository, { limit = 30, run = runGh } = {}) {
     number: issue.number, title: issue.title, state: issue.state, url: issue.url,
     labels: issue.labels?.map((label) => label.name) ?? [],
   }));
+}
+
+/** Inspect one issue without executing or trusting its Markdown body. */
+export async function issueDetails(repository, number, { run = runGh } = {}) {
+  validateRepository(repository);
+  validateNumber(number, 'Issue');
+  const issue = parseObject(await run(['issue', 'view', String(number), '--repo', repository,
+    '--json', 'number,title,body,state,url,labels,author,createdAt,updatedAt']));
+  if (issue.number !== number || typeof issue.title !== 'string' || typeof issue.body !== 'string') {
+    throw new Error('GitHub CLI returned invalid issue details');
+  }
+  return { number, title: issue.title, body: issue.body, state: issue.state, url: issue.url,
+    labels: issue.labels?.map((label) => label.name) ?? [], author: issue.author?.login ?? null,
+    createdAt: issue.createdAt, updatedAt: issue.updatedAt };
 }
 
 /** List PR metadata without fetching source diffs or executing PR code. */
@@ -65,7 +91,7 @@ export async function listPullRequests(repository, { limit = 30, run = runGh } =
 /** A bounded read-only PR patch for review, with no checkout or PR code execution. */
 export async function pullRequestDiff(repository, number, { run = runGh } = {}) {
   validateRepository(repository);
-  if (!Number.isSafeInteger(number) || number < 1) throw new TypeError('Pull request number must be positive');
+  validateNumber(number, 'Pull request');
   const patch = await run(['pr', 'diff', String(number), '--repo', repository, '--color', 'never', '--patch']);
   if (typeof patch !== 'string' || Buffer.byteLength(patch) > 1024 * 1024) {
     throw new Error('GitHub response exceeds the 1 MiB display limit');
