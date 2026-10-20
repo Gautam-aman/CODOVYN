@@ -29,6 +29,7 @@ test('extension starts a repository task and exposes a safe handoff timeline', a
   const runner = async (executable, args, options) => {
     assert.equal(executable, 'node');
     if (args[1] === 'tasks') return { tasks: [{ id: 'task-1', request: 'Inspect', status: 'completed' }] };
+    if (args[1] === 'diff') return { diff: 'diff --git a/file b/file\n+changed' };
     if (args[1] === 'history') {
       assert.equal(args[3], '/project');
       return { task: { request: 'Inspect', status: 'completed', repositoryRoot: '/project' }, events: [
@@ -58,6 +59,8 @@ test('extension starts a repository task and exposes a safe handoff timeline', a
   await messageHandler({ type: 'history', id: 'task-1' });
   assert.equal(sent.at(-1).type, 'history');
   assert.equal(sent.at(-1).request, 'Inspect');
+  await messageHandler({ type: 'diff', staged: false });
+  assert.match(sent.at(-1).text, /\+changed/);
 });
 
 test('extension blocks Codex execution in an untrusted workspace', async () => {

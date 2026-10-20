@@ -8,6 +8,7 @@ const timeline = document.getElementById('timeline');
 const empty = document.getElementById('empty');
 const tasks = document.getElementById('tasks');
 const refresh = document.getElementById('refresh');
+const diffOutput = document.getElementById('diff-output');
 
 function appendActivity(items) {
   for (const item of items || []) {
@@ -25,6 +26,8 @@ run.addEventListener('click', () => {
 });
 cancel.addEventListener('click', () => vscode.postMessage({ type: 'cancel' }));
 refresh.addEventListener('click', () => vscode.postMessage({ type: 'tasks' }));
+document.getElementById('working-diff').addEventListener('click', () => vscode.postMessage({ type: 'diff', staged: false }));
+document.getElementById('staged-diff').addEventListener('click', () => vscode.postMessage({ type: 'diff', staged: true }));
 request.addEventListener('keydown', (event) => {
   if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); run.click(); }
 });
@@ -70,6 +73,10 @@ window.addEventListener('message', ({ data }) => {
     const row = document.createElement('li');
     row.textContent = data.text;
     tasks.append(row);
+  } else if (data.type === 'diff') {
+    diffOutput.textContent = data.text || 'No tracked changes in this diff.';
+  } else if (data.type === 'diff-error') {
+    diffOutput.textContent = data.text;
   } else if (data.type === 'error') {
     status.textContent = 'Error';
     run.disabled = false;
