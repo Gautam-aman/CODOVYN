@@ -3,7 +3,24 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=26" },
+  "displayName": "CODOVYN",
+  "description": "Local-first agent tasks and visible handoffs inside VS Code",
+  "main": "./apps/vscode-extension/extension.cjs",
+  "engines": { "node": ">=26", "vscode": "^1.100.0" },
+  "categories": ["Other"],
+  "contributes": {
+    "commands": [{ "command": "codovyn.open", "title": "CODOVYN: Open Agent Workspace" }],
+    "configuration": {
+      "title": "CODOVYN",
+      "properties": {
+        "codovyn.nodePath": {
+          "type": "string",
+          "default": "node",
+          "description": "Path to a Node.js 26 or newer executable used by the local runtime."
+        }
+      }
+    }
+  },
   "workspaces": ["packages/*", "apps/*"],
   "scripts": {
     "test": "node --test",
