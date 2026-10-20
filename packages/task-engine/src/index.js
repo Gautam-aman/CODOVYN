@@ -47,6 +47,14 @@ export class TaskEngine {
     if (!['pending', 'running', 'interrupted'].includes(task.status)) throw new Error(`Cannot run task in ${task.status} state`);
     if (task.status !== 'pending') {
       const history = this.store.events(id);
+      if (task.status === 'interrupted' && history.some((entry) =>
+        ['repository-changed', 'recovery-verification-failed'].includes(entry.kind))) {
+        const started = history.findLast((entry) => entry.kind === 'agent-started');
+        let current;
+        try { current = await this.snapshot(); }
+        catch { /* An unreadable repository cannot be reconciled. */ }
+        if (!started?.data.repository || !current || repositoryChanged(started.data.repository, current)) return task;
+      }
       let pendingTool = null;
       let usedTool = false;
       for (const entry of history) {
@@ -59,6 +67,14 @@ export class TaskEngine {
         throw new Error(pendingTool ? `Task has unresolved tool action: ${pendingTool}` : 'Task used tools and requires reconciliation before retry');
       }
       if (task.status === 'running') {
+        const started = history.findLast((entry) => entry.kind === 'agent-started');
+        let current;
+        try { current = await this.snapshot(); }
+        catch { /* A failed verification must not restart an agent. */ }
+        if (!started?.data.repository || !current || repositoryChanged(started.data.repository, current)) {
+          this.#record(id, 'recovery-verification-failed', { agent: task.activeAgent });
+          return this.store.update(id, { status: 'interrupted', activeAgent: task.activeAgent, step: task.step });
+        }
         this.#record(id, 'process-recovered', { agent: task.activeAgent });
         this.store.update(id, { status: 'interrupted', activeAgent: task.activeAgent, step: task.step });
       }
@@ -99,7 +115,7 @@ export class TaskEngine {
           return this.store.update(task.id, { status: 'interrupted', activeAgent: previous, step: task.step });
         }
         if (previous) this.#record(task.id, 'handoff', { from: previous, to: id });
-        this.#record(task.id, 'agent-started', { agent: id });
+        this.#record(task.id, 'agent-started', { agent: id, repository: baseline });
         const handoff = { request: task.request, step: task.step, history: this.store.events(task.id), snapshot: baseline };
         for await (const event of agent.run({ taskId: task.id, handoff, signal })) {
           if (signal?.aborted) return this.#cancel(task, id);

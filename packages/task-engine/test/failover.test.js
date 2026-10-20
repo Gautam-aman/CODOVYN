@@ -132,6 +132,7 @@ test('does not repeat a completed tool action after a quota failure', async () =
 test('recovers a running task after a process restart when no tool is pending', async () => {
   const { store, registry } = setup();
   store.update('task', { status: 'running', activeAgent: 'primary', step: 0 });
+  store.append('task', 'agent-started', { agent: 'primary', repository: {} });
   store.append('task', 'agent-event', { agent: 'primary', event: { type: 'text', text: 'partial' } });
   registry.register(agent('primary', async function* ({ handoff }) {
     assert.ok(handoff.history.some((entry) => entry.kind === 'process-recovered'));
@@ -140,6 +141,34 @@ test('recovers a running task after a process restart when no tool is pending', 
   registry.register(agent('backup', async function* () { yield { type: 'completed' }; }));
   const restarted = new TaskEngine({ store, registry });
   assert.equal((await restarted.run('task')).status, 'completed');
+  store.close();
+});
+
+test('restart refuses a task when its repository changed after agent start', async () => {
+  const { store, registry } = setup();
+  store.update('task', { status: 'running', activeAgent: 'primary', step: 0 });
+  store.append('task', 'agent-started', { agent: 'primary', repository: { root: '/repo', workingTreeHash: 'before' } });
+  let agentCalls = 0;
+  registry.register(agent('primary', async function* () { agentCalls++; yield { type: 'completed' }; }));
+  registry.register(agent('backup', async function* () { agentCalls++; yield { type: 'completed' }; }));
+  let workingTreeHash = 'after';
+  const restarted = new TaskEngine({ store, registry, snapshot: async () => ({ root: '/repo', workingTreeHash }) });
+  assert.equal((await restarted.run('task')).status, 'interrupted');
+  assert.equal((await restarted.run('task')).status, 'interrupted');
+  assert.equal(agentCalls, 0);
+  assert.ok(store.events('task').some((entry) => entry.kind === 'recovery-verification-failed'));
+  workingTreeHash = 'before';
+  assert.equal((await restarted.run('task')).status, 'completed');
+  assert.equal(agentCalls, 1);
+  store.close();
+});
+
+test('restart refuses a legacy running task without a recorded baseline', async () => {
+  const { store, registry } = setup();
+  store.update('task', { status: 'running', activeAgent: 'primary', step: 0 });
+  registry.register(agent('primary', async function* () { throw new Error('Must not run'); }));
+  const restarted = new TaskEngine({ store, registry });
+  assert.equal((await restarted.run('task')).status, 'interrupted');
   store.close();
 });
 
