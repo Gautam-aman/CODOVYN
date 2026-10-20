@@ -8,6 +8,14 @@ import { isAbsolute, join } from 'node:path';
 
 const execute = promisify(execFile);
 
+async function configuredRemote(root, remote) {
+  if (typeof remote !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(remote)) {
+    throw new TypeError('Remote must be a configured Git remote name');
+  }
+  const remotes = (await execute('git', ['-C', root, 'remote'], { encoding: 'utf8', timeout: 10_000 })).stdout.split('\n');
+  if (!remotes.includes(remote)) throw new Error(`Unknown Git remote: ${remote}`);
+}
+
 /** Read-only repository identity for checkpoints. No file contents leave Git. */
 export async function repositorySnapshot(directory) {
   const cwd = await realpath(directory);
@@ -106,13 +114,9 @@ export async function createBranch(directory, name) {
 
 /** Push the current branch to an already configured remote without force. */
 export async function pushCurrentBranch(directory, remote = 'origin') {
-  if (typeof remote !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(remote)) {
-    throw new TypeError('Remote must be a configured Git remote name');
-  }
   const snapshot = await repositorySnapshot(directory);
   if (!snapshot.branch || !snapshot.commit) throw new Error('A committed branch is required before pushing');
-  const remotes = (await execute('git', ['-C', snapshot.root, 'remote'], { encoding: 'utf8', timeout: 10_000 })).stdout.split('\n');
-  if (!remotes.includes(remote)) throw new Error(`Unknown Git remote: ${remote}`);
+  await configuredRemote(snapshot.root, remote);
   const emptyHooks = await mkdtemp(join(tmpdir(), 'codovyn-hooks-'));
   try {
     await execute('git', ['-C', snapshot.root, '-c', `core.hooksPath=${emptyHooks}`, 'push', '--porcelain', remote, `HEAD:refs/heads/${snapshot.branch}`],
@@ -121,4 +125,18 @@ export async function pushCurrentBranch(directory, remote = 'origin') {
   } catch { throw new Error('Git push failed; check remote access and branch state'); }
   finally { await rm(emptyHooks, { recursive: true, force: true }); }
   return { branch: snapshot.branch, commit: snapshot.commit, remote };
+}
+
+/** Fetch a configured remote without changing the active branch or working tree. */
+export async function fetchRemote(directory, remote = 'origin') {
+  const snapshot = await repositorySnapshot(directory);
+  await configuredRemote(snapshot.root, remote);
+  const emptyHooks = await mkdtemp(join(tmpdir(), 'codovyn-hooks-'));
+  try {
+    await execute('git', ['-C', snapshot.root, '-c', `core.hooksPath=${emptyHooks}`, '-c', 'protocol.ext.allow=never',
+      'fetch', '--no-tags', remote], { timeout: 60_000, maxBuffer: 1024 * 1024,
+      env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } });
+  } catch { throw new Error('Git fetch failed; check remote access'); }
+  finally { await rm(emptyHooks, { recursive: true, force: true }); }
+  return { remote, snapshot: await repositorySnapshot(snapshot.root) };
 }

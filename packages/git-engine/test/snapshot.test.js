@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { commitStaged, createBranch, pushCurrentBranch, repositoryDiff, repositorySnapshot, stagePaths } from '../src/index.js';
+import { commitStaged, createBranch, fetchRemote, pushCurrentBranch, repositoryDiff, repositorySnapshot, stagePaths } from '../src/index.js';
 
 test('records real branch, commit and working-tree changes', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'codovyn-git-'));
@@ -149,5 +149,37 @@ test('pushes the current branch to a configured local remote without force', asy
   } finally {
     rmSync(directory, { recursive: true, force: true });
     rmSync(remote, { recursive: true, force: true });
+  }
+});
+
+test('fetches remote changes without changing the active branch or working tree', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'codovyn-fetch-'));
+  const remote = mkdtempSync(join(tmpdir(), 'codovyn-fetch-bare-'));
+  const contributor = mkdtempSync(join(tmpdir(), 'codovyn-contributor-'));
+  const git = (...args) => execFileSync('git', ['-C', directory, ...args], { stdio: 'pipe' });
+  try {
+    execFileSync('git', ['-C', remote, 'init', '--bare', '-q']);
+    git('init', '-q', '-b', 'main');
+    git('remote', 'add', 'origin', remote);
+    writeFileSync(join(directory, 'file.txt'), 'original');
+    git('add', 'file.txt');
+    git('-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '-qm', 'initial');
+    await pushCurrentBranch(directory);
+    execFileSync('git', ['-C', remote, 'symbolic-ref', 'HEAD', 'refs/heads/main']);
+    execFileSync('git', ['clone', '-q', remote, contributor]);
+    writeFileSync(join(contributor, 'file.txt'), 'from contributor');
+    execFileSync('git', ['-C', contributor, 'add', 'file.txt']);
+    execFileSync('git', ['-C', contributor, '-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '-qm', 'second']);
+    execFileSync('git', ['-C', contributor, 'push', '-q', 'origin', 'main']);
+    const before = await repositorySnapshot(directory);
+    const result = await fetchRemote(directory);
+    assert.deepEqual(result.snapshot, before);
+    assert.equal(result.remote, 'origin');
+    assert.notEqual(git('rev-parse', 'refs/remotes/origin/main').toString().trim(), before.commit);
+    await assert.rejects(fetchRemote(directory, '--force'), /configured Git remote name/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+    rmSync(remote, { recursive: true, force: true });
+    rmSync(contributor, { recursive: true, force: true });
   }
 });
