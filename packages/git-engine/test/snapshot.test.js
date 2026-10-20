@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { commitStaged, repositoryDiff, repositorySnapshot, stagePaths } from '../src/index.js';
+import { commitStaged, pushCurrentBranch, repositoryDiff, repositorySnapshot, stagePaths } from '../src/index.js';
 
 test('records real branch, commit and working-tree changes', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'codovyn-git-'));
@@ -79,4 +79,25 @@ test('commits the selected index and leaves unstaged work alone', async () => {
     assert.deepEqual(committed.changedPaths, ['unstaged.txt']);
     await assert.rejects(commitStaged(directory, 'No changes'), /No staged changes/);
   } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('pushes the current branch to a configured local remote without force', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'codovyn-push-'));
+  const remote = mkdtempSync(join(tmpdir(), 'codovyn-bare-'));
+  const git = (...args) => execFileSync('git', ['-C', directory, ...args], { stdio: 'pipe' });
+  try {
+    execFileSync('git', ['-C', remote, 'init', '--bare', '-q']);
+    git('init', '-q', '-b', 'feature');
+    git('remote', 'add', 'origin', remote);
+    writeFileSync(join(directory, 'file.txt'), 'content');
+    git('add', 'file.txt');
+    git('-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '-qm', 'initial');
+    const pushed = await pushCurrentBranch(directory);
+    assert.equal(pushed.branch, 'feature');
+    assert.equal(execFileSync('git', ['-C', remote, 'rev-parse', 'refs/heads/feature'], { encoding: 'utf8' }).trim(), pushed.commit);
+    await assert.rejects(pushCurrentBranch(directory, '--force'), /configured Git remote name/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+    rmSync(remote, { recursive: true, force: true });
+  }
 });
