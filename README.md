@@ -16,7 +16,7 @@ CODOVYN is an open-source project building a local-first development environment
 - A CLI opens real Git repositories and displays saved task history.
 - A VS Code extension panel starts local tasks from an open repository, selects Codex, Claude, or automatic Codex-to-Claude fallback, shows a handoff timeline, and offers cancellation and confirmed history deletion. Host behavior is covered by automated tests; a live VS Code launch has not been verified here.
 - Read-only Git patches, selected-path staging, local commits, branch creation, fetch, fast-forward-only pull, and an explicit branch push work through the CLI. Remote GitHub authentication still comes from the user's Git configuration.
-- Read-only GitHub issue and pull-request lists and bounded PR patch inspection work through an installed, authenticated GitHub CLI. An explicit CLI command can create an issue from a local body file. PR creation and GitHub automation are not implemented.
+- Read-only GitHub issue and pull-request lists, selected issue/PR details, bounded PR patch inspection, and Actions run listings work through an installed, authenticated GitHub CLI. Explicit CLI commands can create an issue or, after an interactive diff review, a same-repository PR. PR creation is covered by simulated tests but has not been exercised against GitHub. Automation bots are not implemented.
 
 No screenshot is included because the extension has not been captured in a running VS Code host. The desktop IDE, GitHub bots, routing UI, and website remain planned work.
 
@@ -57,13 +57,18 @@ Install and authenticate the [GitHub CLI](https://cli.github.com/manual/gh_auth_
 
 ```sh
 node apps/cli/src/index.js issues OWNER/REPO
+node apps/cli/src/index.js issue OWNER/REPO ISSUE_NUMBER
 node apps/cli/src/index.js prs OWNER/REPO
+node apps/cli/src/index.js pr OWNER/REPO PR_NUMBER
 node apps/cli/src/index.js pr-diff OWNER/REPO PR_NUMBER
+node apps/cli/src/index.js runs OWNER/REPO BRANCH
 ```
 
 These commands query only the repository you name. They return bounded metadata or a bounded patch and do not run code from issues or pull requests. See the [GitHub integration guide](docs/integrations/github.md) for current scope.
 
 To create an issue deliberately, write its body to a Markdown file and run `node apps/cli/src/index.js issue-create OWNER/REPO "Issue title" path/to/body.md bug`. Label names are optional trailing arguments. This operation posts to GitHub with the user's `gh` authorization. Review the body and target repository before running it.
+
+To create a PR from two branches in the same GitHub repository, prepare a body file and run `node apps/cli/src/index.js pr-create OWNER/REPO BASE HEAD "PR title" path/to/body.md` in an interactive terminal. CODOVYN displays the target, title, body, and bounded GitHub comparison diff, then requires typing `create`. It checks the diff again before submitting. This path has only simulated creation tests; no live PR was created during CODOVYN development. See the [GitHub guide](docs/integrations/github.md) for limits.
 
 To build a local VS Code extension archive, run `npm ci --ignore-scripts` and `npm run package:extension`. This produces `codovyn-dev.vsix`. Install it through VS Code's **Extensions → Install from VSIX…** action, open a Git repository folder, and run **CODOVYN: Open Agent Workspace** from the Command Palette. The panel streams task activity and lists saved tasks for that repository. The extension needs a Node.js 26 executable on your `PATH`; set `codovyn.nodePath` if necessary. The `codovyn-local` publisher identifier is for development packaging and is not a verified Marketplace publisher.
 
