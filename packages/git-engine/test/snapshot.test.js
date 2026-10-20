@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { commitStaged, pushCurrentBranch, repositoryDiff, repositorySnapshot, stagePaths } from '../src/index.js';
@@ -106,6 +106,13 @@ test('pushes the current branch to a configured local remote without force', asy
     writeFileSync(join(directory, 'file.txt'), 'content');
     git('add', 'file.txt');
     git('-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '-qm', 'initial');
+    if (process.platform !== 'win32') {
+      const hooks = join(directory, '.git', 'hooks');
+      mkdirSync(hooks, { recursive: true });
+      const hook = join(hooks, 'pre-push');
+      writeFileSync(hook, '#!/bin/sh\nexit 1\n');
+      chmodSync(hook, 0o755);
+    }
     const pushed = await pushCurrentBranch(directory);
     assert.equal(pushed.branch, 'feature');
     assert.equal(execFileSync('git', ['-C', remote, 'rev-parse', 'refs/heads/feature'], { encoding: 'utf8' }).trim(), pushed.commit);
