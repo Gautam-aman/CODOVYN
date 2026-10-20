@@ -82,6 +82,12 @@ export class TaskStore {
       .all(validId(id)).map((row) => ({ seq: row.seq, kind: row.kind, data: JSON.parse(row.data), createdAt: row.created_at }));
   }
 
+  list({ limit = 25 } = {}) {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) throw new TypeError('Limit must be between 1 and 100');
+    return this.#db.prepare('SELECT id FROM tasks ORDER BY updated_at DESC, id DESC LIMIT ?')
+      .all(limit).map(({ id }) => this.get(id));
+  }
+
   listInterrupted() {
     return this.#db.prepare("SELECT id FROM tasks WHERE status IN ('running', 'interrupted') ORDER BY updated_at")
       .all().map(({ id }) => this.get(id));

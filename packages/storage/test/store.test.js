@@ -20,6 +20,7 @@ test('persists task and checkpoint events across process-like reopening', () => 
     assert.equal(reopened.get('task-1').step, 2);
     assert.deepEqual(reopened.events('task-1').map((event) => event.kind), ['checkpoint']);
     assert.deepEqual(reopened.listInterrupted().map((task) => task.id), ['task-1']);
+    assert.deepEqual(reopened.list({ limit: 1 }).map((task) => task.id), ['task-1']);
     reopened.close();
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
@@ -28,5 +29,6 @@ test('rejects unsafe ids and unknown task updates', () => {
   const store = new TaskStore(':memory:');
   assert.throws(() => store.create({ id: '../bad', request: 'x', primaryAgent: 'a' }), /Invalid task id/);
   assert.throws(() => store.update('missing', { status: 'running', activeAgent: 'a', step: 0 }), /Unknown task/);
+  assert.throws(() => store.list({ limit: 101 }), /Limit must be/);
   store.close();
 });
