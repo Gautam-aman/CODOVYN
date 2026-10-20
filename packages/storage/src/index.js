@@ -124,26 +124,30 @@ export class TaskStore {
     }
   }
 
-  prune({ before, repositoryRoot, limit = 100 }) {
+  prunable({ before, repositoryRoot, limit = 100 }) {
     if (typeof before !== 'string' || !/^\d{4}-\d{2}-\d{2}T/.test(before) || !Number.isFinite(Date.parse(before))) {
       throw new TypeError('Invalid retention cutoff');
     }
     if (typeof repositoryRoot !== 'string' || !repositoryRoot) throw new TypeError('Repository root is required');
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000) throw new TypeError('Limit must be between 1 and 1000');
     const cutoff = new Date(before).toISOString();
+    return this.#db.prepare(`SELECT id FROM tasks WHERE repository_root = ? AND updated_at < ?
+      AND status IN ('completed', 'failed', 'cancelled') ORDER BY updated_at, id LIMIT ?`)
+      .all(repositoryRoot, cutoff, limit).map(({ id }) => id);
+  }
+
+  prune(options) {
     this.#db.exec('BEGIN IMMEDIATE');
     try {
-      const rows = this.#db.prepare(`SELECT id FROM tasks WHERE repository_root = ? AND updated_at < ?
-        AND status IN ('completed', 'failed', 'cancelled') ORDER BY updated_at, id LIMIT ?`)
-        .all(repositoryRoot, cutoff, limit);
+      const ids = this.prunable(options);
       const deleteEvents = this.#db.prepare('DELETE FROM events WHERE task_id = ?');
       const deleteTask = this.#db.prepare('DELETE FROM tasks WHERE id = ?');
-      for (const { id } of rows) {
+      for (const id of ids) {
         deleteEvents.run(id);
         deleteTask.run(id);
       }
       this.#db.exec('COMMIT');
-      return rows.map(({ id }) => id);
+      return ids;
     } catch (error) {
       this.#db.exec('ROLLBACK');
       throw error;

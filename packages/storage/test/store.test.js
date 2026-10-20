@@ -102,6 +102,7 @@ test('prunes only bounded finished tasks in the selected repository', () => {
     store.append(id, 'checkpoint', { id });
   }
   const future = new Date(Date.now() + 60_000).toISOString();
+  assert.equal(store.prunable({ before: future, repositoryRoot: '/a' }).length, 2);
   assert.equal(store.prune({ before: future, repositoryRoot: '/a', limit: 1 }).length, 1);
   assert.equal(store.prune({ before: future, repositoryRoot: '/a' }).length, 1);
   assert.ok(store.get('unfinished'));

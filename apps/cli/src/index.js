@@ -20,7 +20,7 @@ const usage = `Usage:
   codovyn tasks [repository]
   codovyn history <task-id> [repository]
   codovyn task-delete <task-id> [repository] [--yes]
-  codovyn task-prune <repository> <before-ISO-time>
+  codovyn task-prune <repository> <before-ISO-time> [--yes]
   codovyn diff <repository> [--staged]
   codovyn stage <repository> <path> [more paths]
   codovyn commit <repository> <message>
@@ -97,9 +97,19 @@ export async function main(args = process.argv.slice(2), output = console, signa
       return 0;
     }
     if (mode === 'task-prune') {
-      if (!value || rest.length !== 1) { output.error(usage); return 2; }
+      const confirmed = rest.at(-1) === '--yes';
+      const argumentsWithoutFlag = confirmed ? rest.slice(0, -1) : rest;
+      if (!value || argumentsWithoutFlag.length !== 1) { output.error(usage); return 2; }
       const repositoryRoot = (await repositorySnapshot(value)).root;
-      const deletedTaskIds = store.prune({ repositoryRoot, before: rest[0] });
+      const options = { repositoryRoot, before: argumentsWithoutFlag[0] };
+      const candidateIds = store.prunable(options);
+      output.error(`Delete ${candidateIds.length} finished tasks updated before ${options.before} from ${repositoryRoot}`);
+      if (!candidateIds.length) {
+        output.log(JSON.stringify(stream ? { type: 'result', deletedTaskIds: [] } : { deletedTaskIds: [] }));
+        return 0;
+      }
+      if (!confirmed && !await confirmDeletion()) { output.error('Retention cancelled; pass --yes for non-interactive use'); return 2; }
+      const deletedTaskIds = store.prune(options);
       output.log(JSON.stringify(stream ? { type: 'result', deletedTaskIds } : { deletedTaskIds }, null, stream ? 0 : 2));
       return 0;
     }
