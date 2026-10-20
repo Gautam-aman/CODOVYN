@@ -1,10 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const require = createRequire(import.meta.url);
-const { createExtension, runCli } = require('../extension.cjs');
+const { createExtension, dataDirectory, runCli } = require('../extension.cjs');
+
+test('extension keeps a private legacy journal visible and isolates new storage', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'codovyn-extension-'));
+  try {
+    assert.equal(dataDirectory(directory), join(directory, 'private'));
+    writeFileSync(join(directory, 'tasks.sqlite'), 'legacy');
+    assert.equal(dataDirectory(directory), directory);
+    if (process.platform !== 'win32') {
+      chmodSync(directory, 0o755);
+      assert.equal(dataDirectory(directory), join(directory, 'private'));
+    }
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
 
 test('extension starts a repository task and exposes a safe handoff timeline', async () => {
   let command;
@@ -78,7 +93,9 @@ test('extension blocks provider execution in an untrusted workspace', async () =
     ViewColumn: { Beside: 2 }, Uri: { joinPath: (_root, ...parts) => parts.join('/') },
     workspace: { workspaceFolders: [{ uri: { fsPath: '/project' } }], isTrusted: false },
   };
-  createExtension(api, () => { throw new Error('Must not run'); }).activate({ extensionUri: 'root', subscriptions: [] });
+  createExtension(api, () => { throw new Error('Must not run'); }).activate({
+    extensionUri: 'root', globalStorageUri: { fsPath: '/data' }, subscriptions: [],
+  });
   command();
   for (const mode of ['codex', 'claude', 'auto']) {
     await handler({ type: 'run', mode, request: 'Inspect' });

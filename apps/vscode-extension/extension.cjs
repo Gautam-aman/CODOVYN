@@ -1,7 +1,20 @@
 const { spawn } = require('node:child_process');
 const { randomBytes } = require('node:crypto');
+const { lstatSync, statSync } = require('node:fs');
 const { join } = require('node:path');
 const { StringDecoder } = require('node:string_decoder');
+
+function dataDirectory(globalStoragePath) {
+  const privatePath = join(globalStoragePath, 'private');
+  try {
+    const legacyDatabase = lstatSync(join(globalStoragePath, 'tasks.sqlite'));
+    const directory = statSync(globalStoragePath);
+    if (legacyDatabase.isFile() && (process.platform === 'win32' || !(directory.mode & 0o077))) {
+      return globalStoragePath;
+    }
+  } catch { /* A new installation has no legacy database. */ }
+  return privatePath;
+}
 
 function timeline(events) {
   return events.flatMap((entry) => {
@@ -69,6 +82,7 @@ function createExtension(api, runner = runCli) {
         const media = (...segments) => panel.webview.asWebviewUri(api.Uri.joinPath(context.extensionUri, 'apps', 'vscode-extension', 'media', ...segments));
         panel.webview.html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${panel.webview.cspSource}; script-src 'nonce-${nonce}';"><link rel="stylesheet" href="${media('workspace.css')}"><title>CODOVYN</title></head><body><main><header><div class="mark">C</div><div><h1>CODOVYN</h1><p>One IDE. Every Agent. Endless Flow.</p></div></header><section class="composer"><label for="agent">Agent</label><select id="agent"><option value="demo">Demo handoff</option><option value="codex">Codex CLI · read only</option><option value="claude">Claude Code · read only</option><option value="auto">Codex → Claude · automatic</option></select><label for="request">What would you like to work on?</label><textarea id="request" rows="5" maxlength="10000" placeholder="Describe a task in this repository"></textarea><div class="actions"><button id="run" type="button">Start task</button><button id="cancel" type="button" disabled>Cancel</button></div></section><section class="activity"><div class="section-head"><h2>Task activity</h2><span id="status" role="status" aria-live="polite">Ready</span></div><ol id="timeline" aria-label="Agent activity"></ol><p id="empty">Task steps and agent handoffs will appear here.</p></section><section class="recent"><div class="section-head"><h2>Recent tasks</h2><button id="refresh" type="button">Refresh</button></div><ul id="tasks" aria-label="Recent repository tasks"></ul></section><section class="diff"><div class="section-head"><h2>Repository diff</h2><div class="diff-actions"><button id="working-diff" type="button">Working tree</button><button id="staged-diff" type="button">Staged</button></div></div><pre id="diff-output" tabindex="0" aria-label="Git diff">Choose a diff to review.</pre></section><footer>Local task history stays on this device.</footer></main><script nonce="${nonce}" src="${media('workspace.js')}"></script></body></html>`;
         let active = null;
+        const taskDataDirectory = dataDirectory(context.globalStorageUri.fsPath);
         const refreshTasks = async () => {
           const folder = api.workspace.workspaceFolders?.[0];
           if (!folder) { panel.webview.postMessage({ type: 'tasks', tasks: [] }); return; }
@@ -77,7 +91,7 @@ function createExtension(api, runner = runCli) {
           try {
             const result = await runner(nodePath, [script, 'tasks', folder.uri.fsPath], {
               cwd: folder.uri.fsPath,
-              env: { ...process.env, CODOVYN_DATA_DIR: join(context.globalStorageUri.fsPath, 'private'), CODOVYN_EVENT_STREAM: '1' },
+              env: { ...process.env, CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM: '1' },
               onChild: () => {}, onEvent: () => {},
             });
             panel.webview.postMessage({ type: 'tasks', tasks: result.tasks || [] });
@@ -108,7 +122,7 @@ function createExtension(api, runner = runCli) {
             try {
               const result = await runner(nodePath, [script, 'history', message.id, folder.uri.fsPath], {
                 cwd: folder.uri.fsPath,
-                env: { ...process.env, CODOVYN_DATA_DIR: join(context.globalStorageUri.fsPath, 'private'), CODOVYN_EVENT_STREAM: '1' },
+                env: { ...process.env, CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM: '1' },
                 onChild: () => {}, onEvent: () => {},
               });
               panel.webview.postMessage({ type: 'history', request: result.task.request, status: result.task.status,
@@ -132,7 +146,7 @@ function createExtension(api, runner = runCli) {
           try {
             const result = await runner(nodePath, [script, message.mode, folder.uri.fsPath, request], {
               cwd: folder.uri.fsPath,
-              env: { ...process.env, CODOVYN_DATA_DIR: join(context.globalStorageUri.fsPath, 'private'), CODOVYN_EVENT_STREAM: '1' },
+              env: { ...process.env, CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM: '1' },
               onChild: (child) => { active = child; },
               onEvent: (event) => {
                 const entries = timeline([event]);
@@ -154,4 +168,4 @@ function createExtension(api, runner = runCli) {
 }
 
 function activate(context) { createExtension(require('vscode')).activate(context); }
-module.exports = { activate, createExtension, runCli, timeline };
+module.exports = { activate, createExtension, dataDirectory, runCli, timeline };
