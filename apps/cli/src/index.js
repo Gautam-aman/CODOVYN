@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { AgentRegistry, AgentFailure } from '../../../packages/agent-core/src/index.js';
 import { TaskStore } from '../../../packages/storage/src/index.js';
 import { TaskEngine } from '../../../packages/task-engine/src/index.js';
-import { repositoryDiff, repositorySnapshot } from '../../../packages/git-engine/src/index.js';
+import { commitStaged, repositoryDiff, repositorySnapshot, stagePaths } from '../../../packages/git-engine/src/index.js';
 import { createCodexAdapter } from '../../../packages/agent-adapters/src/index.js';
 
 const usage = `Usage:
@@ -15,18 +15,26 @@ const usage = `Usage:
   codovyn tasks [repository]
   codovyn history <task-id> [repository]
   codovyn diff <repository> [--staged]
+  codovyn stage <repository> <path> [more paths]
+  codovyn commit <repository> <message>
 
 The demo simulates a quota handoff and makes no code changes.
 The Codex command runs the installed CLI in read-only mode.`;
 
 export async function main(args = process.argv.slice(2), output = console, signal) {
   const [mode, value, ...rest] = args;
-  if (!['demo', 'codex', 'tasks', 'history', 'diff'].includes(mode)) { output.error(usage); return 2; }
+  if (!['demo', 'codex', 'tasks', 'history', 'diff', 'stage', 'commit'].includes(mode)) { output.error(usage); return 2; }
   const stream = process.env.CODOVYN_EVENT_STREAM === '1';
   if (mode === 'diff') {
     if (!value || rest.some((argument) => argument !== '--staged')) { output.error(usage); return 2; }
     const diff = await repositoryDiff(value, { staged: rest.includes('--staged') });
     output.log(stream ? JSON.stringify({ type: 'result', diff }) : diff);
+    return 0;
+  }
+  if (mode === 'stage' || mode === 'commit') {
+    if (!value || !rest.length) { output.error(usage); return 2; }
+    const snapshot = mode === 'stage' ? await stagePaths(value, rest) : await commitStaged(value, rest.join(' '));
+    output.log(JSON.stringify(stream ? { type: 'result', snapshot } : snapshot, null, stream ? 0 : 2));
     return 0;
   }
   const dataDirectory = process.env.CODOVYN_DATA_DIR || join(homedir(), '.codovyn');

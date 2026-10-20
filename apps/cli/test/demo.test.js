@@ -40,6 +40,12 @@ test('CLI opens a real repository and persists a simulated handoff', async () =>
       encoding: 'utf8', env: { ...env, CODOVYN_EVENT_STREAM: '1' },
     }));
     assert.match(patch.diff, /\+changed/);
+    execFileSync('git', ['-C', repository, 'config', 'user.name', 'Test']);
+    execFileSync('git', ['-C', repository, 'config', 'user.email', 'test@example.invalid']);
+    execFileSync(process.execPath, [script, 'stage', repository, 'file.txt'], { encoding: 'utf8', env });
+    const committed = JSON.parse(execFileSync(process.execPath, [script, 'commit', repository, 'Save', 'change'], { encoding: 'utf8', env }));
+    assert.equal(committed.dirty, false);
+    assert.equal(execFileSync('git', ['-C', repository, 'log', '-1', '--format=%s'], { encoding: 'utf8' }).trim(), 'Save change');
     const another = join(directory, 'another');
     mkdirSync(another);
     execFileSync('git', ['-C', another, 'init', '-q', '-b', 'other']);
