@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { repositoryDiff, repositorySnapshot, stagePaths } from '../src/index.js';
+import { commitStaged, repositoryDiff, repositorySnapshot, stagePaths } from '../src/index.js';
 
 test('records real branch, commit and working-tree changes', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'codovyn-git-'));
@@ -62,5 +62,21 @@ test('stages selected repository files and rejects traversal', async () => {
     assert.match(await repositoryDiff(directory, { staged: true }), /chosen/);
     assert.ok(!(await repositoryDiff(directory, { staged: true })).includes('other.txt'));
     await assert.rejects(stagePaths(directory, ['../outside']), /repository-relative/);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('commits the selected index and leaves unstaged work alone', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'codovyn-commit-'));
+  try {
+    execFileSync('git', ['-C', directory, 'init', '-q', '-b', 'main']);
+    execFileSync('git', ['-C', directory, 'config', 'user.name', 'Test']);
+    execFileSync('git', ['-C', directory, 'config', 'user.email', 'test@example.invalid']);
+    writeFileSync(join(directory, 'staged.txt'), 'staged');
+    writeFileSync(join(directory, 'unstaged.txt'), 'unstaged');
+    await stagePaths(directory, ['staged.txt']);
+    const committed = await commitStaged(directory, 'Add staged file');
+    assert.match(committed.commit, /^[a-f0-9]{40}$/);
+    assert.deepEqual(committed.changedPaths, ['unstaged.txt']);
+    await assert.rejects(commitStaged(directory, 'No changes'), /No staged changes/);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });

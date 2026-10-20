@@ -1,7 +1,8 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { realpath } from 'node:fs/promises';
-import { isAbsolute } from 'node:path';
+import { mkdtemp, realpath, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { isAbsolute, join } from 'node:path';
 
 const execute = promisify(execFile);
 
@@ -44,5 +45,23 @@ export async function stagePaths(directory, paths) {
   }
   const root = (await repositorySnapshot(directory)).root;
   await execute('git', ['-C', root, 'add', '-A', '--', ...paths], { timeout: 30_000, maxBuffer: 1024 * 1024 });
+  return repositorySnapshot(root);
+}
+
+/** Commit the current index without executing repository-provided Git hooks. */
+export async function commitStaged(directory, message) {
+  if (typeof message !== 'string' || !message.trim() || message.length > 500 || message.includes('\0')) {
+    throw new TypeError('Commit message must contain 1 to 500 characters');
+  }
+  const root = (await repositorySnapshot(directory)).root;
+  try { await execute('git', ['-C', root, 'diff', '--cached', '--quiet'], { timeout: 10_000 }); }
+  catch (error) { if (error.code !== 1) throw error; }
+  const staged = await repositoryDiff(root, { staged: true });
+  if (!staged) throw new Error('No staged changes to commit');
+  const emptyHooks = await mkdtemp(join(tmpdir(), 'codovyn-hooks-'));
+  try {
+    await execute('git', ['-C', root, '-c', `core.hooksPath=${emptyHooks}`, 'commit', '-m', message],
+      { timeout: 30_000, maxBuffer: 1024 * 1024 });
+  } finally { await rm(emptyHooks, { recursive: true, force: true }); }
   return repositorySnapshot(root);
 }
