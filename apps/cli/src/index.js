@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { AgentRegistry, AgentFailure } from '../../../packages/agent-core/src/index.js';
 import { TaskStore } from '../../../packages/storage/src/index.js';
 import { TaskEngine } from '../../../packages/task-engine/src/index.js';
-import { commitStaged, repositoryDiff, repositorySnapshot, stagePaths } from '../../../packages/git-engine/src/index.js';
+import { commitStaged, pushCurrentBranch, repositoryDiff, repositorySnapshot, stagePaths } from '../../../packages/git-engine/src/index.js';
 import { createCodexAdapter } from '../../../packages/agent-adapters/src/index.js';
 
 const usage = `Usage:
@@ -17,13 +17,14 @@ const usage = `Usage:
   codovyn diff <repository> [--staged]
   codovyn stage <repository> <path> [more paths]
   codovyn commit <repository> <message>
+  codovyn push <repository> [remote]
 
 The demo simulates a quota handoff and makes no code changes.
 The Codex command runs the installed CLI in read-only mode.`;
 
 export async function main(args = process.argv.slice(2), output = console, signal) {
   const [mode, value, ...rest] = args;
-  if (!['demo', 'codex', 'tasks', 'history', 'diff', 'stage', 'commit'].includes(mode)) { output.error(usage); return 2; }
+  if (!['demo', 'codex', 'tasks', 'history', 'diff', 'stage', 'commit', 'push'].includes(mode)) { output.error(usage); return 2; }
   const stream = process.env.CODOVYN_EVENT_STREAM === '1';
   if (mode === 'diff') {
     if (!value || rest.some((argument) => argument !== '--staged')) { output.error(usage); return 2; }
@@ -35,6 +36,12 @@ export async function main(args = process.argv.slice(2), output = console, signa
     if (!value || !rest.length) { output.error(usage); return 2; }
     const snapshot = mode === 'stage' ? await stagePaths(value, rest) : await commitStaged(value, rest.join(' '));
     output.log(JSON.stringify(stream ? { type: 'result', snapshot } : snapshot, null, stream ? 0 : 2));
+    return 0;
+  }
+  if (mode === 'push') {
+    if (!value || rest.length > 1) { output.error(usage); return 2; }
+    const pushed = await pushCurrentBranch(value, rest[0] || 'origin');
+    output.log(JSON.stringify(stream ? { type: 'result', pushed } : pushed, null, stream ? 0 : 2));
     return 0;
   }
   const dataDirectory = process.env.CODOVYN_DATA_DIR || join(homedir(), '.codovyn');

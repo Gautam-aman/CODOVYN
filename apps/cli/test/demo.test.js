@@ -46,6 +46,11 @@ test('CLI opens a real repository and persists a simulated handoff', async () =>
     const committed = JSON.parse(execFileSync(process.execPath, [script, 'commit', repository, 'Save', 'change'], { encoding: 'utf8', env }));
     assert.equal(committed.dirty, false);
     assert.equal(execFileSync('git', ['-C', repository, 'log', '-1', '--format=%s'], { encoding: 'utf8' }).trim(), 'Save change');
+    const remote = join(directory, 'remote.git');
+    execFileSync('git', ['init', '--bare', '-q', remote]);
+    execFileSync('git', ['-C', repository, 'remote', 'add', 'origin', remote]);
+    const pushed = JSON.parse(execFileSync(process.execPath, [script, 'push', repository], { encoding: 'utf8', env }));
+    assert.equal(execFileSync('git', ['-C', remote, 'rev-parse', 'refs/heads/main'], { encoding: 'utf8' }).trim(), pushed.commit);
     const another = join(directory, 'another');
     mkdirSync(another);
     execFileSync('git', ['-C', another, 'init', '-q', '-b', 'other']);
