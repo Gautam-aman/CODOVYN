@@ -75,8 +75,10 @@ export async function pushCurrentBranch(directory, remote = 'origin') {
   if (!snapshot.branch || !snapshot.commit) throw new Error('A committed branch is required before pushing');
   const remotes = (await execute('git', ['-C', snapshot.root, 'remote'], { encoding: 'utf8', timeout: 10_000 })).stdout.split('\n');
   if (!remotes.includes(remote)) throw new Error(`Unknown Git remote: ${remote}`);
-  const result = await execute('git', ['-C', snapshot.root, 'push', '--porcelain', remote, `HEAD:refs/heads/${snapshot.branch}`],
-    { encoding: 'utf8', timeout: 60_000, maxBuffer: 1024 * 1024,
-      env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } });
-  return { branch: snapshot.branch, commit: snapshot.commit, remote, output: result.stdout.trim() };
+  try {
+    await execute('git', ['-C', snapshot.root, 'push', '--porcelain', remote, `HEAD:refs/heads/${snapshot.branch}`],
+      { encoding: 'utf8', timeout: 60_000, maxBuffer: 1024 * 1024,
+        env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } });
+  } catch { throw new Error('Git push failed; check remote access and branch state'); }
+  return { branch: snapshot.branch, commit: snapshot.commit, remote };
 }
