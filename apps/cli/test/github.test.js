@@ -39,6 +39,19 @@ test('CLI shows a selected issue without interpreting its body', async () => {
   assert.equal(await main(['issue', 'owner/repo', '--web'], { log: () => assert.fail(), error: () => {} }), 2);
 });
 
+test('CLI shows a selected pull request without checking it out', async () => {
+  const lines = [];
+  const github = { pullRequestDetails: async (repository, number) => {
+    assert.equal(repository, 'owner/repo');
+    assert.equal(number, 9);
+    return { number: 9, body: 'untrusted PR body' };
+  } };
+  const output = { log: (line) => lines.push(line), error: () => assert.fail('unexpected usage error') };
+  assert.equal(await main(['pr', 'owner/repo', '9'], output, undefined, github), 0);
+  assert.equal(JSON.parse(lines[0]).body, 'untrusted PR body');
+  assert.equal(await main(['pr', 'owner/repo', '--web'], { log: () => assert.fail(), error: () => {} }), 2);
+});
+
 test('CLI displays a selected PR patch without changing GitHub', async () => {
   const lines = [];
   const github = { pullRequestDiff: async (repository, number) => {
