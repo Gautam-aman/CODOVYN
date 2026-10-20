@@ -22,3 +22,15 @@ test('runs a local JSONL command through the Codex adapter without shell interpo
   for await (const event of adapter.run({ handoff: { request: 'Inspect this repository', snapshot: { branch: 'test' } } })) events.push(event);
   assert.deepEqual(events.map((event) => event.type), ['text', 'completed']);
 });
+
+test('cancels a running Codex subprocess without waiting for its reply', async () => {
+  const script = `process.stdin.resume(); process.stdin.on('end', () => setTimeout(() => console.log(JSON.stringify({type:'turn.completed'})), 5000));`;
+  const adapter = createCodexAdapter({ cwd: process.cwd(), command: process.execPath, prefixArgs: ['-e', script] });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 30);
+  try {
+    await assert.rejects(async () => {
+      for await (const _event of adapter.run({ handoff: { request: 'Inspect', snapshot: {} }, signal: controller.signal })) {}
+    }, (error) => error.kind === 'cancelled');
+  } finally { clearTimeout(timer); }
+});

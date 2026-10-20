@@ -1,5 +1,4 @@
 import { spawn, execFile } from 'node:child_process';
-import { once } from 'node:events';
 import { createInterface } from 'node:readline';
 import { promisify } from 'node:util';
 import { AgentFailure } from '../../agent-core/src/index.js';
@@ -41,11 +40,15 @@ export function createCodexAdapter({ cwd, command = 'codex', prefixArgs = [] }) 
       catch { return 'unavailable'; }
     },
     async *run({ handoff, signal }) {
+      if (signal?.aborted) throw new AgentFailure('cancelled', 'Codex was cancelled');
       const prompt = [handoff.request, '', 'Repository checkpoint:', JSON.stringify(handoff.snapshot)].join('\n');
       const child = spawn(command, [...prefixArgs, 'exec', '--json', '--sandbox', 'read-only', '-'], {
         cwd, stdio: ['pipe', 'pipe', 'pipe'], signal, shell: false,
       });
-      const closed = once(child, 'close');
+      let processError = null;
+      child.on('error', (error) => { processError = error; });
+      child.stdin.on('error', (error) => { processError = error; });
+      const closed = new Promise((resolve) => child.once('close', resolve));
       child.stdin.end(prompt);
       // Never include stderr in task events: provider logs can contain credentials.
       child.stderr.resume();
@@ -58,7 +61,8 @@ export function createCodexAdapter({ cwd, command = 'codex', prefixArgs = [] }) 
           const event = parseCodexEvent(raw);
           if (event) yield event;
         }
-        const [code] = await closed;
+        const code = await closed;
+        if (processError) throw processError;
         if (code !== 0) throw new AgentFailure('fatal', `Codex exited with status ${code}`);
       } catch (error) {
         if (!child.killed) child.kill();
