@@ -14,7 +14,10 @@ export async function runGh(args) {
       env: { ...process.env, GH_PROMPT_DISABLED: '1' },
     });
     return stdout;
-  } catch {
+  } catch (error) {
+    if (error.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') {
+      throw new Error('GitHub response exceeds the 1 MiB display limit');
+    }
     throw new Error('GitHub CLI request failed; check gh installation, authentication, and repository access');
   }
 }
@@ -57,6 +60,17 @@ export async function listPullRequests(repository, { limit = 30, run = runGh } =
     headRefName: pullRequest.headRefName, baseRefName: pullRequest.baseRefName,
     isDraft: pullRequest.isDraft,
   }));
+}
+
+/** A bounded read-only PR patch for review, with no checkout or PR code execution. */
+export async function pullRequestDiff(repository, number, { run = runGh } = {}) {
+  validateRepository(repository);
+  if (!Number.isSafeInteger(number) || number < 1) throw new TypeError('Pull request number must be positive');
+  const patch = await run(['pr', 'diff', String(number), '--repo', repository, '--color', 'never', '--patch']);
+  if (typeof patch !== 'string' || Buffer.byteLength(patch) > 1024 * 1024) {
+    throw new Error('GitHub response exceeds the 1 MiB display limit');
+  }
+  return patch;
 }
 
 /** Create an issue only when explicitly invoked, using existing gh authorization. */
