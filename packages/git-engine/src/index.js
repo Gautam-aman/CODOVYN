@@ -1,6 +1,8 @@
 import { execFile } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { createReadStream } from 'node:fs';
 import { promisify } from 'node:util';
-import { mkdtemp, realpath, rm } from 'node:fs/promises';
+import { lstat, mkdtemp, readlink, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
 
@@ -18,9 +20,25 @@ export async function repositorySnapshot(directory) {
   let commit = null;
   try { commit = await git('rev-parse', '--verify', 'HEAD'); }
   catch (error) { if (error.code !== 128) throw error; }
-  const porcelain = await git('status', '--porcelain=v1', '-z', '--no-renames', '--untracked-files=normal');
+  const porcelain = await git('status', '--porcelain=v1', '-z', '--no-renames', '--untracked-files=all');
   const changedPaths = porcelain.split('\0').filter(Boolean).map((record) => record.slice(3));
-  return { root, branch: branch || null, commit, dirty: changedPaths.length > 0, changedPaths };
+  const hash = createHash('sha256');
+  hash.update(await git('diff', '--cached', '--raw', '-z', '--no-ext-diff', '--no-textconv'));
+  for (const path of [...changedPaths].sort()) {
+    const absolute = join(root, path);
+    let info;
+    try { info = await lstat(absolute); }
+    catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+      hash.update(JSON.stringify([path, 'deleted']));
+      continue;
+    }
+    hash.update(JSON.stringify([path, info.mode & 0o777, info.size]));
+    if (info.isSymbolicLink()) hash.update(await readlink(absolute));
+    else if (info.isFile()) for await (const chunk of createReadStream(absolute)) hash.update(chunk);
+  }
+  return { root, branch: branch || null, commit, dirty: changedPaths.length > 0,
+    changedPaths, workingTreeHash: hash.digest('hex') };
 }
 
 /** A bounded, read-only patch for the active repository. */

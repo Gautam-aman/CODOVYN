@@ -1,7 +1,7 @@
 import { AgentFailure } from '../../agent-core/src/index.js';
 
 function repositoryChanged(before, after) {
-  return ['root', 'branch', 'commit', 'dirty'].some((field) => before?.[field] !== after?.[field]) ||
+  return ['root', 'branch', 'commit', 'dirty', 'workingTreeHash'].some((field) => before?.[field] !== after?.[field]) ||
     JSON.stringify(before?.changedPaths ?? []) !== JSON.stringify(after?.changedPaths ?? []);
 }
 

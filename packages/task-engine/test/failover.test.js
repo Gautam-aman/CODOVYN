@@ -57,6 +57,21 @@ test('repository changes during an unreported agent attempt stop automatic hando
   store.close();
 });
 
+test('same-path content changes also stop automatic handoff', async () => {
+  const store = new TaskStore(':memory:');
+  store.create({ id: 'task', request: 'Inspect', primaryAgent: 'primary', fallbackAgents: ['backup'] });
+  const registry = new AgentRegistry();
+  let backupCalls = 0;
+  registry.register(agent('primary', async function* () { throw new AgentFailure('quota', 'limit'); }));
+  registry.register(agent('backup', async function* () { backupCalls++; yield { type: 'completed' }; }));
+  let snapshots = 0;
+  const engine = new TaskEngine({ store, registry, snapshot: async () => ({ root: '/repo', branch: 'main',
+    commit: 'abc', dirty: true, changedPaths: ['file.txt'], workingTreeHash: String(++snapshots) }) });
+  assert.equal((await engine.run('task')).status, 'interrupted');
+  assert.equal(backupCalls, 0);
+  store.close();
+});
+
 test('unavailable primary is checkpointed before the backup starts', async () => {
   const { store, registry, engine } = setup();
   registry.register({ id: 'primary', capabilities: {}, availability: async () => { throw new Error('CLI missing'); },

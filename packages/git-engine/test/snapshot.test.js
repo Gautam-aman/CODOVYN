@@ -22,6 +22,10 @@ test('records real branch, commit and working-tree changes', async () => {
     const dirty = await repositorySnapshot(directory);
     assert.deepEqual(dirty.changedPaths, ['file.txt']);
     assert.equal(dirty.commit, clean.commit);
+    writeFileSync(join(directory, 'file.txt'), 'modified again');
+    const dirtyAgain = await repositorySnapshot(directory);
+    assert.deepEqual(dirtyAgain.changedPaths, dirty.changedPaths);
+    assert.notEqual(dirtyAgain.workingTreeHash, dirty.workingTreeHash);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 
