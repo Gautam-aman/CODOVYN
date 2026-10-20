@@ -90,3 +90,24 @@ test('refuses to delete a running task', () => {
   assert.ok(store.get('live'));
   store.close();
 });
+
+test('prunes only bounded finished tasks in the selected repository', () => {
+  const store = new TaskStore(':memory:');
+  for (const [id, root, status] of [
+    ['done-a', '/a', 'completed'], ['done-b', '/a', 'cancelled'],
+    ['unfinished', '/a', 'interrupted'], ['other-repo', '/b', 'completed'],
+  ]) {
+    store.create({ id, request: id, repositoryRoot: root, primaryAgent: 'alpha' });
+    store.update(id, { status, activeAgent: 'alpha', step: 0 });
+    store.append(id, 'checkpoint', { id });
+  }
+  const future = new Date(Date.now() + 60_000).toISOString();
+  assert.equal(store.prune({ before: future, repositoryRoot: '/a', limit: 1 }).length, 1);
+  assert.equal(store.prune({ before: future, repositoryRoot: '/a' }).length, 1);
+  assert.ok(store.get('unfinished'));
+  assert.ok(store.get('other-repo'));
+  assert.deepEqual(store.prune({ before: future, repositoryRoot: '/a' }), []);
+  assert.throws(() => store.prune({ before: 'tomorrow', repositoryRoot: '/a' }), /Invalid retention cutoff/);
+  assert.throws(() => store.prune({ before: future, repositoryRoot: '/a', limit: 1001 }), /Limit must be/);
+  store.close();
+});
