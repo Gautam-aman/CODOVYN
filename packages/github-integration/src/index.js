@@ -150,6 +150,38 @@ export async function previewPullRequest(repository, { base, head }, { run = run
   return { repository, base, head, diff };
 }
 
+/** Create a same-repository PR only after a caller approves the exact preview. */
+export async function createPullRequest(repository, { base, head, title, body, draft = false },
+  { run = runGh, approve } = {}) {
+  if (typeof approve !== 'function') throw new TypeError('PR creation requires an approval callback');
+  if (typeof title !== 'string' || !title.trim() || title.length > 256 || title.includes('\0')) {
+    throw new TypeError('PR title must contain 1 to 256 characters');
+  }
+  if (typeof body !== 'string' || !body.trim() || body.length > 65_536 || body.includes('\0')) {
+    throw new TypeError('PR body must contain 1 to 65536 characters');
+  }
+  if (typeof draft !== 'boolean') throw new TypeError('Draft must be a boolean');
+  const preview = await previewPullRequest(repository, { base, head }, { run });
+  if (await approve({ ...preview, title, body, draft }) !== true) return { approved: false };
+  const current = await previewPullRequest(repository, { base, head }, { run });
+  if (current.diff !== preview.diff) throw new Error('PR diff changed after approval; review it again');
+  const temporary = await mkdtemp(join(tmpdir(), 'codovyn-pr-'));
+  try {
+    const bodyFile = join(temporary, 'body.md');
+    await writeFile(bodyFile, body, { mode: 0o600 });
+    const args = ['pr', 'create', '--repo', repository, '--base', base, '--head', head,
+      '--title', title, '--body-file', bodyFile, ...(draft ? ['--draft'] : [])];
+    let output;
+    try { output = (await run(args)).trim(); }
+    catch { throw new Error('PR creation result is uncertain; verify on GitHub before retrying'); }
+    const match = /^https:\/\/github\.com\/[^/]+\/[^/]+\/pull\/([1-9]\d*)$/.exec(output);
+    if (!match || new URL(output).pathname.toLowerCase() !== `/${repository}/pull/${match[1]}`.toLowerCase()) {
+      throw new Error('PR creation result is uncertain; verify on GitHub before retrying');
+    }
+    return { approved: true, number: Number(match[1]), url: output };
+  } finally { await rm(temporary, { recursive: true, force: true }); }
+}
+
 /** Create an issue only when explicitly invoked, using existing gh authorization. */
 export async function createIssue(repository, { title, body, labels = [] }, { run = runGh } = {}) {
   validateRepository(repository);
