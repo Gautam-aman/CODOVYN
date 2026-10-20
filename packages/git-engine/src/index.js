@@ -87,6 +87,23 @@ export async function commitStaged(directory, message) {
   return repositorySnapshot(root);
 }
 
+/** Create and enter a new local branch without running repository hooks. */
+export async function createBranch(directory, name) {
+  if (typeof name !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._/-]{0,99}$/.test(name)) {
+    throw new TypeError('Invalid Git branch name');
+  }
+  const snapshot = await repositorySnapshot(directory);
+  if (!snapshot.commit) throw new Error('Commit the repository before creating a branch');
+  try { await execute('git', ['-C', snapshot.root, 'check-ref-format', '--branch', name], { timeout: 10_000 }); }
+  catch { throw new TypeError('Invalid Git branch name'); }
+  const emptyHooks = await mkdtemp(join(tmpdir(), 'codovyn-hooks-'));
+  try {
+    await execute('git', ['-C', snapshot.root, '-c', `core.hooksPath=${emptyHooks}`, 'switch', '-c', name],
+      { timeout: 30_000, maxBuffer: 1024 * 1024 });
+  } finally { await rm(emptyHooks, { recursive: true, force: true }); }
+  return repositorySnapshot(snapshot.root);
+}
+
 /** Push the current branch to an already configured remote without force. */
 export async function pushCurrentBranch(directory, remote = 'origin') {
   if (typeof remote !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(remote)) {

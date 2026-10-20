@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { commitStaged, pushCurrentBranch, repositoryDiff, repositorySnapshot, stagePaths } from '../src/index.js';
+import { commitStaged, createBranch, pushCurrentBranch, repositoryDiff, repositorySnapshot, stagePaths } from '../src/index.js';
 
 test('records real branch, commit and working-tree changes', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'codovyn-git-'));
@@ -96,6 +96,31 @@ test('commits a staged patch larger than the diff display limit', async () => {
     await assert.rejects(repositoryDiff(directory, { staged: true }), /display limit/);
     const committed = await commitStaged(directory, 'Store large staged change');
     assert.match(committed.commit, /^[a-f0-9]{40}$/);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('creates a local branch while preserving work and skipping checkout hooks', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'codovyn-branch-'));
+  const git = (...args) => execFileSync('git', ['-C', directory, ...args], { stdio: 'pipe' });
+  try {
+    git('init', '-q', '-b', 'main');
+    writeFileSync(join(directory, 'file.txt'), 'initial');
+    git('add', 'file.txt');
+    git('-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '-qm', 'initial');
+    writeFileSync(join(directory, 'file.txt'), 'work in progress');
+    if (process.platform !== 'win32') {
+      const hook = join(directory, '.git', 'hooks', 'post-checkout');
+      writeFileSync(hook, '#!/bin/sh\ntouch hook-ran\n');
+      chmodSync(hook, 0o755);
+    }
+    const before = await repositorySnapshot(directory);
+    const after = await createBranch(directory, 'feature/work');
+    assert.equal(after.branch, 'feature/work');
+    assert.equal(after.commit, before.commit);
+    assert.equal(after.workingTreeHash, before.workingTreeHash);
+    assert.equal(existsSync(join(directory, 'hook-ran')), false);
+    await assert.rejects(createBranch(directory, '--force'), /Invalid Git branch name/);
+    await assert.rejects(createBranch(directory, 'bad..name'), /Invalid Git branch name/);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 
