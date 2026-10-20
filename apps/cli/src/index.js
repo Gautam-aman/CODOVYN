@@ -18,6 +18,7 @@ const usage = `Usage:
   codovyn auto <repository> <request>
   codovyn tasks [repository]
   codovyn history <task-id> [repository]
+  codovyn task-delete <task-id> [repository]
   codovyn diff <repository> [--staged]
   codovyn stage <repository> <path> [more paths]
   codovyn commit <repository> <message>
@@ -35,7 +36,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
   github = { createIssue, listIssues, listPullRequests, pullRequestDiff },
   adapters = { createCodexAdapter, createClaudeAdapter }) {
   const [mode, value, ...rest] = args;
-  if (!['demo', 'codex', 'claude', 'auto', 'tasks', 'history', 'diff', 'stage', 'commit', 'push', 'issues', 'prs', 'pr-diff', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
+  if (!['demo', 'codex', 'claude', 'auto', 'tasks', 'history', 'task-delete', 'diff', 'stage', 'commit', 'push', 'issues', 'prs', 'pr-diff', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
   const stream = process.env.CODOVYN_EVENT_STREAM === '1';
   if (mode === 'pr-diff') {
     if (!value || rest.length !== 1 || !/^[1-9]\d*$/.test(rest[0])) { output.error(usage); return 2; }
@@ -86,13 +87,18 @@ export async function main(args = process.argv.slice(2), output = console, signa
       output.log(JSON.stringify(stream ? { type: 'result', tasks } : tasks, null, stream ? 0 : 2));
       return 0;
     }
-    if (mode === 'history') {
-      if (!value) { output.error(usage); return 2; }
+    if (mode === 'history' || mode === 'task-delete') {
+      if (!value || rest.length > 1) { output.error(usage); return 2; }
       const task = store.get(value);
       if (!task) { output.error(`Unknown task: ${value}`); return 1; }
       if (rest[0] && task.repositoryRoot !== (await repositorySnapshot(rest[0])).root) {
         output.error('Task belongs to a different repository');
         return 1;
+      }
+      if (mode === 'task-delete') {
+        store.delete(value);
+        output.log(JSON.stringify(stream ? { type: 'result', deleted: true, taskId: value } : { deleted: true, taskId: value }));
+        return 0;
       }
       output.log(JSON.stringify(stream ? { type: 'result', task, events: store.events(value) }
         : { task, events: store.events(value) }, null, stream ? 0 : 2));

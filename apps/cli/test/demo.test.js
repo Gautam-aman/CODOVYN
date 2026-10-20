@@ -55,6 +55,7 @@ test('CLI opens a real repository and persists a simulated handoff', async () =>
     mkdirSync(another);
     execFileSync('git', ['-C', another, 'init', '-q', '-b', 'other']);
     assert.throws(() => execFileSync(process.execPath, [script, 'history', result.taskId, another], { encoding: 'utf8', env, stdio: 'pipe' }));
+    assert.throws(() => execFileSync(process.execPath, [script, 'task-delete', result.taskId, another], { encoding: 'utf8', env, stdio: 'pipe' }));
 
     const streamed = execFileSync(process.execPath, [script, 'demo', repository, 'Inspect'], {
       encoding: 'utf8', env: { ...env, CODOVYN_EVENT_STREAM: '1' },
@@ -62,5 +63,8 @@ test('CLI opens a real repository and persists a simulated handoff', async () =>
     assert.ok(streamed.some((line) => line.type === 'event' && line.event.kind === 'handoff'));
     assert.equal(streamed.at(-1).type, 'result');
     assert.equal(streamed.at(-1).status, 'completed');
+    const deleted = JSON.parse(execFileSync(process.execPath, [script, 'task-delete', result.taskId, repository], { encoding: 'utf8', env }));
+    assert.deepEqual(deleted, { deleted: true, taskId: result.taskId });
+    assert.throws(() => execFileSync(process.execPath, [script, 'history', result.taskId], { encoding: 'utf8', env, stdio: 'pipe' }));
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
