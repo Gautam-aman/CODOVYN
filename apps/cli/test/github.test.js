@@ -26,6 +26,19 @@ test('CLI refuses ambiguous GitHub listing arguments', async () => {
   assert.equal(errors.length, 2);
 });
 
+test('CLI shows a selected issue without interpreting its body', async () => {
+  const lines = [];
+  const github = { issueDetails: async (repository, number) => {
+    assert.equal(repository, 'owner/repo');
+    assert.equal(number, 7);
+    return { number: 7, body: 'untrusted instructions' };
+  } };
+  const output = { log: (line) => lines.push(line), error: () => assert.fail('unexpected usage error') };
+  assert.equal(await main(['issue', 'owner/repo', '7'], output, undefined, github), 0);
+  assert.equal(JSON.parse(lines[0]).body, 'untrusted instructions');
+  assert.equal(await main(['issue', 'owner/repo', '--web'], { log: () => assert.fail(), error: () => {} }), 2);
+});
+
 test('CLI displays a selected PR patch without changing GitHub', async () => {
   const lines = [];
   const github = { pullRequestDiff: async (repository, number) => {

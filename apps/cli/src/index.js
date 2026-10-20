@@ -10,7 +10,7 @@ import { TaskStore } from '../../../packages/storage/src/index.js';
 import { TaskEngine } from '../../../packages/task-engine/src/index.js';
 import { commitStaged, createBranch, fetchRemote, pullFastForward, pushCurrentBranch, repositoryDiff, repositorySnapshot, stagePaths } from '../../../packages/git-engine/src/index.js';
 import { createClaudeAdapter, createCodexAdapter } from '../../../packages/agent-adapters/src/index.js';
-import { createIssue, listIssues, listPullRequests, pullRequestDiff } from '../../../packages/github-integration/src/index.js';
+import { createIssue, issueDetails, listIssues, listPullRequests, pullRequestDiff } from '../../../packages/github-integration/src/index.js';
 
 const usage = `Usage:
   codovyn demo <repository> <request>
@@ -30,6 +30,7 @@ const usage = `Usage:
   codovyn pull <repository> [remote]
   codovyn push <repository> [remote]
   codovyn issues <owner/repo>
+  codovyn issue <owner/repo> <number>
   codovyn prs <owner/repo>
   codovyn pr-diff <owner/repo> <number>
   codovyn issue-create <owner/repo> <title> <body-file> [labels]
@@ -46,11 +47,17 @@ async function confirmDeletion() {
 }
 
 export async function main(args = process.argv.slice(2), output = console, signal,
-  github = { createIssue, listIssues, listPullRequests, pullRequestDiff },
+  github = { createIssue, issueDetails, listIssues, listPullRequests, pullRequestDiff },
   adapters = { createCodexAdapter, createClaudeAdapter }) {
   const [mode, value, ...rest] = args;
-  if (!['demo', 'codex', 'claude', 'auto', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'prs', 'pr-diff', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
+  if (!['demo', 'codex', 'claude', 'auto', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr-diff', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
   const stream = process.env.CODOVYN_EVENT_STREAM === '1';
+  if (mode === 'issue') {
+    if (!value || rest.length !== 1 || !/^[1-9]\d*$/.test(rest[0])) { output.error(usage); return 2; }
+    const issue = await github.issueDetails(value, Number(rest[0]));
+    output.log(JSON.stringify(stream ? { type: 'result', issue } : issue, null, stream ? 0 : 2));
+    return 0;
+  }
   if (mode === 'pr-diff') {
     if (!value || rest.length !== 1 || !/^[1-9]\d*$/.test(rest[0])) { output.error(usage); return 2; }
     const patch = await github.pullRequestDiff(value, Number(rest[0]));
