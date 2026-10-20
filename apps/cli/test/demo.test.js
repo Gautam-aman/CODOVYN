@@ -30,6 +30,9 @@ test('CLI opens a real repository and persists a simulated handoff', async () =>
     assert.ok(tasks.some((task) => task.id === result.taskId && task.status === 'completed'));
     const scoped = JSON.parse(execFileSync(process.execPath, [script, 'tasks', repository], { encoding: 'utf8', env }));
     assert.ok(scoped.some((task) => task.id === result.taskId));
+    const status = JSON.parse(execFileSync(process.execPath, [script, 'status', repository], { encoding: 'utf8', env }));
+    assert.equal(status.branch, 'main');
+    assert.equal(status.dirty, false);
     const streamedHistory = JSON.parse(execFileSync(process.execPath, [script, 'history', result.taskId], {
       encoding: 'utf8', env: { ...env, CODOVYN_EVENT_STREAM: '1' },
     }));

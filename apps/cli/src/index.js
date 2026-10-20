@@ -22,6 +22,7 @@ const usage = `Usage:
   codovyn task-delete <task-id> [repository] [--yes]
   codovyn task-prune <repository> <before-ISO-time> [--yes]
   codovyn diff <repository> [--staged]
+  codovyn status <repository>
   codovyn stage <repository> <path> [more paths]
   codovyn commit <repository> <message>
   codovyn branch <repository> <new-name>
@@ -48,7 +49,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
   github = { createIssue, listIssues, listPullRequests, pullRequestDiff },
   adapters = { createCodexAdapter, createClaudeAdapter }) {
   const [mode, value, ...rest] = args;
-  if (!['demo', 'codex', 'claude', 'auto', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'prs', 'pr-diff', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
+  if (!['demo', 'codex', 'claude', 'auto', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'prs', 'pr-diff', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
   const stream = process.env.CODOVYN_EVENT_STREAM === '1';
   if (mode === 'pr-diff') {
     if (!value || rest.length !== 1 || !/^[1-9]\d*$/.test(rest[0])) { output.error(usage); return 2; }
@@ -75,6 +76,12 @@ export async function main(args = process.argv.slice(2), output = console, signa
     if (!value || rest.some((argument) => argument !== '--staged')) { output.error(usage); return 2; }
     const diff = await repositoryDiff(value, { staged: rest.includes('--staged') });
     output.log(stream ? JSON.stringify({ type: 'result', diff }) : diff);
+    return 0;
+  }
+  if (mode === 'status') {
+    if (!value || rest.length) { output.error(usage); return 2; }
+    const snapshot = await repositorySnapshot(value);
+    output.log(JSON.stringify(stream ? { type: 'result', snapshot } : snapshot, null, stream ? 0 : 2));
     return 0;
   }
   if (mode === 'stage' || mode === 'commit') {
