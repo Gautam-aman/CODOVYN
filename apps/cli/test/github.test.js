@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { main } from '../src/index.js';
 
 test('CLI lists issues and PRs through the selected GitHub repository', async () => {
@@ -21,4 +24,21 @@ test('CLI refuses ambiguous GitHub listing arguments', async () => {
   assert.equal(await main(['issues'], output), 2);
   assert.equal(await main(['prs', 'owner/repo', '--web'], output), 2);
   assert.equal(errors.length, 2);
+});
+
+test('CLI creates an issue only through its explicit command and body file', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'codovyn-cli-issue-'));
+  try {
+    const bodyFile = join(directory, 'issue.md');
+    writeFileSync(bodyFile, 'Reproduce the defect.');
+    const lines = [];
+    const github = { createIssue: async (repository, issue) => {
+      assert.equal(repository, 'owner/repo');
+      assert.deepEqual(issue, { title: 'Fix defect', body: 'Reproduce the defect.', labels: ['bug'] });
+      return { number: 12, url: 'https://github.com/owner/repo/issues/12' };
+    } };
+    assert.equal(await main(['issue-create', 'owner/repo', 'Fix defect', bodyFile, 'bug'],
+      { log: (line) => lines.push(line), error: () => assert.fail('unexpected usage error') }, undefined, github), 0);
+    assert.equal(JSON.parse(lines[0]).number, 12);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
 });

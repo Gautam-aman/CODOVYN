@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { randomUUID } from 'node:crypto';
 import { homedir } from 'node:os';
+import { readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { AgentRegistry, AgentFailure } from '../../../packages/agent-core/src/index.js';
@@ -8,7 +9,7 @@ import { TaskStore } from '../../../packages/storage/src/index.js';
 import { TaskEngine } from '../../../packages/task-engine/src/index.js';
 import { commitStaged, pushCurrentBranch, repositoryDiff, repositorySnapshot, stagePaths } from '../../../packages/git-engine/src/index.js';
 import { createCodexAdapter } from '../../../packages/agent-adapters/src/index.js';
-import { listIssues, listPullRequests } from '../../../packages/github-integration/src/index.js';
+import { createIssue, listIssues, listPullRequests } from '../../../packages/github-integration/src/index.js';
 
 const usage = `Usage:
   codovyn demo <repository> <request>
@@ -21,15 +22,25 @@ const usage = `Usage:
   codovyn push <repository> [remote]
   codovyn issues <owner/repo>
   codovyn prs <owner/repo>
+  codovyn issue-create <owner/repo> <title> <body-file> [labels]
 
 The demo simulates a quota handoff and makes no code changes.
 The Codex command runs the installed CLI in read-only mode.`;
 
 export async function main(args = process.argv.slice(2), output = console, signal,
-  github = { listIssues, listPullRequests }) {
+  github = { createIssue, listIssues, listPullRequests }) {
   const [mode, value, ...rest] = args;
-  if (!['demo', 'codex', 'tasks', 'history', 'diff', 'stage', 'commit', 'push', 'issues', 'prs'].includes(mode)) { output.error(usage); return 2; }
+  if (!['demo', 'codex', 'tasks', 'history', 'diff', 'stage', 'commit', 'push', 'issues', 'prs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
   const stream = process.env.CODOVYN_EVENT_STREAM === '1';
+  if (mode === 'issue-create') {
+    const [title, bodyFile, ...labels] = rest;
+    if (!value || !title || !bodyFile || labels.length > 10) { output.error(usage); return 2; }
+    const file = await stat(bodyFile);
+    if (!file.isFile() || file.size > 65_536) throw new Error('Issue body file must be a regular file up to 65536 bytes');
+    const created = await github.createIssue(value, { title, body: await readFile(bodyFile, 'utf8'), labels });
+    output.log(JSON.stringify(stream ? { type: 'result', created } : created, null, stream ? 0 : 2));
+    return 0;
+  }
   if (mode === 'issues' || mode === 'prs') {
     if (!value || rest.length) { output.error(usage); return 2; }
     const items = mode === 'issues' ? await github.listIssues(value) : await github.listPullRequests(value);
