@@ -10,7 +10,7 @@ CODOVYN is an open-source project building a local-first development environment
 
 - A local SQLite task journal stores requests, agent events, checkpoints, and handoff history.
 - A task engine switches to an ordered fallback after a structured quota or temporary failure when no tool action ran. Any prior tool action requires reconciliation before retry or handoff, even if completion was recorded.
-- Restart recovery resumes a task with no unfinished tool action. Repository checkpoints record the real branch, commit, and changed paths.
+- Restart recovery resumes a task with no tool action only when its recorded repository baseline still matches. Checkpoints record the real branch, commit, changed paths, and a local working-tree fingerprint.
 - Read-only Codex CLI and Claude Code adapters consume structured stream events using the user's existing CLI authentication. Their live provider paths have **not** been exercised in CI.
 - A deterministic demo flow lets contributors inspect a simulated quota handoff without provider credentials or code edits.
 - A CLI opens real Git repositories and displays saved task history.
@@ -80,7 +80,7 @@ The [Codex CLI reference](https://learn.chatgpt.com/docs/developer-commands?surf
 
 `packages/agent-core` defines the adapter registry and failure categories. `packages/agent-adapters` contains the Codex and Claude CLI bridges. `packages/storage` owns durable SQLite state. `packages/task-engine` coordinates runs and handoffs. `packages/git-engine` handles local repository operations. `packages/github-integration` handles issue and PR metadata through the GitHub CLI. `apps/cli` exposes the runtime, and `apps/vscode-extension` provides the editor panel.
 
-The [architecture decision](docs/architecture/0001-local-runtime.md) explains the local runtime boundary. The [roadmap](docs/development/roadmap.md) records dependencies and the requested 100-commit target. Current progress must be read from Git history.
+The [local runtime decision](docs/architecture/0001-local-runtime.md) explains package boundaries, and the [handoff verification decision](docs/architecture/0002-repository-handoff-verification.md) explains repository checks and their limits. The [roadmap](docs/development/roadmap.md) records dependencies and the requested 100-commit target. Current progress must be read from Git history.
 
 ## Development
 
@@ -95,7 +95,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution steps and [SECURITY.md](
 
 ## Roadmap
 
-The next release gates are live VS Code host validation and streaming progress, a second supported agent integration, permission-aware editing, primary-agent restoration, complete Git/GitHub workflows, and security and accessibility verification. A standalone desktop application and optional cloud services follow a separate technical evaluation. The current runtime must not be described as release-ready.
+The next release gates are live VS Code host and provider validation, permission-aware editing, primary-agent restoration, complete Git/GitHub workflows, and security and accessibility verification. A standalone desktop application and optional cloud services follow a separate technical evaluation. The current runtime must not be described as release-ready.
 
 ## License
 
