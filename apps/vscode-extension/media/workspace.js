@@ -115,6 +115,7 @@ const inspectAgents = document.createElement('button'); inspectAgents.type = 'bu
 const geminiSetup = document.createElement('button'); geminiSetup.type = 'button'; geminiSetup.textContent = 'Gemini authentication guide';
 geminiSetup.addEventListener('click', () => vscode.postMessage({ type: 'gemini-setup' }));
 const policyStatus = document.createElement('p'); policyStatus.setAttribute('role', 'status');
+let savedAgentPolicy = null;
 const agentCards = document.createElement('ul'); agentCards.className = 'agent-cards'; agentCards.setAttribute('aria-label', 'Agent diagnostics');
 agentSettings.append(automaticLabel, modelLabel, policySave, inspectAgents, geminiSetup, policyStatus, agentCards);
 document.querySelector('.composer').after(agentSettings);
@@ -126,10 +127,11 @@ policySave.addEventListener('click', () => {
 inspectAgents.addEventListener('click', () => vscode.postMessage({ type: 'agent-diagnostics' }));
 window.addEventListener('message', ({ data }) => {
   if (data.type === 'agent-policy') {
+    savedAgentPolicy = data.policy;
     primaryProvider.value = data.policy.primary; firstBackup.value = data.policy.fallbacks[0] || '';
     secondBackup.value = data.policy.fallbacks[1] || ''; automaticSwitch.checked = data.policy.automatic;
     geminiModel.value = data.policy.geminiModel; policyStatus.textContent = data.text;
-    inspectAgents.disabled = false;
+    inspectAgents.disabled = false; agentCards.replaceChildren();
     if (data.text.startsWith('Agent preferences saved')) agent.value = 'configured';
   } else if (data.type === 'agent-diagnostics-loading') {
     inspectAgents.disabled = true; policyStatus.textContent = 'Inspecting installed CLIs. No provider task is started.';
@@ -137,9 +139,12 @@ window.addEventListener('message', ({ data }) => {
     inspectAgents.disabled = false; agentCards.replaceChildren(); policyStatus.textContent = 'Authentication and provider availability remain unknown until observed.';
     for (const entry of data.agents || []) {
       const card = document.createElement('li'); const title = document.createElement('strong'); title.textContent = entry.id;
+      const role = document.createElement('p');
+      const backupIndex = savedAgentPolicy?.fallbacks.indexOf(entry.id) ?? -1;
+      role.textContent = savedAgentPolicy?.primary === entry.id ? 'Saved primary agent' : backupIndex >= 0 ? `Saved backup ${backupIndex + 1} · automatic switching ${savedAgentPolicy.automatic ? 'enabled' : 'disabled'}` : 'Not in saved project policy';
       const description = document.createElement('p'); description.textContent = `${entry.installation}. Authentication: ${entry.authentication}. Availability: ${entry.availability}.`;
       const capabilities = document.createElement('p'); capabilities.textContent = `Capabilities: ${Object.entries(entry.capabilities || {}).filter(([, enabled]) => enabled === true).map(([name]) => name).join(', ')}`;
-      card.append(title, description, capabilities); agentCards.append(card);
+      card.append(title, role, description, capabilities); agentCards.append(card);
     }
   } else if (data.type === 'agent-diagnostics-error') {
     inspectAgents.disabled = false; policyStatus.textContent = data.text;
