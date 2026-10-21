@@ -43,7 +43,9 @@ async function validateDraft(repository, draftsDirectory, taskId, baseCommit) {
   const common = await realpath(resolve(root, (await git(root, ['rev-parse', '--git-common-dir'])).trim()));
   const draftCommon = await realpath(resolve(path, (await git(path, ['rev-parse', '--git-common-dir'])).trim()));
   if (common !== draftCommon) throw new Error('Draft belongs to a different Git repository');
-  if ((await git(path, ['rev-parse', '--show-toplevel'])).trim() !== path) throw new Error('Invalid draft worktree');
+  if (await realpath((await git(path, ['rev-parse', '--show-toplevel'])).trim()) !== path) {
+    throw new Error('Invalid draft worktree');
+  }
   if ((await git(path, ['rev-parse', 'HEAD'])).trim() !== baseCommit) {
     throw new Error('Draft HEAD changed; review committed changes manually before continuing');
   }
