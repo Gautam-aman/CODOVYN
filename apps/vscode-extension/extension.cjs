@@ -42,6 +42,7 @@ function timeline(events) {
     if (entry.kind === 'draft-created') return [{ type: 'checkpoint', text: 'Created an isolated edit draft' }];
     if (entry.kind === 'draft-accepted') return [{ type: 'complete', text: 'Applied the reviewed draft to the repository' }];
     if (entry.kind === 'draft-rejected') return [{ type: 'checkpoint', text: 'Discarded the edit draft' }];
+    if (entry.kind === 'routing-decision') return [{type:'agent',text:`Routing: ${entry.data.explanation} · cost ${entry.data.selected?.estimatedUsd??'unknown'} · estimate only`}];
     if (entry.kind === 'draft-reconciled') return [{type:'checkpoint',text:`Recovery: ${entry.data.decision}; ambiguous actions were not replayed`}];
     if (entry.kind === 'checkpoint') return [{ type: 'checkpoint', text: 'Saved a task checkpoint' }];
     if (entry.kind === 'handoff-prepared') return [{ type: 'checkpoint', text: `Prepared verified context with ${entry.data.packet.actions.length} recorded action(s)` }];
@@ -330,7 +331,7 @@ function createExtension(api, runner = runCli) {
             return;
           }
           if (message.type !== 'run' || active || starting || draftBusy || disposed) return;
-          if (!['configured', 'configured-edit', 'demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit'].includes(message.mode) || typeof message.request !== 'string') return;
+          if (!['routed','routed-edit','configured', 'configured-edit', 'demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit'].includes(message.mode) || typeof message.request !== 'string') return;
           const request = message.request.trim();
           if (!request || request.length > 10000) return;
           const folder = folderForTask();
@@ -340,11 +341,32 @@ function createExtension(api, runner = runCli) {
           }
           const taskPolicy = loadAgentPolicy();
           starting = true;
-          const editMode = ['configured-edit', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit'].includes(message.mode);
+          const editMode = ['routed-edit','configured-edit', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit'].includes(message.mode);
+          let taskRouting;
+          let routeSummary='';
+          if (['routed','routed-edit'].includes(message.mode)) {
+            try {
+              taskRouting=structuredClone(api.workspace.getConfiguration('codovyn',folder.uri).get('routingPolicy',{}));
+              if (!taskRouting || typeof taskRouting!=='object' || Array.isArray(taskRouting)) throw new Error('Configure codovyn.routingPolicy in Settings JSON first.');
+              if (editMode) taskRouting.requiredCapabilities=[...new Set([...(taskRouting.requiredCapabilities||[]),'writes'])];
+              const serialized=JSON.stringify(taskRouting);
+              if(serialized.length>65536)throw new Error('Routing settings exceed the local size limit.');
+              const preview=await runner(runtimePath(api,context),[join(context.extensionPath,'apps','cli','src','index.js'),'route',folder.uri.fsPath,request],{
+                cwd:folder.uri.fsPath,env:{...process.env,CODOVYN_EVENT_STREAM:'1',CODOVYN_ROUTING_POLICY:serialized},onChild:()=>{},onEvent:()=>{}});
+              if (!preview.routing?.selected) throw new Error('No eligible model. Check capabilities, reasoning, availability and estimated budget settings.');
+              const choice=preview.routing.selected;
+              routeSummary=`${choice.provider} / ${choice.model}. Estimated task cost: ${choice.estimatedUsd===null?'unknown':`USD ${choice.estimatedUsd}`}. Admission estimate only; spending is not capped by the CLI.`;
+              panel.webview.postMessage({type:'routing-preview',routing:preview.routing});
+              if (!editMode) {
+                const approval=await api.window.showWarningMessage('Send this task to the selected model?',{modal:true,detail:routeSummary},'Use selected model');
+                if(approval!=='Use selected model'||disposed||folderForTask()!==folder){starting=false;panel.webview.postMessage({type:'approval-dismissed'});return;}
+              }
+            } catch {starting=false;panel.webview.postMessage({type:'error',text:'Routing could not authorize a model. Configure codovyn.routingPolicy in Settings JSON and review availability, capabilities and budgets.'});return;}
+          }
           if (editMode) {
             panel.webview.postMessage({ type: 'approval-pending' });
-            const agentName = message.mode === 'configured-edit' ? [taskPolicy.primary, ...(taskPolicy.automatic ? taskPolicy.fallbacks : [])].join(' and ') : message.mode === 'gemini-edit' ? 'Gemini CLI' : message.mode === 'auto-gemini-edit' ? 'Codex and Gemini CLI' : message.mode === 'claude-edit' ? 'Claude Code' : message.mode === 'auto-edit' ? 'Codex and Claude Code' : 'Codex';
-            const detail = message.mode === 'configured-edit'
+            const agentName = message.mode==='routed-edit'?'the selected model':message.mode === 'configured-edit' ? [taskPolicy.primary, ...(taskPolicy.automatic ? taskPolicy.fallbacks : [])].join(' and ') : message.mode === 'gemini-edit' ? 'Gemini CLI' : message.mode === 'auto-gemini-edit' ? 'Codex and Gemini CLI' : message.mode === 'claude-edit' ? 'Claude Code' : message.mode === 'auto-edit' ? 'Codex and Claude Code' : 'Codex';
+            const detail = message.mode==='routed-edit'?`${routeSummary} Only this provider receives the task. Codex may execute local draft commands; Gemini uses restricted file tools. Review is required before applying edits.`:message.mode === 'configured-edit'
               ? 'The configured providers may receive this task and repository context. Codex may run local draft commands; Gemini and Claude use restricted file tools. Automatic handoff stops after write-capable actions. You will review the patch before applying it.'
               : message.mode === 'gemini-edit'
               ? 'Gemini may edit files inside a separate Git worktree using restricted file tools. Shell commands are unavailable. You will review a patch before changes reach the open repository.'
@@ -380,7 +402,7 @@ function createExtension(api, runner = runCli) {
             const result = await runner(nodePath, [script, message.mode, folder.uri.fsPath, request,
               ...(editMode ? ['--allow-writes'] : [])], {
               cwd: folder.uri.fsPath,
-              env: { ...process.env, CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM: '1', CODOVYN_AGENT_POLICY: JSON.stringify(taskPolicy) },
+              env: { ...process.env, CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM: '1', CODOVYN_AGENT_POLICY: JSON.stringify(taskPolicy), ...(taskRouting?{CODOVYN_ROUTING_POLICY:JSON.stringify(taskRouting)}:{}) },
               onChild: (child) => { active = child; },
               onEvent: (event) => {
                 const entries = timeline([event]);

@@ -72,6 +72,8 @@ editOption.textContent = 'Codex CLI · edit draft';
 agent.append(editOption);
 for (const [value, label] of [
   ['configured', 'Project agents · read only'],
+  ['routed','Model routing · read only'],
+  ['routed-edit','Model routing · edit draft'],
   ['configured-edit', 'Project agents · edit draft'],
   ['gemini', 'Gemini CLI · read only (experimental)'],
   ['gemini-edit', 'Gemini CLI · edit draft (experimental)'],
@@ -324,6 +326,9 @@ window.addEventListener('message', ({ data }) => {
     run.disabled = draftWorking;
     project.disabled = draftWorking;
     updateDraftActions();
+  } else if (data.type === 'routing-preview') {
+    diffOutput.textContent=JSON.stringify(data.routing,null,2);
+    status.textContent='Routing decision — estimate only';
   } else if (data.type === 'draft-reconciled') {
     recoveryTask=null;recoveryActions.hidden=true;currentTaskId=data.taskId;draftAvailable=true;reviewedHash=null;
     status.textContent='Draft preserved. Review the patch; no provider was started.';updateDraftActions();

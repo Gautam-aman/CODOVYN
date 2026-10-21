@@ -32,6 +32,13 @@
           "type": "string",
           "default": "node",
           "description": "Path to a Node.js 26 or newer executable used by the local runtime."
+        },
+        "codovyn.routingPolicy": {
+          "type": "object",
+          "default": {},
+          "scope": "resource",
+          "restricted": true,
+          "description": "Explicit local model catalogue and routing policy. Configure in Settings JSON; no prices or model access are inferred. See docs/agents/routing.md."
         }
       }
     }
