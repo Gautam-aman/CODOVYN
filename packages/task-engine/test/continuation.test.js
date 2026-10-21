@@ -12,12 +12,14 @@ test('explicit continuation preserves unknown actions, verifies state and never 
  store.append('task','agent-event',{agent:'codex',event:{type:'tool-start',actionId:'ambiguous-write',action:'command_execution'}});
  const state={root:'/draft',commit:'base',workingTreeHash:'partial',dirty:true};const fingerprint=recoveryFingerprint(state);
  store.append('task','draft-reconciled',{decision:'preserve',fingerprint,actionResolution:'unknown; no replay authorized'});
- let calls=0;const registry=new AgentRegistry();registry.register({id:'gemini',capabilities:{writes:true},availability:async()=> 'available',async *run({handoff}){
+ let calls=0;const registry=new AgentRegistry();registry.register({id:'gemini',capabilities:{writes:true,shell:false},availability:async()=> 'available',async *run({handoff}){
    calls++;const packet=createHandoffPacket(handoff);assert.equal(packet.actions[0].state,'unresolved');assert.equal(packet.reconciliations.length,2);
    throw new AgentFailure('quota','controlled interruption');
  }});
+ registry.register({id:'codex',capabilities:{shell:true},availability:async()=> 'available',async *run(){assert.fail('dangerous replay');}});
  const engine=new TaskEngine({store,registry,snapshot:async()=>state});
  await assert.rejects(engine.run('task',{continuation:{agent:'gemini',fingerprint:'stale'}}),/reconciled continuation/);
+ await assert.rejects(engine.run('task',{continuation:{agent:'codex',fingerprint}}),/file-only adapter/);
  assert.equal(calls,0);
  assert.equal((await engine.run('task',{continuation:{agent:'gemini',fingerprint}})).status,'interrupted');
  assert.equal(calls,1);await assert.rejects(engine.run('task',{continuation:{agent:'gemini',fingerprint}}),/Reconcile again/);

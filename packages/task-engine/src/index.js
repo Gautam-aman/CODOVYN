@@ -80,7 +80,7 @@ export class TaskEngine {
       if(records.findLast(event=>event.kind==='continuation-approved')?.seq>=(reconciled?.seq??0))throw new Error('Reconcile again before another continuation');
       if (task.status!=='interrupted' || reconciled?.data.decision!=='preserve' ||
           reconciled.data.fingerprint!==continuation.fingerprint || typeof continuation.agent!=='string') throw new Error('Explicit reconciled continuation is required');
-      this.registry.require(continuation.agent);
+      if(this.registry.require(continuation.agent).capabilities.shell!==false)throw new Error('Recovered continuation requires a file-only adapter; command replay is not authorized');
       approvedRepository=await this.snapshot();
       if (recoveryFingerprint(approvedRepository)!==continuation.fingerprint) throw new Error('Draft changed since reconciliation');
       this.#record(id,'continuation-approved',{agent:continuation.agent,fingerprint:continuation.fingerprint,

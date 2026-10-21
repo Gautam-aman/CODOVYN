@@ -48,7 +48,7 @@ export function createCodexAdapter({ cwd, command = 'codex', prefixArgs = [], wr
   if (reasoning!==undefined && (!model || !['none','minimal','low','medium','high','xhigh','max','ultra'].includes(reasoning))) throw new TypeError('Invalid Codex reasoning selection');
   return {
     id: 'codex',
-    capabilities: { streaming: true, resume: false, tools: true, writes: write, authenticationStatus: false, usage: true },
+    capabilities: { shell:true, streaming: true, resume: false, tools: true, writes: write, authenticationStatus: false, usage: true },
     async availability() {
       try { await execute(command, [...prefixArgs, '--version'], { timeout: 5000, env: agentEnvironment() }); return 'available'; }
       catch { return 'unavailable'; }
@@ -116,7 +116,7 @@ export function createClaudeAdapter({ cwd, command = 'claude', prefixArgs = [], 
   if (typeof write !== 'boolean') throw new TypeError('Write permission must be explicit');
   return {
     id: 'claude',
-    capabilities: { streaming: true, resume: false, tools: true, writes: write,
+    capabilities: { shell:false, streaming: true, resume: false, tools: true, writes: write,
       authenticationStatus: false, usage: true },
     async availability() {
       try { await execute(command, [...prefixArgs, '--version'], { timeout: 5000, env: agentEnvironment() }); return 'available'; }

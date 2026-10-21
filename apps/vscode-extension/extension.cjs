@@ -223,6 +223,7 @@ function createExtension(api, runner = runCli) {
                 if (!api.workspace.isTrusted || !inspection || inspection.taskId!==message.id || !inspection.recoverySafe) return;
                 const provider=loadAgentPolicy().primary;
                 if(message.type==='draft-continue'&&!inspection.continuationReady)return;
+                if(message.type==='draft-continue'&&provider==='codex'){panel.webview.postMessage({type:'diff-error',text:'Recovered continuation requires a file-only agent. Select Gemini or Claude as project primary, then inspect again. Codex command-enabled recovery remains blocked.'});return;}
                 const label=message.type==='draft-continue'?`Continue with ${provider}`:message.type==='draft-abandon'?'Abandon execution':'Preserve for review';
                 const approval=await api.window.showWarningMessage(`${label}?`,{modal:true,
                   detail:message.type==='draft-continue'?'This sends the original task and verified draft context to the selected provider with write permission. Inspect ambiguous command effects first. Only this provider starts; failed continuation requires fresh reconciliation. No action log is replayed.':'No action will be replayed. Ambiguous tool outcomes remain unknown. Draft files are preserved for patch review; no provider will start.'},label);
