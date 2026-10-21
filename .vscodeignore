@@ -1,0 +1,11 @@
+.github/**
+docs/**
+scripts/**
+**/test/**
+package-lock.json
+.gitignore
+.vscodeignore
+.vscode-test/**
+apps/vscode-extension/host/**
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md

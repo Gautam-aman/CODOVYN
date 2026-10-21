@@ -1,0 +1,7 @@
+{
+  "name": "@codovyn/cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": { "codovyn": "./src/index.js" }
+}

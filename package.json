@@ -1,0 +1,54 @@
+{
+  "name": "codovyn",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "displayName": "CODOVYN",
+  "publisher": "codovyn-local",
+  "description": "Local-first agent tasks and visible handoffs inside VS Code",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Gautam-aman/CODOVYN.git"
+  },
+  "main": "./apps/vscode-extension/extension.cjs",
+  "engines": {
+    "node": ">=26",
+    "vscode": "^1.100.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "codovyn.open",
+        "title": "CODOVYN: Open Agent Workspace"
+      }
+    ],
+    "configuration": {
+      "title": "CODOVYN",
+      "properties": {
+        "codovyn.nodePath": {
+          "type": "string",
+          "default": "node",
+          "description": "Path to a Node.js 26 or newer executable used by the local runtime."
+        }
+      }
+    }
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "check": "node scripts/check-syntax.js && node --test",
+    "test:extension-host": "node scripts/run-extension-host.js",
+    "vscode:prepublish": "npm run check",
+    "package:extension": "vsce package --no-dependencies --githubBranch feat/codovyn-platform --out codovyn-dev.vsix"
+  },
+  "devDependencies": {
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^4.0.0"
+  }
+}
