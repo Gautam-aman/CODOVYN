@@ -9,6 +9,7 @@ on:
       - 'apps/cli/**'
       - 'packages/**'
       - 'scripts/run-desktop-host.js'
+      - 'scripts/run-desktop-restoration.js'
       - '.github/workflows/desktop.yml'
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -32,4 +33,5 @@ jobs:
       - run: npm run check
       - run: npm run build:desktop
       - run: npm run test:desktop-host
+      - run: npm run test:desktop-restoration
       - run: npm run package:desktop
