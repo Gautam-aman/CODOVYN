@@ -188,3 +188,5 @@ export function createClaudeAdapter({ cwd, command = 'claude', prefixArgs = [], 
     },
   };
 }
+
+export { createGeminiAdapter } from './gemini.js';
