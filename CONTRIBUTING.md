@@ -45,7 +45,9 @@ and the [standalone campaign](docs/development/standalone-campaign.md).
 
 For approachable desktop work, see [welcome shortcut hints (#12)](https://github.com/Gautam-aman/CODOVYN/issues/12)
 and [appearance controls (#10)](https://github.com/Gautam-aman/CODOVYN/issues/10).
-Native lifecycle contributors can help with [two-launch restoration tests (#13)](https://github.com/Gautam-aman/CODOVYN/issues/13).
+The two-launch restoration test (#13) is now implemented: run `npm run test:desktop-restoration`. Advanced provider contributors can help with [managed Gemini policy compatibility (#14)](https://github.com/Gautam-aman/CODOVYN/issues/14).
 Check existing issues before opening another one. Windows/Linux installers and
 public signing are not available yet. The repository is currently private;
 external participation requires maintainer-provided access.
+
+See the [Gemini integration guide](docs/agents/gemini.md) for deterministic tests and the current authentication blocker. Provider fixture tests require no paid account; never describe them as live compatibility evidence.

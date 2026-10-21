@@ -40,6 +40,10 @@ See the [Gemini guide](docs/agents/gemini.md). Portable handoff packets are dura
 automatic continuation after writes and primary restoration remain unavailable.
 Recovery inspection preserves and exposes ambiguous state without replaying it.
 
+![Project-specific agent preferences in CODOVYN Desktop](docs/assets/desktop-agent-settings.png)
+
+Native capture of the saved project-agent controls beside code changed by an authorized Codex draft. This demonstrates configuration, not authenticated Gemini execution.
+
 ## Shared runtime and companion extension
 
 - A local SQLite task journal stores requests, agent events, checkpoints, and handoff history.
