@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+import { hostname } from 'node:os';
 import { createHandoffPacket } from '../../agent-core/src/handoff.js';
 import { AgentFailure } from '../../agent-core/src/index.js';
 
@@ -46,7 +48,20 @@ export class TaskEngine {
     return verified ? repository : null;
   }
 
-  async run(id, { signal } = {}) {
+  async run(id, options = {}) {
+    const token = randomUUID();
+    this.store.claimExecution(id, { token, pid: process.pid, host: hostname() });
+    const start = this.#record(id, 'execution-owned', { token });
+    try { return await this.#runOwned(id, options); }
+    finally {
+      const events = this.store.events(id).filter(event => event.seq > start);
+      const process = events.findLast(event => ['provider-starting', 'provider-spawned', 'provider-stopped'].includes(event.kind));
+      // Failed cleanup or a registration gap must retain ownership for reconciliation.
+      if (!process || process.kind === 'provider-stopped') this.store.releaseExecution(id, token);
+    }
+  }
+
+  async #runOwned(id, { signal } = {}) {
     if (this.#running.has(id)) throw new Error(`Task already running: ${id}`);
     const task = this.store.get(id);
     if (!task) throw new Error(`Unknown task: ${id}`);
@@ -141,7 +156,14 @@ export class TaskEngine {
         this.#record(task.id, 'agent-started', { agent: id, repository: baseline });
         const handoff = { request: task.request, step: task.step, history: this.store.events(task.id), snapshot: baseline };
         this.#record(task.id, 'handoff-prepared', { agent: id, packet: createHandoffPacket(handoff) });
-        for await (const event of agent.run({ taskId: task.id, handoff, signal })) {
+        for await (const event of agent.run({ taskId: task.id, handoff, signal, execution: {
+          starting: () => this.#record(task.id, 'provider-starting', { agent: id }),
+          spawned: ({ pid, group }) => {
+            if (!Number.isSafeInteger(pid) || pid < 1 || typeof group !== 'boolean') throw new Error('Invalid provider process');
+            this.#record(task.id, 'provider-spawned', { agent: id, pid, group });
+          },
+          stopped: () => this.#record(task.id, 'provider-stopped', { agent: id }),
+        } })) {
           if (signal?.aborted) return this.#cancel(task, id);
           if (!event || typeof event.type !== 'string') throw new Error('Malformed agent event');
           if (event.type === 'tool-start') {

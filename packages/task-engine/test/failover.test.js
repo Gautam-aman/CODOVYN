@@ -277,7 +277,7 @@ test('emits progress only after the corresponding event is durable', async () =>
   registry.register(agent('primary', async function* () { yield { type: 'completed', text: 'done' }; }));
   registry.register(agent('backup', async function* () { yield { type: 'completed' }; }));
   assert.equal((await engine.run('task')).status, 'completed');
-  assert.deepEqual(notified, ['agent-started', 'handoff-prepared', 'agent-event', 'task-completed']);
+  assert.deepEqual(notified, ['execution-owned', 'agent-started', 'handoff-prepared', 'agent-event', 'task-completed']);
   store.close();
 });
 

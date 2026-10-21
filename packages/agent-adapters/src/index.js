@@ -51,18 +51,21 @@ export function createCodexAdapter({ cwd, command = 'codex', prefixArgs = [], wr
       try { await execute(command, [...prefixArgs, '--version'], { timeout: 5000, env: agentEnvironment() }); return 'available'; }
       catch { return 'unavailable'; }
     },
-    async *run({ handoff, signal }) {
+    async *run({ handoff, signal, execution }) {
       if (signal?.aborted) throw new AgentFailure('cancelled', 'Codex was cancelled');
       const prompt = formatHandoffPrompt(handoff) + (write
         ? '\n\nWork only inside this isolated draft workspace. Do not commit, push, deploy, or modify files outside this worktree. Run relevant local checks and report what changed.' : '');
+      execution?.starting();
       const child = spawn(command, [...prefixArgs, 'exec', '--json', '--sandbox', write ? 'workspace-write' : 'read-only', '-'], {
         cwd, env: agentEnvironment(), stdio: ['pipe', 'pipe', 'pipe'], shell: false, detached: process.platform !== 'win32',
       });
       const lifecycle = manageAgentProcess(child, signal);
-      child.stdin.end(prompt);
+
       // Never include stderr in task events: provider logs can contain credentials.
       child.stderr.resume();
       try {
+        execution?.spawned({ pid: child.pid, group: process.platform !== 'win32' });
+        child.stdin.end(prompt);
         for await (const line of createInterface({ input: child.stdout, crlfDelay: Infinity })) {
           if (line.length > 1024 * 1024) throw new AgentFailure('fatal', 'Codex event exceeds size limit');
           let raw;
@@ -77,7 +80,7 @@ export function createCodexAdapter({ cwd, command = 'codex', prefixArgs = [], wr
       } catch (error) {
         if (signal?.aborted) throw new AgentFailure('cancelled', 'Codex was cancelled');
         throw error;
-      } finally { await lifecycle.dispose(); }
+      } finally { await lifecycle.dispose(); execution?.stopped(); }
     },
   };
 }
@@ -116,7 +119,7 @@ export function createClaudeAdapter({ cwd, command = 'claude', prefixArgs = [], 
       try { await execute(command, [...prefixArgs, '--version'], { timeout: 5000, env: agentEnvironment() }); return 'available'; }
       catch { return 'unavailable'; }
     },
-    async *run({ handoff, signal }) {
+    async *run({ handoff, signal, execution }) {
       if (signal?.aborted) throw new AgentFailure('cancelled', 'Claude Code was cancelled');
       const prompt = formatHandoffPrompt(handoff) + (write
         ? '\n\nEdit only this isolated draft workspace. Do not commit, push, deploy, or modify files outside the worktree. Shell commands are unavailable in this mode; report checks the user should run.' : '');
@@ -126,15 +129,18 @@ export function createClaudeAdapter({ cwd, command = 'claude', prefixArgs = [], 
         '--permission-mode', write ? 'acceptEdits' : 'plan', '--permission-prompts', 'none',
         '--tools', write ? 'Read,Glob,Grep,Edit,Write' : 'Read,Glob,Grep',
         '--disallowedTools', 'mcp__*', '--no-session-persistence'];
+      execution?.starting();
       const child = spawn(command, args, { cwd, env: agentEnvironment(), stdio: ['pipe', 'pipe', 'pipe'], shell: false,
         detached: process.platform !== 'win32' });
       const lifecycle = manageAgentProcess(child, signal);
-      child.stdin.end(prompt);
+
       // Provider diagnostics can contain secrets and must not enter task history.
       child.stderr.resume();
       let sawText = false;
       const activeTools = new Map();
       try {
+        execution?.spawned({ pid: child.pid, group: process.platform !== 'win32' });
+        child.stdin.end(prompt);
         for await (const line of createInterface({ input: child.stdout, crlfDelay: Infinity })) {
           if (line.length > 1024 * 1024) throw new AgentFailure('fatal', 'Claude Code event exceeds size limit');
           let raw;
@@ -177,6 +183,7 @@ export function createClaudeAdapter({ cwd, command = 'claude', prefixArgs = [], 
         throw error;
       } finally {
         await lifecycle.dispose();
+        execution?.stopped();
       }
     },
   };

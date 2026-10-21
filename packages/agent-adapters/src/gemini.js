@@ -66,7 +66,7 @@ export function createGeminiAdapter({ cwd, command = 'gemini', prefixArgs = [], 
         return ['--admin-policy', '--output-format', '--extensions'].every(flag => stdout.includes(flag)) ? 'available' : 'unavailable';
       } catch { return 'unavailable'; }
     },
-    async *run({ handoff, signal }) {
+    async *run({ handoff, signal, execution }) {
       if (signal?.aborted) throw new AgentFailure('cancelled', 'Gemini cancelled');
       await assertUnmanaged();
       const root = await realpath(cwd);
@@ -83,9 +83,11 @@ export function createGeminiAdapter({ cwd, command = 'gemini', prefixArgs = [], 
           '--output-format', 'stream-json', '--approval-mode', 'default', '--admin-policy', policy,
           '--extensions', 'none', '--allowed-mcp-server-names', `codovyn-disabled-${randomUUID()}`,
           ...(model ? ['--model', model] : [])];
+        execution?.starting();
         const child = spawn(command, args, { cwd, shell: false, detached: process.platform !== 'win32',
           stdio: ['pipe', 'pipe', 'pipe'], env: { ...agentEnvironment(), GEMINI_CLI_SYSTEM_SETTINGS_PATH: settings } });
         lifecycle = manageAgentProcess(child, signal);
+        execution?.spawned({ pid: child.pid, group: process.platform !== 'win32' });
         child.stderr.resume();
         child.stdin.end(formatHandoffPrompt(handoff) + '\nUse absolute forward-slash file paths inside this draft, without dot-dot or escaped path components. Use only permitted file tools. Never execute shell, deploy, commit or push. Report tests for the user to run.');
         const active = new Map();
@@ -117,7 +119,7 @@ export function createGeminiAdapter({ cwd, command = 'gemini', prefixArgs = [], 
         if (signal?.aborted) throw new AgentFailure('cancelled', 'Gemini cancelled');
         throw error;
       } finally {
-        if (lifecycle) await lifecycle.dispose();
+        if (lifecycle) { await lifecycle.dispose(); execution?.stopped(); }
         await rm(directory, { recursive: true, force: true });
       }
     },
