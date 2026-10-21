@@ -1,4 +1,4 @@
-:root { color-scheme: light dark; }
+:root { color-scheme: light dark; --codovyn-inherited-background: var(--vscode-editor-background); --codovyn-inherited-foreground: var(--vscode-editor-foreground); --codovyn-inherited-accent: var(--vscode-button-background); --codovyn-inherited-border: var(--vscode-panel-border); }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--vscode-editor-background); color: var(--vscode-editor-foreground); font: 13px/1.5 var(--vscode-font-family, system-ui); }
 main { width: min(100%, 760px); min-height: 100vh; margin: auto; padding: 32px clamp(20px, 5vw, 56px); }
@@ -41,4 +41,17 @@ li.handoff { color: var(--vscode-textLink-foreground); font-weight: 600; }
 li.error { color: var(--vscode-errorForeground); }
 #empty, footer { color: var(--vscode-descriptionForeground); }
 footer { margin-top: 70px; font-size: 12px; }
+.appearance { margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--vscode-panel-border); }
+summary { cursor: pointer; font-weight: 600; }
+summary:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 4px; }
+.appearance p { color: var(--vscode-descriptionForeground); font-size: 12px; }
+.theme-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(115px, 1fr)); gap: 10px; }
+.theme-card { display: grid; gap: 7px; padding: 8px; text-align: left; border: 1px solid var(--vscode-panel-border); background: var(--vscode-input-background); color: var(--vscode-editor-foreground); font-size: 12px; }
+.theme-card:hover:not(:disabled) { background: var(--vscode-input-background); border-color: var(--vscode-focusBorder); }
+.theme-card[aria-pressed="true"] { outline: 2px solid var(--vscode-focusBorder); outline-offset: 1px; }
+.theme-preview { display: grid; align-content: center; gap: 5px; height: 48px; padding: 9px; border: 1px solid var(--vscode-panel-border); border-radius: 4px; background: var(--vscode-editor-background); }
+.theme-preview i { display: block; width: 60%; height: 3px; background: var(--vscode-editor-foreground); }
+.theme-preview i:nth-child(2) { width: 82%; background: var(--vscode-button-background); }
+.theme-preview i:nth-child(3) { width: 45%; }
+.theme-preview[data-codovyn-theme="inherit"] { --vscode-editor-background: var(--codovyn-inherited-background); --vscode-editor-foreground: var(--codovyn-inherited-foreground); --vscode-button-background: var(--codovyn-inherited-accent); --vscode-panel-border: var(--codovyn-inherited-border); }
 @media (prefers-reduced-motion: no-preference) { button { transition: background-color 120ms ease; } }

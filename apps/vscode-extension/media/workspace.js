@@ -9,6 +9,55 @@ const empty = document.getElementById('empty');
 const tasks = document.getElementById('tasks');
 const refresh = document.getElementById('refresh');
 const diffOutput = document.getElementById('diff-output');
+const appearance = document.createElement('details');
+appearance.className = 'appearance';
+const appearanceSummary = document.createElement('summary');
+appearanceSummary.textContent = 'Appearance';
+const themeHelp = document.createElement('p');
+themeHelp.textContent = 'Preview on hover or focus. Select a theme to save it. Follow VS Code keeps your editor’s theme and system preferences.';
+const themeGrid = document.createElement('div');
+themeGrid.className = 'theme-grid';
+themeGrid.setAttribute('role', 'group');
+themeGrid.setAttribute('aria-label', 'Panel theme');
+const themeStatus = document.createElement('p');
+themeStatus.setAttribute('role', 'status');
+themeStatus.setAttribute('aria-live', 'polite');
+appearance.append(appearanceSummary, themeHelp, themeGrid, themeStatus);
+document.querySelector('footer').before(appearance);
+let savedTheme = 'inherit';
+
+function renderThemes(data) {
+  savedTheme = data.selectedTheme || 'inherit';
+  document.body.dataset.codovynTheme = savedTheme;
+  themeStatus.textContent = data.text || '';
+  if (themeGrid.childElementCount) {
+    for (const button of themeGrid.children) button.setAttribute('aria-pressed', String(button.dataset.themeId === savedTheme));
+    return;
+  }
+  themeGrid.replaceChildren();
+  for (const entry of [{ id: 'inherit', name: 'Follow VS Code', kind: 'Automatic' }, ...(data.themes || [])]) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'theme-card';
+    button.dataset.themeId = entry.id;
+    button.setAttribute('aria-pressed', String(savedTheme === entry.id));
+    button.setAttribute('aria-label', `${entry.name}, ${entry.kind}`);
+    const preview = document.createElement('span');
+    preview.className = 'theme-preview';
+    preview.dataset.codovynTheme = entry.id;
+    preview.setAttribute('aria-hidden', 'true');
+    for (let index = 0; index < 3; index++) preview.append(document.createElement('i'));
+    const label = document.createElement('span');
+    label.textContent = entry.name.replace('CODOVYN ', '');
+    button.append(preview, label);
+    button.addEventListener('pointerenter', () => { document.body.dataset.codovynTheme = entry.id; });
+    button.addEventListener('pointerleave', () => { document.body.dataset.codovynTheme = savedTheme; });
+    button.addEventListener('focus', () => { document.body.dataset.codovynTheme = entry.id; });
+    button.addEventListener('blur', () => { document.body.dataset.codovynTheme = savedTheme; });
+    button.addEventListener('click', () => vscode.postMessage({ type: 'theme-select', id: entry.id }));
+    themeGrid.append(button);
+  }
+}
 const projectLabel = document.createElement('label');
 projectLabel.htmlFor = 'project';
 projectLabel.textContent = 'Project';
@@ -90,7 +139,9 @@ request.addEventListener('keydown', (event) => {
 
 window.addEventListener('message', ({ data }) => {
   if (!data || typeof data !== 'object') return;
-  if (data.type === 'projects') {
+  if (data.type === 'appearance') {
+    renderThemes(data);
+  } else if (data.type === 'projects') {
     project.replaceChildren();
     for (const entry of data.projects || []) {
       const option = document.createElement('option');
