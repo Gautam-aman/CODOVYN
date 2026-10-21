@@ -34,7 +34,7 @@ test('isolated draft reviews tracked and new files before applying to the origin
     const applied = await acceptDraftWorkspace(repository, drafts, 'task_one', draft.baseCommit, review.patchHash);
     assert.deepEqual(applied.changedPaths, review.changedPaths);
     assert.equal(readFileSync(join(repository, 'README.md'), 'utf8').replaceAll('\r\n', '\n'), 'after\n');
-    assert.equal(readFileSync(join(repository, 'new.txt'), 'utf8'), 'new file\n');
+    assert.equal(readFileSync(join(repository, 'new.txt'), 'utf8').replaceAll('\r\n', '\n'), 'new file\n');
     assert.equal(existsSync(draft.path), false);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
