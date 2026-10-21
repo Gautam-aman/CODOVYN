@@ -22,6 +22,10 @@ CODOVYN is an open-source project building a local-first development environment
 
 This is a genuine capture of the current extension panel in VS Code 1.142.0 on macOS. The desktop IDE, GitHub bots, routing UI, and website remain planned work.
 
+![A live Codex edit draft reviewed in the VS Code panel](docs/assets/vscode-live-draft-review.png)
+
+This second capture shows a real Codex edit in a disposable repository, reviewed before application. The displayed one-line patch was later applied with the explicit CLI approval command. The panel's apply confirmation still needs end-to-end host verification.
+
 ## Quick start
 
 Requirements: Node.js 26 or newer and Git. These commands were verified on macOS with Node 26.9.0.
