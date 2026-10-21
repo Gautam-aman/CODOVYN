@@ -168,8 +168,17 @@ let currentTaskId = null;
 let draftAvailable = false;
 let reviewedHash = null;
 let draftWorking = false;
+let recoveryTask = null;
+const recoveryActions=document.createElement('div');recoveryActions.className='draft-actions';
+for(const [type,label] of [['draft-reconcile','Preserve for review'],['draft-abandon','Abandon execution, keep draft']]) {
+ const button=document.createElement('button');button.type='button';button.textContent=label;
+ button.addEventListener('click',()=>{if(recoveryTask)vscode.postMessage({type,id:recoveryTask});});
+ recoveryActions.append(button);
+}
+recoveryActions.hidden=true;document.querySelector('.diff').append(recoveryActions);
 
 function updateDraftActions() {
+  for(const button of recoveryActions.children) button.disabled=draftWorking || !recoveryTask;
   reviewDraft.disabled = draftWorking || !draftAvailable || !currentTaskId;
   acceptDraft.disabled = draftWorking || !reviewedHash;
   rejectDraft.disabled = draftWorking || !draftAvailable || !currentTaskId || reviewedHash === null;
@@ -315,7 +324,13 @@ window.addEventListener('message', ({ data }) => {
     run.disabled = draftWorking;
     project.disabled = draftWorking;
     updateDraftActions();
+  } else if (data.type === 'draft-reconciled') {
+    recoveryTask=null;recoveryActions.hidden=true;currentTaskId=data.taskId;draftAvailable=true;reviewedHash=null;
+    status.textContent='Draft preserved. Review the patch; no provider was started.';updateDraftActions();
+    reviewDraft.focus();
   } else if (data.type === 'recovery-inspection') {
+    recoveryTask=data.inspection.recoverySafe?data.inspection.taskId:null;
+    recoveryActions.hidden=!recoveryTask;
     reviewedHash = null; draftAvailable = false; updateDraftActions();
     diffOutput.textContent = JSON.stringify(data.inspection, null, 2);
     status.textContent = 'Recovery inspection only — no provider started';

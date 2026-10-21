@@ -42,6 +42,7 @@ function timeline(events) {
     if (entry.kind === 'draft-created') return [{ type: 'checkpoint', text: 'Created an isolated edit draft' }];
     if (entry.kind === 'draft-accepted') return [{ type: 'complete', text: 'Applied the reviewed draft to the repository' }];
     if (entry.kind === 'draft-rejected') return [{ type: 'checkpoint', text: 'Discarded the edit draft' }];
+    if (entry.kind === 'draft-reconciled') return [{type:'checkpoint',text:`Recovery: ${entry.data.decision}; ambiguous actions were not replayed`}];
     if (entry.kind === 'checkpoint') return [{ type: 'checkpoint', text: 'Saved a task checkpoint' }];
     if (entry.kind === 'handoff-prepared') return [{ type: 'checkpoint', text: `Prepared verified context with ${entry.data.packet.actions.length} recorded action(s)` }];
     if (entry.kind === 'handoff') return [{ type: 'handoff', text: `Switched from ${entry.data.from} to ${entry.data.to}` }];
@@ -115,6 +116,7 @@ function createExtension(api, runner = runCli) {
         let draftBusy = false;
         let disposed = false;
         let reviewedDraft = null;
+        let recoveryInspection = null;
         let selectedRoot = api.workspace.workspaceFolders?.[0]?.uri.fsPath || null;
         const sendAppearance = (text = '') => panel.webview.postMessage({ type: 'appearance', selectedTheme,
           themes: themes.map(({ id, name, kind }) => ({ id, name, kind })), text });
@@ -203,7 +205,7 @@ function createExtension(api, runner = runCli) {
             await refreshTasks();
             return;
           }
-          if (['draft-inspect', 'draft-review', 'draft-accept', 'draft-reject'].includes(message.type) && !active && !starting && !draftBusy && !disposed &&
+          if (['draft-reconcile', 'draft-abandon', 'draft-inspect', 'draft-review', 'draft-accept', 'draft-reject'].includes(message.type) && !active && !starting && !draftBusy && !disposed &&
             typeof message.id === 'string' && /^[a-zA-Z0-9_-]{1,80}$/.test(message.id)) {
             const folder = folderForTask();
             if (!folder) { panel.webview.postMessage({ type: 'diff-error', text: 'Open a Git repository folder first.' }); return; }
@@ -213,11 +215,25 @@ function createExtension(api, runner = runCli) {
             draftBusy = true;
             panel.webview.postMessage({ type: 'draft-busy' });
             try {
+              if (['draft-reconcile','draft-abandon'].includes(message.type)) {
+                const inspection=recoveryInspection;
+                if (!api.workspace.isTrusted || !inspection || inspection.taskId!==message.id || !inspection.recoverySafe) return;
+                const label=message.type==='draft-abandon'?'Abandon execution':'Preserve for review';
+                const approval=await api.window.showWarningMessage(`${label}?`,{modal:true,
+                  detail:'No action will be replayed. Ambiguous tool outcomes remain unknown. Draft files are preserved for patch review; no provider will start.'},label);
+                if (approval!==label || disposed || folderForTask()!==folder || recoveryInspection!==inspection) return;
+                await runner(nodePath,[script,message.type,message.id,folder.uri.fsPath,inspection.fingerprint,'--yes'],{
+                  cwd:folder.uri.fsPath,env,onChild:()=>{},onEvent:()=>{}});
+                recoveryInspection=null;reviewedDraft=null;
+                panel.webview.postMessage({type:'draft-reconciled',taskId:message.id});
+                await refreshTasks();return;
+              }
               if (message.type === 'draft-inspect') {
                 reviewedDraft = null;
                 const result = await runner(nodePath, [script, 'draft-inspect', message.id, folder.uri.fsPath], {
                   cwd: folder.uri.fsPath, env, onChild: () => {}, onEvent: () => {},
                 });
+                recoveryInspection=result.inspection;
                 panel.webview.postMessage({ type: 'recovery-inspection', inspection: result.inspection });
                 return;
               }
