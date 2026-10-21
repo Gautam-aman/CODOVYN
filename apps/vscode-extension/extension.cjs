@@ -1,9 +1,15 @@
 const { spawn } = require('node:child_process');
 const { randomBytes } = require('node:crypto');
 const { lstatSync, statSync } = require('node:fs');
-const { join } = require('node:path');
+const { join, resolve } = require('node:path');
 const { StringDecoder } = require('node:string_decoder');
 const { themes, validTheme, themeStyles } = require('./themes.cjs');
+
+function runtimePath(api, context) {
+  const configured = api.workspace.getConfiguration('codovyn').get('nodePath', 'node');
+  const bundled = context.extension?.packageJSON?.codovynBundledRuntime;
+  return configured === 'node' && bundled ? resolve(context.extensionPath, bundled) : configured;
+}
 
 function dataDirectory(globalStoragePath) {
   const privatePath = join(globalStoragePath, 'private');
@@ -124,7 +130,7 @@ function createExtension(api, runner = runCli) {
         const refreshTasks = async () => {
           const folder = folderForTask();
           if (!folder) { panel.webview.postMessage({ type: 'tasks', tasks: [] }); return; }
-          const nodePath = api.workspace.getConfiguration('codovyn').get('nodePath', 'node');
+          const nodePath = runtimePath(api, context);
           const script = join(context.extensionPath, 'apps', 'cli', 'src', 'index.js');
           try {
             const result = await runner(nodePath, [script, 'tasks', folder.uri.fsPath], {
@@ -161,7 +167,7 @@ function createExtension(api, runner = runCli) {
             typeof message.id === 'string' && /^[a-zA-Z0-9_-]{1,80}$/.test(message.id)) {
             const folder = folderForTask();
             if (!folder) { panel.webview.postMessage({ type: 'diff-error', text: 'Open a Git repository folder first.' }); return; }
-            const nodePath = api.workspace.getConfiguration('codovyn').get('nodePath', 'node');
+            const nodePath = runtimePath(api, context);
             const script = join(context.extensionPath, 'apps', 'cli', 'src', 'index.js');
             const env = { ...process.env, CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM: '1' };
             draftBusy = true;
@@ -214,7 +220,7 @@ function createExtension(api, runner = runCli) {
               const approval = await api.window.showWarningMessage('Delete this CODOVYN task and its saved event history?',
                 { modal: true }, 'Delete task');
               if (approval !== 'Delete task' || disposed || folderForTask() !== folder) return;
-              const nodePath = api.workspace.getConfiguration('codovyn').get('nodePath', 'node');
+              const nodePath = runtimePath(api, context);
               const script = join(context.extensionPath, 'apps', 'cli', 'src', 'index.js');
               await runner(nodePath, [script, 'task-delete', message.id, folder.uri.fsPath, '--yes'], {
                 cwd: folder.uri.fsPath,
@@ -230,7 +236,7 @@ function createExtension(api, runner = runCli) {
           if (message.type === 'diff' && !draftBusy && typeof message.staged === 'boolean') {
             const folder = folderForTask();
             if (!folder) { panel.webview.postMessage({ type: 'diff-error', text: 'Open a Git repository folder first.' }); return; }
-            const nodePath = api.workspace.getConfiguration('codovyn').get('nodePath', 'node');
+            const nodePath = runtimePath(api, context);
             const script = join(context.extensionPath, 'apps', 'cli', 'src', 'index.js');
             try {
               const args = [script, 'diff', folder.uri.fsPath, ...(message.staged ? ['--staged'] : [])];
@@ -243,7 +249,7 @@ function createExtension(api, runner = runCli) {
           if (message.type === 'history' && !active && !starting && !draftBusy && typeof message.id === 'string' && /^[a-zA-Z0-9_-]{1,80}$/.test(message.id)) {
             const folder = folderForTask();
             if (!folder) return;
-            const nodePath = api.workspace.getConfiguration('codovyn').get('nodePath', 'node');
+            const nodePath = runtimePath(api, context);
             const script = join(context.extensionPath, 'apps', 'cli', 'src', 'index.js');
             try {
               const result = await runner(nodePath, [script, 'history', message.id, folder.uri.fsPath], {
@@ -296,7 +302,7 @@ function createExtension(api, runner = runCli) {
           }
           reviewedDraft = null;
           panel.webview.postMessage({ type: 'running' });
-          const nodePath = api.workspace.getConfiguration('codovyn').get('nodePath', 'node');
+          const nodePath = runtimePath(api, context);
           const script = join(context.extensionPath, 'apps', 'cli', 'src', 'index.js');
           const activity = [];
           try {
@@ -326,4 +332,4 @@ function createExtension(api, runner = runCli) {
 }
 
 function activate(context) { createExtension(require('vscode')).activate(context); }
-module.exports = { activate, createExtension, dataDirectory, runCli, timeline };
+module.exports = { runtimePath, activate, createExtension, dataDirectory, runCli, timeline };
