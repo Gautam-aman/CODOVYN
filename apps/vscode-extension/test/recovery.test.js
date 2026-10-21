@@ -20,3 +20,15 @@ test('recovery controls require trusted host inspection and native confirmation,
  assert.ok(calls.find(x=>x.includes('draft-continue')).includes('gemini'));
  assert.ok(sent.some(x=>x.type==='running'));
 });
+
+test('history resume requires trust and native approval before any provider command',async()=>{
+ let open,handler,approval=false;const calls=[];
+ const api={commands:{registerCommand:(_,cb)=>{open=cb;return {dispose(){}};}},ViewColumn:{Beside:2},Uri:{joinPath:(_, ...p)=>p.join('/')},
+ workspace:{isTrusted:true,workspaceFolders:[{name:'repo',uri:{fsPath:'/repo'}}],getConfiguration:()=>({get:()=> 'node'})},
+ window:{showWarningMessage:async(_,__,label)=>approval?label:undefined,createWebviewPanel:()=>({webview:{cspSource:'x',asWebviewUri:x=>x,onDidReceiveMessage:cb=>handler=cb,postMessage(){}}})}};
+ const runner=async(_,args)=>{calls.push(args);return args.includes('history')?{task:{status:'interrupted',primaryAgent:'codex',fallbackAgents:[]},events:[]}:{tasks:[],status:'completed',taskId:'task'};};
+ createExtension(api,runner).activate({extensionUri:'root',extensionPath:'/extension',globalStorageUri:{fsPath:'/data'},subscriptions:[]});open();
+ await handler({type:'resume-task',id:'task'});assert.equal(calls.filter(args=>args.includes('resume')).length,0);
+ approval=true;api.workspace.isTrusted=false;await handler({type:'resume-task',id:'task'});assert.equal(calls.length,1);
+ api.workspace.isTrusted=true;await handler({type:'resume-task',id:'task'});assert.ok(calls.find(args=>args.includes('resume')).includes('--yes'));
+});
