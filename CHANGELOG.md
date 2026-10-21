@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Added experimental Gemini headless streaming, restricted file tools, bounded event parsing and authentication-exit handling.
+- Added project primary/ordered-backup preferences, opt-in automatic switching, Gemini model override and honest CLI diagnostics.
+- Persisted portable handoff packets and added read-only interrupted-draft inspection without automatic write replay.
+- Added deterministic Codex-to-Gemini draft/review/apply integration and two-launch native workspace/theme restoration tests.
+
 - Added the standalone macOS arm64 development application using pinned Code-OSS/VSCodium artifacts, independent identity, original icon and bundled Node/npm.
 - Added a welcome screen and ten full-workbench themes shared with the existing panel palettes.
 - Added native-host editing, Git, terminal and runtime tests, plus development DMG packaging and a macOS desktop CI workflow.

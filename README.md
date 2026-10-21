@@ -26,16 +26,30 @@ Output: `dist/desktop/CODOVYN.app` and `dist/desktop/CODOVYN-darwin-arm64-develo
 
 This native-window capture shows a real authenticated Codex task in CODOVYN Desktop. It edited a greeting and its test in an isolated worktree; the displayed patch was explicitly reviewed and applied, and the resulting test passed. See the [desktop build guide](apps/desktop/README.md) and [architecture decision](docs/architecture/0003-standalone-foundation.md). Advanced routing, live cross-provider failover and bots remain unfinished.
 
+## Multi-agent configuration
+
+The CODOVYN panel now saves project-specific primary and ordered backup agents,
+explicit automatic-switching consent and an optional Gemini model identifier.
+Agent cards distinguish CLI detection from unknown authentication and availability.
+Gemini integration is **experimental**: CLI 0.65.0 was checked, but the live task
+failed authentication (exit 41). A deterministic Codex-to-Gemini test verifies an
+injected pre-write interruption, isolated edit, reviewed patch application and
+resulting code. It does not prove live two-provider compatibility.
+
+See the [Gemini guide](docs/agents/gemini.md). Portable handoff packets are durable;
+automatic continuation after writes and primary restoration remain unavailable.
+Recovery inspection preserves and exposes ambiguous state without replaying it.
+
 ## Shared runtime and companion extension
 
 - A local SQLite task journal stores requests, agent events, checkpoints, and handoff history.
 - A task engine switches to an ordered fallback after a structured quota or temporary failure when the repository is unchanged and no write-capable tool action ran. Explicitly marked Claude read/search actions can be retried; write-capable actions require reconciliation even if completion was recorded.
 - Restart recovery checks the saved repository baseline before retrying a task with no write-capable tool action. Checkpoints record the real branch, commit, changed paths, and a local working-tree fingerprint.
-- Codex CLI and Claude Code adapters consume structured stream events using the user's existing CLI authentication. An authenticated Codex read-only run and edit draft were verified locally on macOS; Claude and live provider failover remain unverified.
+- Codex CLI, Claude Code and experimental Gemini CLI adapters consume structured stream events using the user's existing CLI authentication. An authenticated Codex read-only run and edit draft were verified locally on macOS; Claude and live provider failover remain unverified.
 - A deterministic demo flow lets contributors inspect a simulated quota handoff without provider credentials or code edits.
 - Ten optional panel themes provide dark, light, warm, and high-contrast palettes with live previews and local persistence. The default follows VS Code's configured theme. See the [theme guide and real preview](docs/contributing/themes.md).
 - A CLI opens real Git repositories and displays saved task history.
-- A VS Code extension panel selects a project folder in a multi-root workspace, starts local tasks, selects Codex, Claude, or automatic Codex-to-Claude fallback, shows a handoff timeline, and offers cancellation and confirmed history deletion. It can request an isolated edit draft and apply or discard it after review. Activation passed an automated host test on VS Code 1.142.0 for macOS. A live Codex task changed code and its test, streamed activity, displayed a draft diff, applied the reviewed patch through the panel, and passed tests in the integrated terminal. Demo history also persisted after restarting the host. Live Claude and provider-to-provider handoff remain unverified.
+- A VS Code extension panel selects a project folder in a multi-root workspace, starts local tasks, selects Codex, Claude, Gemini, or explicitly configured automatic fallback, shows a handoff timeline, and offers cancellation and confirmed history deletion. It can request an isolated edit draft and apply or discard it after review. Activation passed an automated host test on VS Code 1.142.0 for macOS. A live Codex task changed code and its test, streamed activity, displayed a draft diff, applied the reviewed patch through the panel, and passed tests in the integrated terminal. Demo history also persisted after restarting the host. Live Claude and provider-to-provider handoff remain unverified.
 - Read-only Git patches, selected-path staging, local commits, branch creation, fetch, fast-forward-only pull, and an explicit branch push work through the CLI. Remote GitHub authentication still comes from the user's Git configuration.
 - Read-only GitHub issue and pull-request lists, selected issue/PR details, bounded PR patch inspection, and Actions run listings work through an installed, authenticated GitHub CLI. Explicit CLI commands can create an issue or, after an interactive diff review, a same-repository PR. PR creation is covered by simulated tests but has not been exercised against GitHub. Automation bots are not implemented.
 
@@ -113,13 +127,14 @@ To build a local VS Code extension archive, run `npm ci --ignore-scripts` and `n
 | Deterministic demo agents | None | Simulated quota event and continuation, no edits | Tested locally |
 | OpenAI Codex CLI | Existing CLI authentication | Read-only tasks or approved worktree edits, structured tool activity; no session resume | Simulated tests and one authenticated read-only and one draft edit run verified on macOS |
 | Claude Code CLI | Existing CLI authentication | Read-only tasks or restricted worktree edits; no session resume or confirmed quota detection | Simulated tests only; CLI absent locally |
-| Gemini CLI, OpenCode, ACP, local providers | Provider-specific | None yet | Planned |
+| Gemini CLI | Official CLI authentication | Experimental restricted read/file-edit tasks, streaming and explicit Codex-to-Gemini fallback | CLI 0.65.0 invocation checked; authentication missing (exit 41). Fixture handoff tested; live Gemini tasks unverified |
+| OpenCode, ACP, local providers | Provider-specific | None yet | Planned |
 
 The [Codex CLI reference](https://learn.chatgpt.com/docs/developer-commands?surface=cli) documents `codex exec --json` and read-only sandbox mode. [Claude Code's CLI reference](https://code.claude.com/docs/en/cli-reference) documents structured streaming and restricted tools. Neither adapter assumes that an unstructured error message proves quota exhaustion.
 
 ## Architecture
 
-`packages/agent-core` defines the adapter registry and failure categories. `packages/agent-adapters` contains the Codex and Claude CLI bridges. `packages/storage` owns durable SQLite state. `packages/task-engine` coordinates runs and handoffs. `packages/git-engine` handles local repository operations. `packages/github-integration` handles issue and PR metadata through the GitHub CLI. `apps/cli` exposes the runtime, and `apps/vscode-extension` provides the editor panel.
+`packages/agent-core` defines the adapter registry and failure categories. `packages/agent-adapters` contains the Codex, Claude and Gemini CLI bridges. `packages/storage` owns durable SQLite state. `packages/task-engine` coordinates runs and handoffs. `packages/git-engine` handles local repository operations. `packages/github-integration` handles issue and PR metadata through the GitHub CLI. `apps/cli` exposes the runtime, and `apps/vscode-extension` provides the editor panel.
 
 The [local runtime decision](docs/architecture/0001-local-runtime.md) explains package boundaries, and the [handoff verification decision](docs/architecture/0002-repository-handoff-verification.md) explains repository checks and their limits. The [roadmap](docs/development/roadmap.md) records dependencies and the requested 100-commit target. Current progress must be read from Git history.
 
@@ -137,7 +152,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution steps and [SECURITY.md](
 
 ## Roadmap
 
-The next release gates are live Claude validation and provider-to-provider handoff, safe continuation after interrupted write actions, primary-agent restoration, complete Git/GitHub workflows, and security and accessibility verification. The standalone macOS development application has passed native editing, terminal and live Codex checks; desktop restart automation, Windows/Linux packages and public signing remain open. Optional cloud services remain planned. The current runtime must not be described as release-ready.
+The next release gates are live Claude validation and provider-to-provider handoff, safe continuation after interrupted write actions, primary-agent restoration, complete Git/GitHub workflows, and security and accessibility verification. The standalone macOS development application has passed native editing, terminal and live Codex checks; two-launch desktop restart automation now passes; Windows/Linux packages and public signing remain open. Optional cloud services remain planned. The current runtime must not be described as release-ready.
 
 ## License
 
