@@ -139,6 +139,14 @@ export class TaskStore {
     if (result.changes !== 1) throw new Error('Execution ownership changed');
   }
 
+  providerStatus(agent, repositoryRoot) {
+    const row=this.#db.prepare(`SELECT events.kind,events.created_at,events.seq FROM events
+      JOIN tasks ON tasks.id=events.task_id WHERE tasks.repository_root=?
+      AND events.kind IN ('agent-failed','task-completed') AND json_extract(events.data,'$.agent')=?
+      ORDER BY events.seq DESC LIMIT 1`).get(repositoryRoot,agent);
+    return row?.kind==='task-completed'?{agent,source:'successful-task',observedAt:row.created_at,seq:row.seq}:null;
+  }
+
   listInterrupted() {
     return this.#db.prepare("SELECT id FROM tasks WHERE status IN ('running', 'interrupted') ORDER BY updated_at")
       .all().map(({ id }) => this.get(id));

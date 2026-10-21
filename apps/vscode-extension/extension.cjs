@@ -42,6 +42,8 @@ function timeline(events) {
     if (entry.kind === 'draft-created') return [{ type: 'checkpoint', text: 'Created an isolated edit draft' }];
     if (entry.kind === 'draft-accepted') return [{ type: 'complete', text: 'Applied the reviewed draft to the repository' }];
     if (entry.kind === 'draft-rejected') return [{ type: 'checkpoint', text: 'Discarded the edit draft' }];
+    if(entry.kind==='restoration-decision')return [{type:'checkpoint',text:`Primary restoration: ${entry.data.reason}`}];
+    if(entry.kind==='primary-restored')return [{type:'handoff',text:`Selected preferred ${entry.data.to} at a verified boundary`}];
     if (entry.kind === 'routing-decision') return [{type:'agent',text:`Routing: ${entry.data.explanation} · cost ${entry.data.selected?.estimatedUsd??'unknown'} · estimate only`}];
     if (entry.kind === 'draft-reconciled') return [{type:'checkpoint',text:`Recovery: ${entry.data.decision}; ambiguous actions were not replayed`}];
     if (entry.kind === 'checkpoint') return [{ type: 'checkpoint', text: 'Saved a task checkpoint' }];

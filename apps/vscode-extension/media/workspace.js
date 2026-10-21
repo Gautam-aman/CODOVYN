@@ -109,6 +109,8 @@ const secondBackup = providerSelect('Second backup', true);
 const automaticLabel = document.createElement('label');
 const automaticSwitch = document.createElement('input'); automaticSwitch.type = 'checkbox';
 automaticLabel.append(automaticSwitch, ' Enable automatic switching to configured backups');
+const restoreLabel=document.createElement('label');const restorePrimary=document.createElement('input');restorePrimary.type='checkbox';
+restoreLabel.append(restorePrimary,' Restore primary at a verified retry boundary after recent successful-task evidence');
 const modelLabel = document.createElement('label'); modelLabel.textContent = 'Gemini model (optional)';
 const geminiModel = document.createElement('input'); geminiModel.type = 'text'; geminiModel.maxLength = 128;
 geminiModel.placeholder = 'Use CLI default'; modelLabel.append(geminiModel);
@@ -119,19 +121,19 @@ geminiSetup.addEventListener('click', () => vscode.postMessage({ type: 'gemini-s
 const policyStatus = document.createElement('p'); policyStatus.setAttribute('role', 'status');
 let savedAgentPolicy = null;
 const agentCards = document.createElement('ul'); agentCards.className = 'agent-cards'; agentCards.setAttribute('aria-label', 'Agent diagnostics');
-agentSettings.append(automaticLabel, modelLabel, policySave, inspectAgents, geminiSetup, policyStatus, agentCards);
+agentSettings.append(automaticLabel, restoreLabel, modelLabel, policySave, inspectAgents, geminiSetup, policyStatus, agentCards);
 document.querySelector('.composer').after(agentSettings);
 policySave.addEventListener('click', () => {
   if (run.disabled) { policyStatus.textContent = 'Wait for the active operation before changing preferences.'; return; }
   vscode.postMessage({ type: 'agent-policy-save', policy: { primary: primaryProvider.value,
-    fallbacks: [firstBackup.value, secondBackup.value].filter(Boolean), automatic: automaticSwitch.checked, geminiModel: geminiModel.value.trim() } });
+    fallbacks: [firstBackup.value, secondBackup.value].filter(Boolean), automatic: automaticSwitch.checked, restorePrimary:restorePrimary.checked, geminiModel: geminiModel.value.trim() } });
 });
 inspectAgents.addEventListener('click', () => vscode.postMessage({ type: 'agent-diagnostics' }));
 window.addEventListener('message', ({ data }) => {
   if (data.type === 'agent-policy') {
     savedAgentPolicy = data.policy;
     primaryProvider.value = data.policy.primary; firstBackup.value = data.policy.fallbacks[0] || '';
-    secondBackup.value = data.policy.fallbacks[1] || ''; automaticSwitch.checked = data.policy.automatic;
+    secondBackup.value = data.policy.fallbacks[1] || ''; automaticSwitch.checked = data.policy.automatic;restorePrimary.checked=data.policy.restorePrimary===true;
     geminiModel.value = data.policy.geminiModel; policyStatus.textContent = data.text;
     inspectAgents.disabled = false; agentCards.replaceChildren();
     if (data.text.startsWith('Agent preferences saved')) agent.value = 'configured';

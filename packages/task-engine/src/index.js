@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { hostname } from 'node:os';
+import { restorationDecision } from './restoration.js';
 import { recoveryFingerprint } from './recovery.js';
 import { createHandoffPacket } from '../../agent-core/src/handoff.js';
 import { AgentFailure } from '../../agent-core/src/index.js';
@@ -18,11 +19,12 @@ function pendingToolIds(tools) {
 export class TaskEngine {
   #running = new Set();
 
-  constructor({ registry, store, snapshot = async () => ({}), onEvent = () => {} }) {
+  constructor({ registry, store, snapshot = async () => ({}), onEvent = () => {}, restoration = {enabled:false}, now = () => Date.now() }) {
     this.registry = registry;
     this.store = store;
     this.snapshot = snapshot;
     this.onEvent = onEvent;
+    this.restoration=restoration;this.now=now;
   }
 
   #record(taskId, kind, data = {}) {
@@ -141,9 +143,25 @@ export class TaskEngine {
   }
 
   async #run(task, signal, continuation = {}) {
-    const candidates = continuation.agent ? [continuation.agent] : [...new Set([task.activeAgent || task.primaryAgent, ...task.fallbackAgents])];
+    let candidates = continuation.agent ? [continuation.agent] : [...new Set([task.activeAgent || task.primaryAgent, ...task.fallbackAgents])];
     let previous = null;
     let expectedSnapshot = continuation.repository || null;
+    if(!continuation.agent && task.activeAgent && task.activeAgent!==task.primaryAgent && this.restoration.enabled) {
+      const history=this.store.events(task.id),checkpoint=history.findLast(event=>event.kind==='checkpoint');
+      const failure=history.findLast(event=>event.kind==='agent-failed'&&event.data.agent===task.primaryAgent);
+      const switched=history.findLast(event=>event.kind==='handoff');
+      let current;try {current=await this.snapshot();}catch { /* No verified boundary. */ }
+      const pending=createHandoffPacket({request:task.request,history}).actions.some(action=>action.state==='unresolved');
+      const evidence=this.store.providerStatus(task.primaryAgent,task.repositoryRoot);
+      const safe=!pending&&!!current&&!!checkpoint?.data.repository&&!checkpoint.data.pendingTool&&
+        !history.some(event=>event.kind==='agent-event'&&event.data.event.type==='tool-start'&&event.data.event.safeToRetry!==true)&&
+        !repositoryChanged(checkpoint.data.repository,current);
+      const decision=restorationDecision({...this.restoration,primary:task.primaryAgent,current:task.activeAgent,safe,
+        evidence:evidence&&evidence.seq>(failure?.seq??Infinity)?evidence:null,failedAt:failure?.createdAt,switchedAt:switched?.createdAt,now:this.now()});
+      this.#record(task.id,'restoration-decision',decision);
+      if(decision.restore) {candidates=[task.primaryAgent,...candidates.filter(id=>id!==task.primaryAgent)];expectedSnapshot=current;
+        this.#record(task.id,'primary-restored',{from:task.activeAgent,to:task.primaryAgent,reason:decision.reason});}
+    }
     for (const id of candidates) {
       if (signal?.aborted) return this.#cancel(task, id);
       const agent = this.registry.require(id);

@@ -18,6 +18,7 @@ import { validateDraftWorkspace, createDraftWorkspace, reviewDraftWorkspace, acc
 import { createIssue, createPullRequest, issueDetails, listIssues, listPullRequests, listWorkflowRuns, previewPullRequest, pullRequestDetails, pullRequestDiff } from '../../../packages/github-integration/src/index.js';
 
 const usage = `Usage:
+  codovyn resume <task-id> <repository> --yes (read-only tasks)
   codovyn route <repository> <request> (preview only)
   codovyn routed <repository> <request>
   codovyn routed-edit <repository> <request> --allow-writes
@@ -81,7 +82,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
   github = { createIssue, createPullRequest, issueDetails, listIssues, listPullRequests, listWorkflowRuns, previewPullRequest, pullRequestDetails, pullRequestDiff },
   adapters = { createCodexAdapter, createClaudeAdapter, createGeminiAdapter }, confirm = confirmAction) {
   const [mode, value, ...rest] = args;
-  if (!['route', 'routed', 'routed-edit', 'agents', 'configured', 'configured-edit', 'demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit', 'draft-continue', 'draft-reconcile', 'draft-abandon', 'draft-inspect', 'draft-review', 'draft-accept', 'draft-reject', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'pr-preview', 'pr-create', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
+  if (!['resume', 'route', 'routed', 'routed-edit', 'agents', 'configured', 'configured-edit', 'demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit', 'draft-continue', 'draft-reconcile', 'draft-abandon', 'draft-inspect', 'draft-review', 'draft-accept', 'draft-reject', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'pr-preview', 'pr-create', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
   const stream = process.env.CODOVYN_EVENT_STREAM === '1';
   let routing;
   if (['route','routed','routed-edit'].includes(mode)) {
@@ -212,6 +213,25 @@ export async function main(args = process.argv.slice(2), output = console, signa
   const dataDirectory = process.env.CODOVYN_DATA_DIR || join(homedir(), '.codovyn');
   const store = new TaskStore(join(dataDirectory, 'tasks.sqlite'));
   try {
+    if(mode==='resume') {
+      if(!value||rest.length!==2||rest[1]!=='--yes'){output.error(usage);return 2;}
+      const task=store.get(value);const repository=(await repositorySnapshot(rest[0])).root;
+      if(!task||task.repositoryRoot!==repository||task.status!=='interrupted')throw new Error('No interrupted task in this repository');
+      const events=store.events(task.id);
+      if(events.some(event=>['draft-created','routing-decision'].includes(event.kind)))throw new Error('Use explicit draft recovery or a new budget admission for this task');
+      const saved=events.findLast(event=>event.kind==='agent-policy')?.data;
+      const policy=saved?agentPolicy.validateAgentPolicy(saved):null;
+      const factories={codex:adapters.createCodexAdapter,gemini:adapters.createGeminiAdapter,claude:adapters.createClaudeAdapter};
+      const registry=new AgentRegistry();
+      for(const provider of new Set([task.primaryAgent,task.activeAgent,...task.fallbackAgents].filter(Boolean))) {
+        if(!agentPolicy.providers.includes(provider))throw new Error('Unsupported recovery provider');
+        registry.register(factories[provider]({cwd:repository,write:false,...(provider==='gemini'&&policy?.geminiModel?{model:policy.geminiModel}:{})}));
+      }
+      const engine=new TaskEngine({store,registry,snapshot:()=>repositorySnapshot(repository),restoration:{enabled:policy?.restorePrimary===true},
+        onEvent:stream?event=>output.log(JSON.stringify({type:'event',event})):undefined});
+      const resumed=await engine.run(task.id,{signal});const result={taskId:task.id,status:resumed.status,activeAgent:resumed.activeAgent,...(stream?{}:{events:store.events(task.id)})};
+      output.log(JSON.stringify(stream?{type:'result',...result}:result));return resumed.status==='completed'?0:1;
+    }
     if (['draft-continue', 'draft-reconcile', 'draft-abandon', 'draft-inspect', 'draft-review', 'draft-accept', 'draft-reject'].includes(mode)) {
       const [repositoryPath, patchHash, confirmation] = rest;
       if (!value || !repositoryPath ||
@@ -373,7 +393,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
     if(routing)store.append(id,'routing-decision',routing);
     if (policy) store.append(id, 'agent-policy', policy);
     if (draft) store.append(id, 'draft-created', { baseCommit: draft.baseCommit, branch: draft.branch });
-    const engine = new TaskEngine({ store, registry, snapshot: () => repositorySnapshot(draft?.path || repository),
+    const engine = new TaskEngine({ store, registry, restoration:{enabled:policy?.restorePrimary===true}, snapshot: () => repositorySnapshot(draft?.path || repository),
       onEvent: stream ? (event) => output.log(JSON.stringify({ type: 'event', event })) : undefined });
     const task = await engine.run(id, { signal });
     const result = { taskId: id, status: task.status, activeAgent: task.activeAgent, draftReviewAvailable: !!draft,
