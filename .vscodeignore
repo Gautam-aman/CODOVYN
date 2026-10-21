@@ -11,3 +11,5 @@ CONTRIBUTING.md
 CODE_OF_CONDUCT.md
 apps/desktop/**
 tests/**
+dist/**
+coverage/**
