@@ -12,6 +12,8 @@ exports.run = async () => {
   const desktop = vscode.extensions.getExtension('codovyn-local.codovyn-desktop');
   assert.ok(desktop, 'desktop integration discovered');
   await desktop.activate();
+  const matches = await vscode.workspace.findFiles('**/desktop-smoke.txt', '**/node_modules/**', 10);
+  assert.equal(matches.length, 1, 'native workspace file search locates the project file');
   const file = vscode.Uri.file(path.join(folder, 'desktop-smoke.txt'));
   const document = await vscode.workspace.openTextDocument(file);
   await vscode.window.showTextDocument(document);
@@ -32,7 +34,7 @@ exports.run = async () => {
   while ((!fs.existsSync(path.join(folder, 'terminal-smoke.txt')) || !fs.readFileSync(path.join(folder, 'terminal-smoke.txt'), 'utf8').trim()) && Date.now() < end) await new Promise(r => setTimeout(r, 100));
   assert.equal(fs.readFileSync(path.join(folder, 'terminal-smoke.txt'), 'utf8').trim(), node);
   terminal.dispose(); panel.dispose();
-  const report = { app: vscode.env.appName, version: vscode.version, edit: true, git: true, terminal: true, bundledNode: true };
+  const report = { app: vscode.env.appName, version: vscode.version, edit: true, fileSearch: true, git: true, terminal: true, bundledNode: true };
   fs.writeFileSync(path.join(folder, 'host-result.json'), JSON.stringify(report, null, 2));
   console.log('CODOVYN DESKTOP HOST PASSED', report);
 };
