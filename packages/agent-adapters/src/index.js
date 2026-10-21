@@ -1,5 +1,5 @@
 import { spawn, execFile } from 'node:child_process';
-import { createInterface } from 'node:readline';
+import { boundedJsonLines } from './jsonl.js';
 import { promisify } from 'node:util';
 import { AgentFailure } from '../../agent-core/src/index.js';
 import { createHandoffPacket } from '../../agent-core/src/handoff.js';
@@ -69,11 +69,7 @@ export function createCodexAdapter({ cwd, command = 'codex', prefixArgs = [], wr
       try {
         execution?.spawned({ pid: child.pid, group: process.platform !== 'win32' });
         child.stdin.end(prompt);
-        for await (const line of createInterface({ input: child.stdout, crlfDelay: Infinity })) {
-          if (line.length > 1024 * 1024) throw new AgentFailure('fatal', 'Codex event exceeds size limit');
-          let raw;
-          try { raw = JSON.parse(line); }
-          catch { throw new AgentFailure('fatal', 'Codex emitted malformed JSONL'); }
+        for await (const raw of boundedJsonLines(child.stdout)) {
           const event = parseCodexEvent(raw);
           if (event) yield event;
         }
@@ -144,11 +140,7 @@ export function createClaudeAdapter({ cwd, command = 'claude', prefixArgs = [], 
       try {
         execution?.spawned({ pid: child.pid, group: process.platform !== 'win32' });
         child.stdin.end(prompt);
-        for await (const line of createInterface({ input: child.stdout, crlfDelay: Infinity })) {
-          if (line.length > 1024 * 1024) throw new AgentFailure('fatal', 'Claude Code event exceeds size limit');
-          let raw;
-          try { raw = JSON.parse(line); }
-          catch { throw new AgentFailure('fatal', 'Claude Code emitted malformed JSONL'); }
+        for await (const raw of boundedJsonLines(child.stdout)) {
           const event = parseClaudeEvent(raw);
           if (event?.type === 'tool-start') {
             activeTools.set(event.actionId, event.action);
