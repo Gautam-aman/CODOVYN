@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Added durable execution leases, recorded provider groups and confirmed fingerprint-bound draft preservation/abandonment.
+- Added explicit one-use file-only continuation, read-task resume, hard-owner crash tests and evidence-gated preferred restoration.
+- Added five routing modes, actual model selectors, decision previews and estimated budget admission; hard spending enforcement remains unfinished.
+
 - Added experimental Gemini headless streaming, restricted file tools, bounded event parsing and authentication-exit handling.
 - Added project primary/ordered-backup preferences, opt-in automatic switching, Gemini model override and honest CLI diagnostics.
 - Persisted portable handoff packets and added read-only interrupted-draft inspection without automatic write replay.

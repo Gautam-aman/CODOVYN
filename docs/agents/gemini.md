@@ -37,8 +37,9 @@ request. Detection does not establish authentication, model access, quota or
 availability; those statuses remain unknown. The Gemini authentication-guide
 button opens an allowlisted official URL. No credentials enter the webview.
 
-Settings are local and scoped to the selected project. Provider-specific
-reasoning controls, primary restoration and routing/budgets are not implemented.
+Settings are local and scoped to the selected project. Gemini reasoning controls are not exposed. [Routing](routing.md) supports model
+selection and estimated admission; [restoration](recovery.md) requires a safe retry
+boundary and newer successful-task evidence. Live Gemini restoration is unverified.
 The Gemini model field is an explicit identifier override, not an availability
 promise or catalogue of paid entitlements.
 
@@ -85,8 +86,10 @@ absolute worktree paths are replaced with an identity hash in portable prompts.
 
 `draft-inspect TASK_ID REPOSITORY` observes an open draft, including a task still
 recorded running after a crash. It preserves partial edits and starts no provider.
-It does **not** prove orphaned providers have stopped, reconcile ambiguous writes,
-change running status, or authorize replay. Full recovery remains tracked in #9.
+Read-only inspection now reports durable process evidence when available. Explicit
+preserve/abandon and file-only continuation controls require verified cleanup or
+owner/group absence, current fingerprints and separate approval. Legacy unknown
+ownership and registration gaps remain blocked. See [recovery](recovery.md) and #9.
 
 macOS arm64 is the only desktop runtime verified. Cross-platform fixture tests do
 not prove actual Gemini CLI launch/authentication on Windows or Linux.

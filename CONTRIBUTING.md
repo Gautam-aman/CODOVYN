@@ -51,3 +51,5 @@ public signing are not available yet. The repository is currently private;
 external participation requires maintainer-provided access.
 
 See the [Gemini integration guide](docs/agents/gemini.md) for deterministic tests and the current authentication blocker. Provider fixture tests require no paid account; never describe them as live compatibility evidence.
+
+Recovery and routing contributors should start with the [recovery guide](docs/agents/recovery.md) and [routing guide](docs/agents/routing.md). The [accessible catalogue editor (#15)](https://github.com/Gautam-aman/CODOVYN/issues/15) is a bounded intermediate contribution. Crash/restore fixtures require no provider account; live provider validation remains separate.

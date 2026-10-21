@@ -24,7 +24,7 @@ Output: `dist/desktop/CODOVYN.app` and `dist/desktop/CODOVYN-darwin-arm64-develo
 
 ![Live Codex patch accepted in the standalone CODOVYN application](docs/assets/desktop-live-reviewed-patch.png)
 
-This native-window capture shows a real authenticated Codex task in CODOVYN Desktop. It edited a greeting and its test in an isolated worktree; the displayed patch was explicitly reviewed and applied, and the resulting test passed. See the [desktop build guide](apps/desktop/README.md) and [architecture decision](docs/architecture/0003-standalone-foundation.md). Advanced routing, live cross-provider failover and bots remain unfinished.
+This native-window capture shows a real authenticated Codex task in CODOVYN Desktop. It edited a greeting and its test in an isolated worktree; the displayed patch was explicitly reviewed and applied, and the resulting test passed. See the [desktop build guide](apps/desktop/README.md) and [architecture decision](docs/architecture/0003-standalone-foundation.md). Hard spending enforcement, live cross-provider failover and bots remain unfinished.
 
 ## Multi-agent configuration
 
@@ -37,8 +37,15 @@ injected pre-write interruption, isolated edit, reviewed patch application and
 resulting code. It does not prove live two-provider compatibility.
 
 See the [Gemini guide](docs/agents/gemini.md). Portable handoff packets are durable;
-automatic continuation after writes and primary restoration remain unavailable.
-Recovery inspection preserves and exposes ambiguous state without replaying it.
+automatic continuation after writes remains disabled. Durable ownership and explicit
+recovery controls preserve, abandon or continue a verified draft through a file-only
+agent without replaying the action log. Optional primary restoration is gated to
+verified read-task retry boundaries with recent successful-task evidence. Live
+two-provider restoration remains unverified. See the [recovery guide](docs/agents/recovery.md).
+
+Local [model routing](docs/agents/routing.md) now provides five modes, capability
+and reasoning filters, persisted decisions and estimated budget admission. It
+does not enforce hard spending caps or atomically coordinate concurrent budgets.
 
 ![Project-specific agent preferences in CODOVYN Desktop](docs/assets/desktop-agent-settings.png)
 
