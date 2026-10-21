@@ -296,6 +296,7 @@ window.addEventListener('message', ({ data }) => {
         inspect.addEventListener('click', () => vscode.postMessage({ type: 'draft-inspect', id: task.id }));
         row.append(draftLabel, inspect);
       } else if (task.status !== 'running') {
+        if(task.status==='interrupted'){const resume=document.createElement('button');resume.type='button';resume.textContent='Resume safe read task';resume.addEventListener('click',()=>vscode.postMessage({type:'resume-task',id:task.id}));row.append(resume);}
         const remove = document.createElement('button');
         remove.type = 'button';
         remove.className = 'task-delete';

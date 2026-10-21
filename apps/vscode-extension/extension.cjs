@@ -284,6 +284,24 @@ function createExtension(api, runner = runCli) {
             finally { active=null; draftBusy = false; if (!disposed) panel.webview.postMessage({ type: 'draft-idle' }); }
             return;
           }
+          if(message.type==='resume-task'&&!active&&!starting&&!draftBusy&&!disposed&&typeof message.id==='string'&&/^[a-zA-Z0-9_-]{1,80}$/.test(message.id)) {
+            const folder=folderForTask();if(!folder||!api.workspace.isTrusted)return;
+            const command=runtimePath(api,context),script=join(context.extensionPath,'apps','cli','src','index.js');
+            const options={cwd:folder.uri.fsPath,env:{...process.env,CODOVYN_DATA_DIR:taskDataDirectory,CODOVYN_EVENT_STREAM:'1'},onChild:()=>{},onEvent:()=>{}};
+            draftBusy=true;panel.webview.postMessage({type:'draft-busy'});
+            try {
+              const history=await runner(command,[script,'history',message.id,folder.uri.fsPath],options);
+              if(history.task?.status!=='interrupted'||history.events?.some(event=>['draft-created','routing-decision'].includes(event.kind)))throw new Error('Use draft recovery or a new routing admission for this task.');
+              const providers=[history.task.primaryAgent,...history.task.fallbackAgents].join(', ');
+              const approval=await api.window.showWarningMessage('Resume the interrupted read-only task?',{modal:true,detail:`Configured providers: ${providers}. This may send the original request and verified context to those providers. Unsafe action history or unverifiable processes will block resumption.`},'Resume read task');
+              if(approval!=='Resume read task'||disposed||folderForTask()!==folder)return;
+              panel.webview.postMessage({type:'running'});
+              const result=await runner(command,[script,'resume',message.id,folder.uri.fsPath,'--yes'],{...options,onChild:child=>{active=child;},onEvent:event=>panel.webview.postMessage({type:'progress',entries:timeline([event])})});
+              panel.webview.postMessage({type:'result',...result});await refreshTasks();
+            } catch {panel.webview.postMessage({type:'error',text:'The task could not resume safely. Inspect recovery state and use draft reconciliation when writes or unknown processes are present.'});}
+            finally {active=null;draftBusy=false;if(!disposed)panel.webview.postMessage({type:'draft-idle'});}
+            return;
+          }
           if (message.type === 'delete-task' && !active && !starting && !draftBusy && typeof message.id === 'string' && /^[a-zA-Z0-9_-]{1,80}$/.test(message.id)) {
             const folder = folderForTask();
             if (!folder) return;
