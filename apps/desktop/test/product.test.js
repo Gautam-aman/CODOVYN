@@ -11,7 +11,10 @@ test('desktop branding isolates storage and disables inherited proprietary servi
   assert.equal(product.nameShort, 'CODOVYN');
   assert.equal(product.darwinBundleIdentifier, 'org.codovyn.desktop');
   assert.equal(product.dataFolderName, '.codovyn-desktop');
-  for (const key of ['updateUrl', 'defaultChatAgent', 'voiceWsUrl', 'serverDownloadUrlTemplate']) assert.equal(product[key], undefined);
+  for (const key of ['updateUrl', 'voiceWsUrl', 'serverDownloadUrlTemplate']) assert.equal(product[key], undefined);
+  assert.equal(product.defaultChatAgent.extensionId, '');
+  assert.deepEqual(product.defaultChatAgent.providerScopes, []);
+  assert.equal(product.defaultChatAgent.entitlementUrl, undefined);
   assert.equal(product.licenseFileName, 'LICENSE.txt');
   assert.equal(product.codovyn.upstreamCommit, 'abc');
   assert.equal(upstream.nameShort, 'VSCodium');

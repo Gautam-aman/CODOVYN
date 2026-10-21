@@ -27,6 +27,10 @@ export function codovynProduct(upstream) {
     downloadUrl: repo, introductoryVideosUrl: `${repo}/blob/main/README.md`,
     tipsAndTricksUrl: `${repo}/tree/main/docs`, checksumFailMoreInfoUrl: `${repo}/blob/main/SECURITY.md`,
     trustedExtensionAuthAccess: {},
+    // Code-OSS 1.140 initializes account services unconditionally. Keep its required
+    // shape inert instead of retaining Copilot IDs, endpoints or authentication.
+    defaultChatAgent: { extensionId: '', chatExtensionId: '', completionsAdvancedSetting: 'codovyn.disabled',
+      provider: { default: { id: '', name: '' }, enterprise: { id: '', name: '' } }, providerScopes: [] },
   });
   for (const key of ['keyboardShortcutsUrlLinux', 'keyboardShortcutsUrlMac', 'keyboardShortcutsUrlWin']) {
     product[key] = `${repo}/tree/main/docs`;
