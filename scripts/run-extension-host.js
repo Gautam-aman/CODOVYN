@@ -10,6 +10,8 @@ try {
     extensionDevelopmentPath: root,
     extensionTestsPath: resolve(root, 'apps/vscode-extension/host/runner.cjs'),
     launchArgs: [root, '--disable-extensions', '--disable-workspace-trust'],
+    extensionTestsEnv: process.env.CODOVYN_HOST_SCREENSHOT
+      ? { CODOVYN_HOST_SCREENSHOT: process.env.CODOVYN_HOST_SCREENSHOT } : {},
   });
 } catch (error) {
   console.error(error);

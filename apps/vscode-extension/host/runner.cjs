@@ -14,6 +14,11 @@ exports.run = async function run() {
   assert.ok(panel?.webview, 'The command must open a webview panel');
   assert.match(panel.webview.html, /Task activity/);
   assert.match(panel.webview.html, /workspace\.js/);
+  if (process.env.CODOVYN_HOST_SCREENSHOT && process.platform === 'darwin') {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    require('node:child_process').execFileSync('/usr/sbin/screencapture',
+      ['-x', process.env.CODOVYN_HOST_SCREENSHOT]);
+  }
   panel.dispose();
   console.log(`CODOVYN extension host passed on VS Code ${vscode.version}`);
 

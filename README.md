@@ -14,11 +14,13 @@ CODOVYN is an open-source project building a local-first development environment
 - Read-only Codex CLI and Claude Code adapters consume structured stream events using the user's existing CLI authentication. Their live provider paths have **not** been exercised in CI.
 - A deterministic demo flow lets contributors inspect a simulated quota handoff without provider credentials or code edits.
 - A CLI opens real Git repositories and displays saved task history.
-- A VS Code extension panel starts local tasks from an open repository, selects Codex, Claude, or automatic Codex-to-Claude fallback, shows a handoff timeline, and offers cancellation and confirmed history deletion. Host behavior is covered by automated tests; a live VS Code launch has not been verified here.
+- A VS Code extension panel starts local tasks from an open repository, selects Codex, Claude, or automatic Codex-to-Claude fallback, shows a handoff timeline, and offers cancellation and confirmed history deletion. Activation and panel rendering passed an automated Extension Development Host test on VS Code 1.142.0 for macOS. Webview interactions and restart recovery still need host-level verification.
 - Read-only Git patches, selected-path staging, local commits, branch creation, fetch, fast-forward-only pull, and an explicit branch push work through the CLI. Remote GitHub authentication still comes from the user's Git configuration.
 - Read-only GitHub issue and pull-request lists, selected issue/PR details, bounded PR patch inspection, and Actions run listings work through an installed, authenticated GitHub CLI. Explicit CLI commands can create an issue or, after an interactive diff review, a same-repository PR. PR creation is covered by simulated tests but has not been exercised against GitHub. Automation bots are not implemented.
 
-No screenshot is included because the extension has not been captured in a running VS Code host. The desktop IDE, GitHub bots, routing UI, and website remain planned work.
+![CODOVYN panel running in the VS Code Extension Development Host](docs/assets/vscode-extension-host.png)
+
+This is a genuine capture of the current extension panel in VS Code 1.142.0 on macOS. The desktop IDE, GitHub bots, routing UI, and website remain planned work.
 
 ## Quick start
 
@@ -78,7 +80,7 @@ To build a local VS Code extension archive, run `npm ci --ignore-scripts` and `n
 | Agent | Authentication | Current behavior | Status |
 | --- | --- | --- | --- |
 | Deterministic demo agents | None | Simulated quota event and continuation, no edits | Tested locally |
-| OpenAI Codex CLI | Existing CLI authentication | Read-only JSONL task execution; no session resume | Adapter tested with simulated CLI output; live run unverified |
+| OpenAI Codex CLI | Existing CLI authentication | Read-only JSONL task execution; no session resume | Adapter tested with simulated CLI output; one authenticated read-only run verified on macOS |
 | Claude Code CLI | Existing CLI authentication | Read-only text streaming and usage metadata; no session resume or confirmed quota detection | Adapter tested with simulated CLI output; live run unverified |
 | Gemini CLI, OpenCode, ACP, local providers | Provider-specific | None yet | Planned |
 
@@ -95,9 +97,10 @@ The [local runtime decision](docs/architecture/0001-local-runtime.md) explains p
 ```sh
 npm test
 npm run check
+npm run test:extension-host
 ```
 
-The runtime currently has no third-party npm dependencies; packaging uses the `@vscode/vsce` development dependency. Node 26 supplies the SQLite module and test runner. Tests include a real temporary Git repository and a simulated CLI process; they do not spend provider quota. The CI workflow is configured for Linux, macOS, and Windows, but platform results must be checked in GitHub Actions.
+The host test uses `@vscode/test-electron` and downloads VS Code unless `CODOVYN_VSCODE_EXECUTABLE` names an existing executable. On macOS, set `CODOVYN_HOST_SCREENSHOT=/path/to/capture.png` to capture the real host during the test. The runtime currently has no third-party npm dependencies; packaging uses `@vscode/vsce`. Node 26 supplies the SQLite module and test runner. Unit tests include a real temporary Git repository and simulated CLI processes; they do not spend provider quota. The CI workflow is configured for Linux, macOS, and Windows, but platform results must be checked in GitHub Actions.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution steps and [SECURITY.md](SECURITY.md) for vulnerability reporting. Good first issues will be labeled in the [issue tracker](https://github.com/Gautam-aman/CODOVYN/issues).
 
