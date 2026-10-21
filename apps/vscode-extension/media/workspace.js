@@ -272,7 +272,9 @@ window.addEventListener('message', ({ data }) => {
       if (task.draftReviewAvailable) {
         const draftLabel = document.createElement('span');
         draftLabel.textContent = 'Draft awaiting review';
-        row.append(draftLabel);
+        const inspect = document.createElement('button'); inspect.type = 'button'; inspect.textContent = 'Inspect recovery state';
+        inspect.addEventListener('click', () => vscode.postMessage({ type: 'draft-inspect', id: task.id }));
+        row.append(draftLabel, inspect);
       } else if (task.status !== 'running') {
         const remove = document.createElement('button');
         remove.type = 'button';
@@ -306,6 +308,11 @@ window.addEventListener('message', ({ data }) => {
     run.disabled = draftWorking;
     project.disabled = draftWorking;
     updateDraftActions();
+  } else if (data.type === 'recovery-inspection') {
+    reviewedHash = null; draftAvailable = false; updateDraftActions();
+    diffOutput.textContent = JSON.stringify(data.inspection, null, 2);
+    status.textContent = 'Recovery inspection only — no provider started';
+    diffOutput.focus();
   } else if (data.type === 'draft-review') {
     currentTaskId = data.taskId;
     draftAvailable = true;

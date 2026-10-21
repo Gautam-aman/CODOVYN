@@ -7,6 +7,7 @@ import { pathToFileURL } from 'node:url';
 import { createInterface } from 'node:readline/promises';
 import { AgentRegistry, AgentFailure } from '../../../packages/agent-core/src/index.js';
 import { TaskStore } from '../../../packages/storage/src/index.js';
+import { createHandoffPacket } from '../../../packages/agent-core/src/handoff.js';
 import agentPolicy from '../../../packages/agent-core/src/policy.cjs';
 import { TaskEngine } from '../../../packages/task-engine/src/index.js';
 import { commitStaged, createBranch, fetchRemote, pullFastForward, pushCurrentBranch, repositoryDiff, repositorySnapshot, stagePaths } from '../../../packages/git-engine/src/index.js';
@@ -29,6 +30,7 @@ const usage = `Usage:
   codovyn codex-edit <repository> <request> --allow-writes
   codovyn claude-edit <repository> <request> --allow-writes
   codovyn auto-edit <repository> <request> --allow-writes
+  codovyn draft-inspect <task-id> <repository>
   codovyn draft-review <task-id> <repository>
   codovyn draft-accept <task-id> <repository> <patch-hash> --yes
   codovyn draft-reject <task-id> <repository> --yes
@@ -71,7 +73,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
   github = { createIssue, createPullRequest, issueDetails, listIssues, listPullRequests, listWorkflowRuns, previewPullRequest, pullRequestDetails, pullRequestDiff },
   adapters = { createCodexAdapter, createClaudeAdapter, createGeminiAdapter }, confirm = confirmAction) {
   const [mode, value, ...rest] = args;
-  if (!['agents', 'configured', 'configured-edit', 'demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit', 'draft-review', 'draft-accept', 'draft-reject', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'pr-preview', 'pr-create', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
+  if (!['agents', 'configured', 'configured-edit', 'demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit', 'draft-inspect', 'draft-review', 'draft-accept', 'draft-reject', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'pr-preview', 'pr-create', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
   const stream = process.env.CODOVYN_EVENT_STREAM === '1';
   let policy;
   if (mode === 'configured' || mode === 'configured-edit') {
@@ -189,10 +191,10 @@ export async function main(args = process.argv.slice(2), output = console, signa
   const dataDirectory = process.env.CODOVYN_DATA_DIR || join(homedir(), '.codovyn');
   const store = new TaskStore(join(dataDirectory, 'tasks.sqlite'));
   try {
-    if (['draft-review', 'draft-accept', 'draft-reject'].includes(mode)) {
+    if (['draft-inspect', 'draft-review', 'draft-accept', 'draft-reject'].includes(mode)) {
       const [repositoryPath, patchHash, confirmation] = rest;
       if (!value || !repositoryPath ||
-        (mode === 'draft-review' && rest.length !== 1) ||
+        (['draft-review', 'draft-inspect'].includes(mode) && rest.length !== 1) ||
         (mode === 'draft-accept' && (rest.length !== 3 || confirmation !== '--yes')) ||
         (mode === 'draft-reject' && (rest.length !== 2 || patchHash !== '--yes'))) {
         output.error(usage); return 2;
@@ -206,8 +208,19 @@ export async function main(args = process.argv.slice(2), output = console, signa
       if (!draft || events.some((entry) => ['draft-accepted', 'draft-rejected'].includes(entry.kind))) {
         output.error('This task has no open edit draft'); return 1;
       }
-      if (task.status === 'running') { output.error('A running draft cannot be reviewed or changed'); return 1; }
+      if (task.status === 'running' && mode !== 'draft-inspect') { output.error('A running draft cannot be reviewed or changed'); return 1; }
       const directory = join(dataDirectory, 'drafts');
+      if (mode === 'draft-inspect') {
+        // Validate ownership/base commit using the existing worktree review guard.
+        await reviewDraftWorkspace(task.repositoryRoot, directory, task.id, draft.baseCommit);
+        const snapshot = await repositorySnapshot(join(directory, task.id));
+        const packet = createHandoffPacket({ request: task.request, snapshot, history: events, step: task.step });
+        const inspection = { taskId: task.id, status: task.status, repository: packet.repository,
+          actions: packet.actions, automaticContinuation: false, processState: 'unverified',
+          guidance: 'Observation only. This does not prove provider processes have stopped or that writes succeeded. Do not replay unresolved actions. Preserve the draft and reconcile manually.' };
+        output.log(JSON.stringify(stream ? { type: 'result', inspection } : inspection, null, stream ? 0 : 2));
+        return 0;
+      }
       if (mode === 'draft-review') {
         const review = await reviewDraftWorkspace(task.repositoryRoot, directory, task.id, draft.baseCommit);
         output.log(JSON.stringify(stream ? { type: 'result', ...review, taskId: task.id } : review, null, stream ? 0 : 2));

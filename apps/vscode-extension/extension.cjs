@@ -193,7 +193,7 @@ function createExtension(api, runner = runCli) {
             await refreshTasks();
             return;
           }
-          if (['draft-review', 'draft-accept', 'draft-reject'].includes(message.type) && !active && !starting && !draftBusy && !disposed &&
+          if (['draft-inspect', 'draft-review', 'draft-accept', 'draft-reject'].includes(message.type) && !active && !starting && !draftBusy && !disposed &&
             typeof message.id === 'string' && /^[a-zA-Z0-9_-]{1,80}$/.test(message.id)) {
             const folder = folderForTask();
             if (!folder) { panel.webview.postMessage({ type: 'diff-error', text: 'Open a Git repository folder first.' }); return; }
@@ -203,6 +203,14 @@ function createExtension(api, runner = runCli) {
             draftBusy = true;
             panel.webview.postMessage({ type: 'draft-busy' });
             try {
+              if (message.type === 'draft-inspect') {
+                reviewedDraft = null;
+                const result = await runner(nodePath, [script, 'draft-inspect', message.id, folder.uri.fsPath], {
+                  cwd: folder.uri.fsPath, env, onChild: () => {}, onEvent: () => {},
+                });
+                panel.webview.postMessage({ type: 'recovery-inspection', inspection: result.inspection });
+                return;
+              }
               if (message.type === 'draft-review') {
                 reviewedDraft = null;
                 const review = await runner(nodePath, [script, 'draft-review', message.id, folder.uri.fsPath], {
