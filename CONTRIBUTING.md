@@ -24,3 +24,28 @@ provider interfaces and declare unsupported capabilities. Never infer quota
 exhaustion from generic error text or silently retry an unfinished tool action.
 
 The maintainers review and merge pull requests. See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+
+## Standalone desktop development
+
+On macOS arm64, install Xcode command-line tools, then run:
+
+```sh
+npm run build:desktop
+open dist/desktop/CODOVYN.app
+npm run test:desktop-host
+npm run package:desktop
+```
+
+The build downloads pinned Code-OSS/VSCodium and Node artifacts. Native-host tests
+use a disposable project/profile, edit a file, inspect Git, and run bundled Node
+in the terminal. They do not contact an AI provider. `npm run check` stays usable
+on supported Node platforms without a desktop build or paid provider account.
+See [desktop build details](apps/desktop/README.md), [foundation decision](docs/architecture/0003-standalone-foundation.md),
+and the [standalone campaign](docs/development/standalone-campaign.md).
+
+For approachable desktop work, see [welcome shortcut hints (#12)](https://github.com/Gautam-aman/CODOVYN/issues/12)
+and [appearance controls (#10)](https://github.com/Gautam-aman/CODOVYN/issues/10).
+Native lifecycle contributors can help with [two-launch restoration tests (#13)](https://github.com/Gautam-aman/CODOVYN/issues/13).
+Check existing issues before opening another one. Windows/Linux installers and
+public signing are not available yet. The repository is currently private;
+external participation requires maintainer-provided access.
