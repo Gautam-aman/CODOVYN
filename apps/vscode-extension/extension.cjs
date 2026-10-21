@@ -30,10 +30,10 @@ function timeline(events) {
     }
     if (entry.kind === 'agent-started') return [{ type: 'agent', text: `Started ${entry.data.agent}` }];
     if (entry.kind === 'agent-event' && entry.data.event.type === 'tool-start') {
-      return [{ type: 'tool', text: entry.data.event.action === 'file_change' ? 'Editing draft files…' : 'Running a workspace command…' }];
+      return [{ type: 'tool', text: ['file_change', 'replace', 'write_file', 'Edit', 'Write'].includes(entry.data.event.action) ? 'Editing draft files…' : entry.data.event.action === 'command_execution' ? 'Running a workspace command…' : `Using agent tool: ${entry.data.event.action}` }];
     }
     if (entry.kind === 'agent-event' && entry.data.event.type === 'tool-complete') {
-      return [{ type: 'tool', text: entry.data.event.action === 'file_change' ? 'Draft file change finished' : 'Workspace command finished' }];
+      return [{ type: 'tool', text: ['file_change', 'replace', 'write_file', 'Edit', 'Write'].includes(entry.data.event.action) ? 'Draft file change finished' : entry.data.event.action === 'command_execution' ? 'Workspace command finished' : `Agent tool finished: ${entry.data.event.action}` }];
     }
     if (entry.kind === 'draft-created') return [{ type: 'checkpoint', text: 'Created an isolated edit draft' }];
     if (entry.kind === 'draft-accepted') return [{ type: 'complete', text: 'Applied the reviewed draft to the repository' }];
@@ -266,7 +266,7 @@ function createExtension(api, runner = runCli) {
             return;
           }
           if (message.type !== 'run' || active || starting || draftBusy || disposed) return;
-          if (!['demo', 'codex', 'claude', 'auto', 'codex-edit', 'claude-edit', 'auto-edit'].includes(message.mode) || typeof message.request !== 'string') return;
+          if (!['demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit'].includes(message.mode) || typeof message.request !== 'string') return;
           const request = message.request.trim();
           if (!request || request.length > 10000) return;
           const folder = folderForTask();
@@ -275,11 +275,15 @@ function createExtension(api, runner = runCli) {
             panel.webview.postMessage({ type: 'error', text: 'Trust this workspace before using an AI agent.' }); return;
           }
           starting = true;
-          const editMode = ['codex-edit', 'claude-edit', 'auto-edit'].includes(message.mode);
+          const editMode = ['codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit'].includes(message.mode);
           if (editMode) {
             panel.webview.postMessage({ type: 'approval-pending' });
-            const agentName = message.mode === 'claude-edit' ? 'Claude Code' : message.mode === 'auto-edit' ? 'Codex and Claude Code' : 'Codex';
-            const detail = message.mode === 'claude-edit'
+            const agentName = message.mode === 'gemini-edit' ? 'Gemini CLI' : message.mode === 'auto-gemini-edit' ? 'Codex and Gemini CLI' : message.mode === 'claude-edit' ? 'Claude Code' : message.mode === 'auto-edit' ? 'Codex and Claude Code' : 'Codex';
+            const detail = message.mode === 'gemini-edit'
+              ? 'Gemini may edit files inside a separate Git worktree using restricted file tools. Shell commands are unavailable. You will review a patch before changes reach the open repository.'
+              : message.mode === 'auto-gemini-edit'
+                ? 'This task may send its request and context to Codex and Gemini. Codex may run draft commands; Gemini uses restricted file tools. Automatic handoff stops after write-capable actions. Review is required before applying changes.'
+              : message.mode === 'claude-edit'
               ? 'Claude Code may edit files inside a separate Git worktree. Shell commands are unavailable in this mode. You will review a patch before changes reach the open repository.'
               : message.mode === 'auto-edit'
                 ? 'Codex may edit files and run local commands inside a separate Git worktree. Claude Code may continue an automatic handoff before a tool action. You will review a patch before changes reach the open repository.'

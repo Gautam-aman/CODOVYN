@@ -71,6 +71,10 @@ editOption.value = 'codex-edit';
 editOption.textContent = 'Codex CLI · edit draft';
 agent.append(editOption);
 for (const [value, label] of [
+  ['gemini', 'Gemini CLI · read only (experimental)'],
+  ['gemini-edit', 'Gemini CLI · edit draft (experimental)'],
+  ['auto-gemini', 'Codex → Gemini · automatic read only'],
+  ['auto-gemini-edit', 'Codex → Gemini · automatic draft'],
   ['claude-edit', 'Claude Code · edit draft'],
   ['auto-edit', 'Codex → Claude · edit draft'],
 ]) {

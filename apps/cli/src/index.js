@@ -9,7 +9,7 @@ import { AgentRegistry, AgentFailure } from '../../../packages/agent-core/src/in
 import { TaskStore } from '../../../packages/storage/src/index.js';
 import { TaskEngine } from '../../../packages/task-engine/src/index.js';
 import { commitStaged, createBranch, fetchRemote, pullFastForward, pushCurrentBranch, repositoryDiff, repositorySnapshot, stagePaths } from '../../../packages/git-engine/src/index.js';
-import { createClaudeAdapter, createCodexAdapter } from '../../../packages/agent-adapters/src/index.js';
+import { createClaudeAdapter, createCodexAdapter, createGeminiAdapter } from '../../../packages/agent-adapters/src/index.js';
 import { createDraftWorkspace, reviewDraftWorkspace, acceptDraftWorkspace, rejectDraftWorkspace } from '../../../packages/git-engine/src/draft-workspace.js';
 import { createIssue, createPullRequest, issueDetails, listIssues, listPullRequests, listWorkflowRuns, previewPullRequest, pullRequestDetails, pullRequestDiff } from '../../../packages/github-integration/src/index.js';
 
@@ -17,6 +17,10 @@ const usage = `Usage:
   codovyn demo <repository> <request>
   codovyn codex <repository> <request>
   codovyn claude <repository> <request>
+  codovyn gemini <repository> <request>
+  codovyn auto-gemini <repository> <request>
+  codovyn auto-gemini-edit <repository> <request> --allow-writes
+  codovyn gemini-edit <repository> <request> --allow-writes
   codovyn auto <repository> <request>
   codovyn codex-edit <repository> <request> --allow-writes
   codovyn claude-edit <repository> <request> --allow-writes
@@ -49,7 +53,8 @@ const usage = `Usage:
 The demo simulates a quota handoff and makes no code changes.
 Codex editing runs in an isolated worktree and requires explicit write permission.
 The Codex and Claude commands without -edit run installed CLIs in read-only modes.
-Auto tries Codex first, then Claude after a confirmed eligible failure.`;
+Auto tries Codex first, then Claude after a confirmed eligible failure.
+Auto-gemini explicitly authorizes Codex-to-Gemini fallback. Gemini shell execution is disabled.`;
 
 async function confirmAction(word) {
   if (!process.stdin.isTTY || !process.stdout.isTTY) return false;
@@ -60,9 +65,9 @@ async function confirmAction(word) {
 
 export async function main(args = process.argv.slice(2), output = console, signal,
   github = { createIssue, createPullRequest, issueDetails, listIssues, listPullRequests, listWorkflowRuns, previewPullRequest, pullRequestDetails, pullRequestDiff },
-  adapters = { createCodexAdapter, createClaudeAdapter }, confirm = confirmAction) {
+  adapters = { createCodexAdapter, createClaudeAdapter, createGeminiAdapter }, confirm = confirmAction) {
   const [mode, value, ...rest] = args;
-  if (!['demo', 'codex', 'claude', 'auto', 'codex-edit', 'claude-edit', 'auto-edit', 'draft-review', 'draft-accept', 'draft-reject', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'pr-preview', 'pr-create', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
+  if (!['demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit', 'draft-review', 'draft-accept', 'draft-reject', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'pr-preview', 'pr-create', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
   const stream = process.env.CODOVYN_EVENT_STREAM === '1';
   if (mode === 'issue') {
     if (!value || rest.length !== 1 || !/^[1-9]\d*$/.test(rest[0])) { output.error(usage); return 2; }
@@ -243,7 +248,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
         : { task, events: store.events(value) }, null, stream ? 0 : 2));
       return 0;
     }
-    const editMode = ['codex-edit', 'claude-edit', 'auto-edit'].includes(mode);
+    const editMode = ['codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit'].includes(mode);
     const allowWrites = editMode && rest.at(-1) === '--allow-writes';
     const request = (allowWrites ? rest.slice(0, -1) : rest).join(' ').trim();
     if (editMode && !allowWrites) { output.error(`${mode} requires --allow-writes`); return 2; }
@@ -263,14 +268,13 @@ export async function main(args = process.argv.slice(2), output = console, signa
       registry.register({ id: 'simulated-backup', capabilities: { writes: false }, availability: async () => 'available',
         async *run({ handoff }) { yield { type: 'completed', text: `Simulated continuation: ${handoff.request}` }; } });
     } else {
-      primaryAgent = ['claude', 'claude-edit'].includes(mode) ? 'claude' : 'codex';
-      if (!['claude', 'claude-edit'].includes(mode)) {
-        registry.register(adapters.createCodexAdapter({ cwd: draft?.path || repository, write: !!draft }));
-      }
-      if (['claude', 'claude-edit', 'auto', 'auto-edit'].includes(mode)) {
-        registry.register(adapters.createClaudeAdapter({ cwd: draft?.path || repository, write: !!draft }));
-      }
+      primaryAgent = mode.startsWith('claude') ? 'claude' : mode.startsWith('gemini') ? 'gemini' : 'codex';
       if (mode === 'auto' || mode === 'auto-edit') fallbackAgents = ['claude'];
+      if (mode === 'auto-gemini' || mode === 'auto-gemini-edit') fallbackAgents = ['gemini'];
+      const factories = { codex: adapters.createCodexAdapter, claude: adapters.createClaudeAdapter, gemini: adapters.createGeminiAdapter };
+      for (const provider of [primaryAgent, ...fallbackAgents]) {
+        registry.register(factories[provider]({ cwd: draft?.path || repository, write: !!draft }));
+      }
     }
     store.create({ id, request, repositoryRoot: repository, primaryAgent, fallbackAgents });
     if (draft) store.append(id, 'draft-created', { baseCommit: draft.baseCommit, branch: draft.branch });
