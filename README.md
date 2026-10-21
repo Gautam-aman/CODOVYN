@@ -15,17 +15,13 @@ CODOVYN is an open-source project building a local-first development environment
 - A deterministic demo flow lets contributors inspect a simulated quota handoff without provider credentials or code edits.
 - Ten optional panel themes provide dark, light, warm, and high-contrast palettes with live previews and local persistence. The default follows VS Code's configured theme. See the [theme guide and real preview](docs/contributing/themes.md).
 - A CLI opens real Git repositories and displays saved task history.
-- A VS Code extension panel selects a project folder in a multi-root workspace, starts local tasks, selects Codex, Claude, or automatic Codex-to-Claude fallback, shows a handoff timeline, and offers cancellation and confirmed history deletion. It can request an isolated edit draft and apply or discard it after review. Activation and panel rendering passed an automated Extension Development Host test on VS Code 1.142.0 for macOS; demo chat, history selection, and persistence after restarting were checked manually in that host. Live editing from the rendered webview still needs end-to-end host verification.
+- A VS Code extension panel selects a project folder in a multi-root workspace, starts local tasks, selects Codex, Claude, or automatic Codex-to-Claude fallback, shows a handoff timeline, and offers cancellation and confirmed history deletion. It can request an isolated edit draft and apply or discard it after review. Activation passed an automated host test on VS Code 1.142.0 for macOS. A live Codex task changed code and its test, streamed activity, displayed a draft diff, applied the reviewed patch through the panel, and passed tests in the integrated terminal. Demo history also persisted after restarting the host. Live Claude and provider-to-provider handoff remain unverified.
 - Read-only Git patches, selected-path staging, local commits, branch creation, fetch, fast-forward-only pull, and an explicit branch push work through the CLI. Remote GitHub authentication still comes from the user's Git configuration.
 - Read-only GitHub issue and pull-request lists, selected issue/PR details, bounded PR patch inspection, and Actions run listings work through an installed, authenticated GitHub CLI. Explicit CLI commands can create an issue or, after an interactive diff review, a same-repository PR. PR creation is covered by simulated tests but has not been exercised against GitHub. Automation bots are not implemented.
 
-![CODOVYN panel running in the VS Code Extension Development Host](docs/assets/vscode-extension-host.png)
+![Live Codex edits, reviewed Git diff, and passing tests inside VS Code](docs/assets/vscode-live-coding-workflow.png)
 
-This is a genuine capture of the current extension panel in VS Code 1.142.0 on macOS. The desktop IDE, GitHub bots, routing UI, and website remain planned work.
-
-![A live Codex edit draft reviewed in the VS Code panel](docs/assets/vscode-live-draft-review.png)
-
-This second capture shows a real Codex edit in a disposable repository, reviewed before application. The displayed one-line patch was later applied with the explicit CLI approval command. The panel's apply confirmation still needs end-to-end host verification.
+This is a genuine capture of a live coding task in a disposable repository on VS Code 1.142.0 for macOS. The two-file patch was reviewed and applied through the panel; `npm test` passed in the integrated terminal. See the [verification record](docs/development/validation-2026-10-21.md) for tested versions and remaining limits. The desktop IDE, GitHub bots, routing UI, and website remain planned work.
 
 ## Quick start
 
@@ -121,7 +117,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution steps and [SECURITY.md](
 
 ## Roadmap
 
-The next release gates are end-to-end editing in the VS Code host, live Claude validation, safe continuation after interrupted write actions, primary-agent restoration, complete Git/GitHub workflows, and security and accessibility verification. A standalone desktop application and optional cloud services follow a separate technical evaluation. The current runtime must not be described as release-ready.
+The next release gates are live Claude validation and provider-to-provider handoff, safe continuation after interrupted write actions, primary-agent restoration, complete Git/GitHub workflows, and security and accessibility verification. A standalone desktop application and optional cloud services follow a separate technical evaluation. The current runtime must not be described as release-ready.
 
 ## License
 
