@@ -1,3 +1,4 @@
+import { createHandoffPacket } from '../../agent-core/src/handoff.js';
 import { AgentFailure } from '../../agent-core/src/index.js';
 
 function repositoryChanged(before, after) {
@@ -139,6 +140,7 @@ export class TaskEngine {
         if (previous) this.#record(task.id, 'handoff', { from: previous, to: id });
         this.#record(task.id, 'agent-started', { agent: id, repository: baseline });
         const handoff = { request: task.request, step: task.step, history: this.store.events(task.id), snapshot: baseline };
+        this.#record(task.id, 'handoff-prepared', { agent: id, packet: createHandoffPacket(handoff) });
         for await (const event of agent.run({ taskId: task.id, handoff, signal })) {
           if (signal?.aborted) return this.#cancel(task, id);
           if (!event || typeof event.type !== 'string') throw new Error('Malformed agent event');

@@ -277,7 +277,7 @@ test('emits progress only after the corresponding event is durable', async () =>
   registry.register(agent('primary', async function* () { yield { type: 'completed', text: 'done' }; }));
   registry.register(agent('backup', async function* () { yield { type: 'completed' }; }));
   assert.equal((await engine.run('task')).status, 'completed');
-  assert.deepEqual(notified, ['agent-started', 'agent-event', 'task-completed']);
+  assert.deepEqual(notified, ['agent-started', 'handoff-prepared', 'agent-event', 'task-completed']);
   store.close();
 });
 
@@ -291,4 +291,17 @@ test('failed repository verification interrupts the task without switching agent
   assert.equal(backupCalls, 0);
   assert.equal(store.events('task').find((entry) => entry.kind === 'checkpoint').data.repository.verified, false);
   store.close();
+});
+
+
+test('portable context is durable before any provider receives the request', async () => {
+  const {store,registry,engine}=setup();
+  registry.register(agent('primary',async function*(){
+    const entry=store.events('task').findLast(e=>e.kind==='handoff-prepared');
+    assert.equal(entry.data.packet.request,'Repair tests');
+    assert.equal(entry.data.packet.schemaVersion,1);
+    assert.equal(entry.data.packet.repository.commit,'abc');
+    yield {type:'completed'};
+  }));
+  assert.equal((await engine.run('task')).status,'completed');store.close();
 });
