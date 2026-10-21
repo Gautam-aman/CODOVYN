@@ -85,6 +85,7 @@ export function createGeminiAdapter({ cwd, command = 'gemini', prefixArgs = [], 
         const code = await lifecycle.closed;
         if (signal?.aborted) throw new AgentFailure('cancelled', 'Gemini cancelled');
         if (lifecycle.error()) throw lifecycle.error();
+        if (code === 41) throw new AgentFailure('authentication', 'Gemini CLI authentication is required');
         if (code !== 0 || !finished) throw new AgentFailure('fatal', `Gemini exited without successful completion (status ${code})`);
         yield finished;
       } catch (error) {

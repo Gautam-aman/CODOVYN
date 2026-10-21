@@ -34,6 +34,7 @@ test('Gemini file edits are explicit and never marked retryable', async () => {
 test('Gemini rejects malformed streams, unresolved tools, disallowed shell, auth failure and nonzero exit', async () => {
   const cases = [
     ['console.log("not json")','fatal'],
+    ['process.exitCode=41;','authentication'],
     [emit({type:'tool_use',tool_id:'t',tool_name:'read_file'})+emit({type:'result',status:'success'}),'fatal'],
     [emit({type:'tool_use',tool_id:'t',tool_name:'run_shell_command'}),'fatal'],
     [emit({type:'result',status:'error',error:{type:'FatalAuthenticationError',message:'PRIVATE'}}),'authentication'],
