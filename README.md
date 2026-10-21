@@ -4,7 +4,7 @@
 
 CODOVYN is an open-source project building a local-first development environment that can preserve task context when a coding agent becomes unavailable. **Your code never stops when your agent does** is the product goal; the current repository is an early runtime foundation, not a finished IDE.
 
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE) [![CI](https://github.com/Gautam-aman/CODOVYN/actions/workflows/ci.yml/badge.svg?branch=feat%2Fcodovyn-platform)](https://github.com/Gautam-aman/CODOVYN/actions/workflows/ci.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE) [![CI](https://github.com/Gautam-aman/CODOVYN/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Gautam-aman/CODOVYN/actions/workflows/ci.yml)
 
 ## What works today
 
@@ -30,7 +30,7 @@ Requirements: Node.js 26 or newer and Git. These commands were verified on macOS
 ```sh
 git clone https://github.com/Gautam-aman/CODOVYN.git
 cd CODOVYN
-git switch feat/codovyn-platform
+git switch main
 npm run check
 node apps/cli/src/index.js demo . "Inspect this repository"
 ```

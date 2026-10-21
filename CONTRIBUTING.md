@@ -6,9 +6,9 @@ duplicates and describe the problem before starting a larger integration.
 
 ## Setup
 
-Install Node.js 26 or newer and Git. Clone the repository, switch to the active
-development branch, and run `npm run check`. No npm install is needed for the
-current dependency-free workspace. Use `node apps/cli/src/index.js demo . "Inspect"`
+Install Node.js 26 or newer and Git. Clone the repository, switch to `main`, run `npm ci --ignore-scripts`, then
+`npm run check`. The core runtime tests use Node built-ins; extension packaging
+and graphical host tests use the development dependencies. Use `node apps/cli/src/index.js demo . "Inspect"`
 to exercise a handoff without provider credentials.
 
 ## Pull requests
