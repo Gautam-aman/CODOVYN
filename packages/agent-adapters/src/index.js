@@ -46,20 +46,22 @@ export function formatHandoffPrompt(handoff) {
     '', 'Continue from the verified state. Check files before repeating work.'].join('\n');
 }
 
-/** Uses the installed Codex CLI and its own authentication, in read-only mode. */
-export function createCodexAdapter({ cwd, command = 'codex', prefixArgs = [] }) {
+/** Uses the installed Codex CLI and its own authentication within the selected sandbox. */
+export function createCodexAdapter({ cwd, command = 'codex', prefixArgs = [], write = false }) {
   if (typeof cwd !== 'string' || !cwd) throw new TypeError('Workspace directory is required');
+  if (typeof write !== 'boolean') throw new TypeError('Write permission must be explicit');
   return {
     id: 'codex',
-    capabilities: { streaming: true, resume: false, tools: false, writes: false, authenticationStatus: false, usage: true },
+    capabilities: { streaming: true, resume: false, tools: true, writes: write, authenticationStatus: false, usage: true },
     async availability() {
       try { await execute(command, [...prefixArgs, '--version'], { timeout: 5000 }); return 'available'; }
       catch { return 'unavailable'; }
     },
     async *run({ handoff, signal }) {
       if (signal?.aborted) throw new AgentFailure('cancelled', 'Codex was cancelled');
-      const prompt = formatHandoffPrompt(handoff);
-      const child = spawn(command, [...prefixArgs, 'exec', '--json', '--sandbox', 'read-only', '-'], {
+      const prompt = formatHandoffPrompt(handoff) + (write
+        ? '\n\nWork only inside this isolated draft workspace. Do not commit, push, deploy, or modify files outside this worktree. Run relevant local checks and report what changed.' : '');
+      const child = spawn(command, [...prefixArgs, 'exec', '--json', '--sandbox', write ? 'workspace-write' : 'read-only', '-'], {
         cwd, stdio: ['pipe', 'pipe', 'pipe'], signal, shell: false,
       });
       let processError = null;

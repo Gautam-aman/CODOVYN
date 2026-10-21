@@ -31,6 +31,16 @@ test('runs a local JSONL command through the Codex adapter without shell interpo
   assert.deepEqual(events.map((event) => event.type), ['text', 'completed']);
 });
 
+test('write mode selects the documented workspace-write sandbox and constrains the prompt', async () => {
+  const script = `process.stdin.resume(); let p=''; process.stdin.on('data', c => p += c); process.stdin.on('end', () => { if (!process.argv.includes('workspace-write') || !p.includes('isolated draft workspace')) process.exit(2); console.log(JSON.stringify({type:'turn.completed'})); });`;
+  const adapter = createCodexAdapter({ cwd: process.cwd(), write: true,
+    command: process.execPath, prefixArgs: ['-e', script] });
+  assert.equal(adapter.capabilities.writes, true);
+  const events = [];
+  for await (const event of adapter.run({ handoff: { request: 'Edit a file', snapshot: {} } })) events.push(event);
+  assert.deepEqual(events.map((event) => event.type), ['completed']);
+});
+
 test('cancels a running Codex subprocess without waiting for its reply', async () => {
   const script = `process.stdin.resume(); process.stdin.on('end', () => setTimeout(() => console.log(JSON.stringify({type:'turn.completed'})), 5000));`;
   const adapter = createCodexAdapter({ cwd: process.cwd(), command: process.execPath, prefixArgs: ['-e', script] });

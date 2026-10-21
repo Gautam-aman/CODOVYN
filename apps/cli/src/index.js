@@ -10,6 +10,7 @@ import { TaskStore } from '../../../packages/storage/src/index.js';
 import { TaskEngine } from '../../../packages/task-engine/src/index.js';
 import { commitStaged, createBranch, fetchRemote, pullFastForward, pushCurrentBranch, repositoryDiff, repositorySnapshot, stagePaths } from '../../../packages/git-engine/src/index.js';
 import { createClaudeAdapter, createCodexAdapter } from '../../../packages/agent-adapters/src/index.js';
+import { createDraftWorkspace, reviewDraftWorkspace, acceptDraftWorkspace, rejectDraftWorkspace } from '../../../packages/git-engine/src/draft-workspace.js';
 import { createIssue, createPullRequest, issueDetails, listIssues, listPullRequests, listWorkflowRuns, previewPullRequest, pullRequestDetails, pullRequestDiff } from '../../../packages/github-integration/src/index.js';
 
 const usage = `Usage:
@@ -17,6 +18,10 @@ const usage = `Usage:
   codovyn codex <repository> <request>
   codovyn claude <repository> <request>
   codovyn auto <repository> <request>
+  codovyn codex-edit <repository> <request> --allow-writes
+  codovyn draft-review <task-id> <repository>
+  codovyn draft-accept <task-id> <repository> <patch-hash> --yes
+  codovyn draft-reject <task-id> <repository> --yes
   codovyn tasks [repository]
   codovyn history <task-id> [repository]
   codovyn task-delete <task-id> [repository] [--yes]
@@ -40,7 +45,8 @@ const usage = `Usage:
   codovyn issue-create <owner/repo> <title> <body-file> [labels]
 
 The demo simulates a quota handoff and makes no code changes.
-The Codex and Claude commands run installed CLIs in read-only modes.
+Codex editing runs in an isolated worktree and requires explicit write permission.
+The Codex and Claude commands without -edit run installed CLIs in read-only modes.
 Auto tries Codex first, then Claude after a confirmed eligible failure.`;
 
 async function confirmAction(word) {
@@ -54,7 +60,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
   github = { createIssue, createPullRequest, issueDetails, listIssues, listPullRequests, listWorkflowRuns, previewPullRequest, pullRequestDetails, pullRequestDiff },
   adapters = { createCodexAdapter, createClaudeAdapter }, confirm = confirmAction) {
   const [mode, value, ...rest] = args;
-  if (!['demo', 'codex', 'claude', 'auto', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'pr-preview', 'pr-create', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
+  if (!['demo', 'codex', 'claude', 'auto', 'codex-edit', 'draft-review', 'draft-accept', 'draft-reject', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'pr-preview', 'pr-create', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
   const stream = process.env.CODOVYN_EVENT_STREAM === '1';
   if (mode === 'issue') {
     if (!value || rest.length !== 1 || !/^[1-9]\d*$/.test(rest[0])) { output.error(usage); return 2; }
@@ -155,6 +161,41 @@ export async function main(args = process.argv.slice(2), output = console, signa
   const dataDirectory = process.env.CODOVYN_DATA_DIR || join(homedir(), '.codovyn');
   const store = new TaskStore(join(dataDirectory, 'tasks.sqlite'));
   try {
+    if (['draft-review', 'draft-accept', 'draft-reject'].includes(mode)) {
+      const [repositoryPath, patchHash, confirmation] = rest;
+      if (!value || !repositoryPath ||
+        (mode === 'draft-review' && rest.length !== 1) ||
+        (mode === 'draft-accept' && (rest.length !== 3 || confirmation !== '--yes')) ||
+        (mode === 'draft-reject' && (rest.length !== 2 || patchHash !== '--yes'))) {
+        output.error(usage); return 2;
+      }
+      const task = store.get(value);
+      if (!task || task.repositoryRoot !== (await repositorySnapshot(repositoryPath)).root) {
+        output.error('Unknown draft in this repository'); return 1;
+      }
+      const events = store.events(value);
+      const draft = events.find((entry) => entry.kind === 'draft-created')?.data;
+      if (!draft || events.some((entry) => ['draft-accepted', 'draft-rejected'].includes(entry.kind))) {
+        output.error('This task has no open edit draft'); return 1;
+      }
+      if (task.status === 'running') { output.error('A running draft cannot be reviewed or changed'); return 1; }
+      const directory = join(dataDirectory, 'drafts');
+      if (mode === 'draft-review') {
+        const review = await reviewDraftWorkspace(task.repositoryRoot, directory, task.id, draft.baseCommit);
+        output.log(JSON.stringify(stream ? { type: 'result', ...review, taskId: task.id } : review, null, stream ? 0 : 2));
+        return 0;
+      }
+      if (mode === 'draft-accept') {
+        const accepted = await acceptDraftWorkspace(task.repositoryRoot, directory, task.id, draft.baseCommit, patchHash);
+        store.append(task.id, 'draft-accepted', { changedPaths: accepted.changedPaths });
+        output.log(JSON.stringify(stream ? { type: 'result', ...accepted, taskId: task.id } : accepted, null, stream ? 0 : 2));
+        return 0;
+      }
+      await rejectDraftWorkspace(task.repositoryRoot, directory, task.id, draft.baseCommit);
+      store.append(task.id, 'draft-rejected');
+      output.log(JSON.stringify(stream ? { type: 'result', rejected: true, taskId: task.id } : { rejected: true }, null, stream ? 0 : 2));
+      return 0;
+    }
     if (mode === 'tasks') {
       const repositoryRoot = value ? (await repositorySnapshot(value)).root : undefined;
       const tasks = store.list({ repositoryRoot }).map(({ id, request, status, activeAgent, updatedAt }) =>
@@ -200,12 +241,17 @@ export async function main(args = process.argv.slice(2), output = console, signa
         : { task, events: store.events(value) }, null, stream ? 0 : 2));
       return 0;
     }
-    const request = rest.join(' ').trim();
+    const allowWrites = mode === 'codex-edit' && rest.at(-1) === '--allow-writes';
+    const request = (allowWrites ? rest.slice(0, -1) : rest).join(' ').trim();
+    if (mode === 'codex-edit' && !allowWrites) { output.error('codex-edit requires --allow-writes'); return 2; }
     if (!value || !request) { output.error(usage); return 2; }
     const repository = (await repositorySnapshot(value)).root;
     const registry = new AgentRegistry();
     let primaryAgent;
     let fallbackAgents = [];
+    const id = randomUUID();
+    let draft;
+    if (mode === 'codex-edit') draft = await createDraftWorkspace(repository, join(dataDirectory, 'drafts'), id);
     if (mode === 'demo') {
       primaryAgent = 'simulated-primary';
       fallbackAgents = ['simulated-backup'];
@@ -215,16 +261,16 @@ export async function main(args = process.argv.slice(2), output = console, signa
         async *run({ handoff }) { yield { type: 'completed', text: `Simulated continuation: ${handoff.request}` }; } });
     } else {
       primaryAgent = mode === 'claude' ? 'claude' : 'codex';
-      if (mode !== 'claude') registry.register(adapters.createCodexAdapter({ cwd: repository }));
-      if (mode !== 'codex') registry.register(adapters.createClaudeAdapter({ cwd: repository }));
+      if (mode !== 'claude') registry.register(adapters.createCodexAdapter({ cwd: draft?.path || repository, write: !!draft }));
+      if (mode === 'claude' || mode === 'auto') registry.register(adapters.createClaudeAdapter({ cwd: repository }));
       if (mode === 'auto') fallbackAgents = ['claude'];
     }
-    const id = randomUUID();
     store.create({ id, request, repositoryRoot: repository, primaryAgent, fallbackAgents });
-    const engine = new TaskEngine({ store, registry, snapshot: () => repositorySnapshot(repository),
+    if (draft) store.append(id, 'draft-created', { baseCommit: draft.baseCommit, branch: draft.branch });
+    const engine = new TaskEngine({ store, registry, snapshot: () => repositorySnapshot(draft?.path || repository),
       onEvent: stream ? (event) => output.log(JSON.stringify({ type: 'event', event })) : undefined });
     const task = await engine.run(id, { signal });
-    const result = { taskId: id, status: task.status, activeAgent: task.activeAgent,
+    const result = { taskId: id, status: task.status, activeAgent: task.activeAgent, draftReviewAvailable: !!draft,
       ...(stream ? {} : { events: store.events(id) }) };
     output.log(JSON.stringify(stream ? { type: 'result', ...result } : result, null, stream ? 0 : 2));
     return task.status === 'completed' ? 0 : 1;
