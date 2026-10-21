@@ -25,6 +25,7 @@ exports.run = async () => {
   assert.match(fs.readFileSync(file.fsPath, 'utf8'), /Edited by CODOVYN Desktop/);
   const panel = await vscode.commands.executeCommand('codovyn.open');
   assert.match(panel.webview.html, /Task activity/);
+  assert.equal(await vscode.commands.executeCommand('codovyn.open'), panel, 'reopening reveals the existing agent workspace');
   const node = path.resolve(extension.extensionPath, extension.packageJSON.codovynBundledRuntime);
   assert.match(execFileSync(node, ['--version'], { encoding: 'utf8' }), /^v26\./);
   assert.match(execFileSync('git', ['status', '--porcelain'], { cwd: folder, encoding: 'utf8' }), /desktop-smoke.txt/);
