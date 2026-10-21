@@ -201,7 +201,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
     if (mode === 'tasks') {
       const repositoryRoot = value ? (await repositorySnapshot(value)).root : undefined;
       const tasks = store.list({ repositoryRoot }).map(({ id, request, status, activeAgent, updatedAt }) =>
-        ({ id, request, status, activeAgent, updatedAt }));
+        ({ id, request, status, activeAgent, updatedAt, draftReviewAvailable: store.hasOpenDraft(id) }));
       output.log(JSON.stringify(stream ? { type: 'result', tasks } : tasks, null, stream ? 0 : 2));
       return 0;
     }

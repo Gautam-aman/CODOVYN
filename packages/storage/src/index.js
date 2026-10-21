@@ -108,12 +108,22 @@ export class TaskStore {
       .all().map(({ id }) => this.get(id));
   }
 
+  hasOpenDraft(id) {
+    return !!this.#db.prepare(`SELECT 1 FROM events AS draft
+      WHERE draft.task_id = ? AND draft.kind = 'draft-created'
+      AND NOT EXISTS (SELECT 1 FROM events AS resolved
+        WHERE resolved.task_id = draft.task_id AND resolved.seq > draft.seq
+        AND resolved.kind IN ('draft-accepted', 'draft-rejected')) LIMIT 1`).get(validId(id));
+  }
+
   delete(id) {
-    const task = this.get(validId(id));
-    if (!task) return false;
-    if (task.status === 'running') throw new Error('Cannot delete a running task');
+    validId(id);
     this.#db.exec('BEGIN IMMEDIATE');
     try {
+      const task = this.get(id);
+      if (!task) { this.#db.exec('COMMIT'); return false; }
+      if (task.status === 'running') throw new Error('Cannot delete a running task');
+      if (this.hasOpenDraft(id)) throw new Error('Apply or discard the open edit draft before deleting its task history');
       this.#db.prepare('DELETE FROM events WHERE task_id = ?').run(id);
       this.#db.prepare('DELETE FROM tasks WHERE id = ?').run(id);
       this.#db.exec('COMMIT');
@@ -132,7 +142,12 @@ export class TaskStore {
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000) throw new TypeError('Limit must be between 1 and 1000');
     const cutoff = new Date(before).toISOString();
     return this.#db.prepare(`SELECT id FROM tasks WHERE repository_root = ? AND updated_at < ?
-      AND status IN ('completed', 'failed', 'cancelled') ORDER BY updated_at, id LIMIT ?`)
+      AND status IN ('completed', 'failed', 'cancelled')
+      AND NOT EXISTS (SELECT 1 FROM events AS draft WHERE draft.task_id = tasks.id
+        AND draft.kind = 'draft-created' AND NOT EXISTS (
+          SELECT 1 FROM events AS resolved WHERE resolved.task_id = tasks.id
+          AND resolved.seq > draft.seq AND resolved.kind IN ('draft-accepted', 'draft-rejected')))
+      ORDER BY updated_at, id LIMIT ?`)
       .all(repositoryRoot, cutoff, limit).map(({ id }) => id);
   }
 

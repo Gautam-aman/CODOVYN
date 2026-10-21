@@ -153,7 +153,11 @@ window.addEventListener('message', ({ data }) => {
       button.textContent = `${task.request} · ${task.status}`;
       button.addEventListener('click', () => vscode.postMessage({ type: 'history', id: task.id }));
       row.append(button);
-      if (task.status !== 'running') {
+      if (task.draftReviewAvailable) {
+        const draftLabel = document.createElement('span');
+        draftLabel.textContent = 'Draft awaiting review';
+        row.append(draftLabel);
+      } else if (task.status !== 'running') {
         const remove = document.createElement('button');
         remove.type = 'button';
         remove.className = 'task-delete';

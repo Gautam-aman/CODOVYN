@@ -24,13 +24,25 @@ commands require a terminal confirmation or an explicit `--yes` flag. SQLite
 deletion does not securely erase old database pages or WAL contents; filesystem
 snapshots and backups may retain copies. Backups and copied databases must be
 managed separately. Interrupted tasks are retained by pruning so recovery
-context is not removed automatically.
+context is not removed automatically. Tasks with open edit drafts cannot be
+deleted or pruned until the draft is applied or discarded, preserving the
+base commit and history needed for review.
 
-The Codex and Claude adapters delegate authentication to their installed CLIs
-and request read-only execution. The Claude adapter disables discovered hooks,
-plugins, MCP servers, and write-capable tools for its noninteractive run. The
-CLI does not print provider stderr into stored task history. No hosted
-CODOVYN service exists.
+The Codex and Claude adapters delegate authentication to their installed CLIs.
+Commands without `-edit` request read-only execution. Explicit edit modes create
+a separate Git worktree from a clean committed repository. Codex uses its
+`workspace-write` sandbox; Claude uses `acceptEdits`, a restricted file-tool
+list, bare mode, and denial of permission prompts. Claude shell and MCP tools
+are unavailable in this integration. These are provider-enforced boundaries,
+not an independent CODOVYN operating-system sandbox; Claude's live enforcement
+has not been verified locally. The CLI does not print provider stderr into
+stored task history. No hosted CODOVYN service exists.
+
+Draft application requires a hash of the displayed patch and an unchanged,
+clean base repository. Drafts cannot introduce symlinks or submodules. Rejecting
+a draft deletes its isolated worktree, including ignored build outputs. A
+worktree shares Git metadata with its repository and is not a security boundary
+by itself. Review generated changes and run project checks before committing.
 
 Git staging, branching, committing, fetching, pulling, and pushing require
 explicit CLI commands. Branch, commit, fetch, pull, and push use an empty hooks

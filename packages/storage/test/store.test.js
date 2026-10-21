@@ -91,6 +91,36 @@ test('refuses to delete a running task', () => {
   store.close();
 });
 
+test('open edit drafts retain their task history until explicitly resolved', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'codovyn-draft-retention-'));
+  const filename = join(directory, 'tasks.sqlite');
+  let store;
+  try {
+    store = new TaskStore(filename);
+    for (const id of ['accept', 'reject']) {
+      store.create({ id, request: 'Edit', repositoryRoot: '/repo', primaryAgent: 'codex' });
+      store.append(id, 'draft-created', { baseCommit: 'abc' });
+      store.update(id, { status: 'completed', activeAgent: 'codex', step: 1 });
+    }
+    store.close();
+    store = new TaskStore(filename);
+    const cutoff = { repositoryRoot: '/repo', before: new Date(Date.now() + 60_000).toISOString() };
+    for (const id of ['accept', 'reject']) {
+      assert.equal(store.hasOpenDraft(id), true);
+      assert.throws(() => store.delete(id), /Apply or discard the open edit draft/);
+      assert.equal(store.events(id)[0].kind, 'draft-created');
+    }
+    assert.deepEqual(store.prunable(cutoff), []);
+    assert.deepEqual(store.prune(cutoff), []);
+    store.append('accept', 'draft-accepted');
+    store.append('reject', 'draft-rejected');
+    assert.equal(store.hasOpenDraft('accept'), false);
+    assert.equal(store.hasOpenDraft('reject'), false);
+    assert.equal(store.delete('accept'), true);
+    assert.deepEqual(store.prune(cutoff), ['reject']);
+  } finally { store?.close(); rmSync(directory, { recursive: true, force: true }); }
+});
+
 test('prunes only bounded finished tasks in the selected repository', () => {
   const store = new TaskStore(':memory:');
   for (const [id, root, status] of [
