@@ -44,6 +44,13 @@ export class TaskStore {
         data TEXT NOT NULL,
         created_at TEXT NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS execution_leases (
+        task_id TEXT PRIMARY KEY REFERENCES tasks(id),
+        token TEXT NOT NULL,
+        owner TEXT NOT NULL,
+        acquired_at TEXT NOT NULL,
+        released_at TEXT
+      );
       CREATE INDEX IF NOT EXISTS events_by_task ON events(task_id, seq);
     `);
     if (!this.#db.prepare('PRAGMA table_info(tasks)').all().some((column) => column.name === 'repository_root')) {
@@ -103,6 +110,35 @@ export class TaskStore {
     return rows.map(({ id }) => this.get(id));
   }
 
+  /** Atomic ownership: elapsed time never grants another executor access. */
+  claimExecution(id, { token, pid, host }) {
+    validId(id);
+    if (typeof token !== 'string' || !/^[a-zA-Z0-9-]{16,80}$/.test(token) ||
+        !Number.isSafeInteger(pid) || pid < 1 || typeof host !== 'string' || !host || host.length > 256) {
+      throw new TypeError('Invalid execution owner');
+    }
+    if (!this.get(id)) throw new Error('Unknown task');
+    const result = this.#db.prepare(`INSERT INTO execution_leases VALUES (?, ?, ?, ?, NULL)
+      ON CONFLICT(task_id) DO UPDATE SET token=excluded.token, owner=excluded.owner,
+      acquired_at=excluded.acquired_at, released_at=NULL WHERE execution_leases.released_at IS NOT NULL`)
+      .run(id, token, JSON.stringify({ pid, host }), new Date().toISOString());
+    if (result.changes !== 1) throw new Error('Task has an unreconciled execution owner');
+    return this.executionLease(id);
+  }
+
+  executionLease(id) {
+    const row = this.#db.prepare('SELECT * FROM execution_leases WHERE task_id = ?').get(validId(id));
+    return row ? { token: row.token, owner: JSON.parse(row.owner), acquiredAt: row.acquired_at,
+      releasedAt: row.released_at } : null;
+  }
+
+  releaseExecution(id, token) {
+    const result = this.#db.prepare(`UPDATE execution_leases SET released_at = ?
+      WHERE task_id = ? AND token = ? AND released_at IS NULL`)
+      .run(new Date().toISOString(), validId(id), token);
+    if (result.changes !== 1) throw new Error('Execution ownership changed');
+  }
+
   listInterrupted() {
     return this.#db.prepare("SELECT id FROM tasks WHERE status IN ('running', 'interrupted') ORDER BY updated_at")
       .all().map(({ id }) => this.get(id));
@@ -123,8 +159,10 @@ export class TaskStore {
       const task = this.get(id);
       if (!task) { this.#db.exec('COMMIT'); return false; }
       if (task.status === 'running') throw new Error('Cannot delete a running task');
+      if (this.executionLease(id)?.releasedAt === null) throw new Error('Cannot delete an owned task');
       if (this.hasOpenDraft(id)) throw new Error('Apply or discard the open edit draft before deleting its task history');
       this.#db.prepare('DELETE FROM events WHERE task_id = ?').run(id);
+      this.#db.prepare('DELETE FROM execution_leases WHERE task_id = ?').run(id);
       this.#db.prepare('DELETE FROM tasks WHERE id = ?').run(id);
       this.#db.exec('COMMIT');
       return true;
@@ -143,6 +181,7 @@ export class TaskStore {
     const cutoff = new Date(before).toISOString();
     return this.#db.prepare(`SELECT id FROM tasks WHERE repository_root = ? AND updated_at < ?
       AND status IN ('completed', 'failed', 'cancelled')
+      AND NOT EXISTS (SELECT 1 FROM execution_leases WHERE task_id = tasks.id AND released_at IS NULL)
       AND NOT EXISTS (SELECT 1 FROM events AS draft WHERE draft.task_id = tasks.id
         AND draft.kind = 'draft-created' AND NOT EXISTS (
           SELECT 1 FROM events AS resolved WHERE resolved.task_id = tasks.id
@@ -159,6 +198,7 @@ export class TaskStore {
       const deleteTask = this.#db.prepare('DELETE FROM tasks WHERE id = ?');
       for (const id of ids) {
         deleteEvents.run(id);
+        this.#db.prepare('DELETE FROM execution_leases WHERE task_id = ?').run(id);
         deleteTask.run(id);
       }
       this.#db.exec('COMMIT');
