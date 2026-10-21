@@ -2,6 +2,7 @@ import { spawn, execFile } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import { promisify } from 'node:util';
 import { AgentFailure } from '../../agent-core/src/index.js';
+import { manageAgentProcess } from './process.js';
 
 const execute = promisify(execFile);
 
@@ -62,12 +63,9 @@ export function createCodexAdapter({ cwd, command = 'codex', prefixArgs = [], wr
       const prompt = formatHandoffPrompt(handoff) + (write
         ? '\n\nWork only inside this isolated draft workspace. Do not commit, push, deploy, or modify files outside this worktree. Run relevant local checks and report what changed.' : '');
       const child = spawn(command, [...prefixArgs, 'exec', '--json', '--sandbox', write ? 'workspace-write' : 'read-only', '-'], {
-        cwd, stdio: ['pipe', 'pipe', 'pipe'], signal, shell: false,
+        cwd, stdio: ['pipe', 'pipe', 'pipe'], shell: false, detached: process.platform !== 'win32',
       });
-      let processError = null;
-      child.on('error', (error) => { processError = error; });
-      child.stdin.on('error', (error) => { processError = error; });
-      const closed = new Promise((resolve) => child.once('close', resolve));
+      const lifecycle = manageAgentProcess(child, signal);
       child.stdin.end(prompt);
       // Never include stderr in task events: provider logs can contain credentials.
       child.stderr.resume();
@@ -80,14 +78,13 @@ export function createCodexAdapter({ cwd, command = 'codex', prefixArgs = [], wr
           const event = parseCodexEvent(raw);
           if (event) yield event;
         }
-        const code = await closed;
-        if (processError) throw processError;
+        const code = await lifecycle.closed;
+        if (lifecycle.error()) throw lifecycle.error();
         if (code !== 0) throw new AgentFailure('fatal', `Codex exited with status ${code}`);
       } catch (error) {
-        if (!child.killed) child.kill();
         if (signal?.aborted) throw new AgentFailure('cancelled', 'Codex was cancelled');
         throw error;
-      }
+      } finally { await lifecycle.dispose(); }
     },
   };
 }
@@ -136,11 +133,9 @@ export function createClaudeAdapter({ cwd, command = 'claude', prefixArgs = [], 
         '--permission-mode', write ? 'acceptEdits' : 'plan', '--permission-prompts', 'none',
         '--tools', write ? 'Read,Glob,Grep,Edit,Write' : 'Read,Glob,Grep',
         '--disallowedTools', 'mcp__*', '--no-session-persistence'];
-      const child = spawn(command, args, { cwd, stdio: ['pipe', 'pipe', 'pipe'], signal, shell: false });
-      let processError = null;
-      child.on('error', (error) => { processError = error; });
-      child.stdin.on('error', (error) => { processError = error; });
-      const closed = new Promise((resolve) => child.once('close', resolve));
+      const child = spawn(command, args, { cwd, stdio: ['pipe', 'pipe', 'pipe'], shell: false,
+        detached: process.platform !== 'win32' });
+      const lifecycle = manageAgentProcess(child, signal);
       child.stdin.end(prompt);
       // Provider diagnostics can contain secrets and must not enter task history.
       child.stderr.resume();
@@ -181,14 +176,14 @@ export function createClaudeAdapter({ cwd, command = 'claude', prefixArgs = [], 
           }
           if (event) yield event;
         }
-        const code = await closed;
-        if (processError) throw processError;
+        const code = await lifecycle.closed;
+        if (lifecycle.error()) throw lifecycle.error();
         if (code !== 0) throw new AgentFailure('fatal', `Claude Code exited with status ${code}`);
       } catch (error) {
         if (signal?.aborted) throw new AgentFailure('cancelled', 'Claude Code was cancelled');
         throw error;
       } finally {
-        if (child.exitCode === null && !child.killed) child.kill();
+        await lifecycle.dispose();
       }
     },
   };
