@@ -244,8 +244,11 @@ export async function main(args = process.argv.slice(2), output = console, signa
         const packet = createHandoffPacket({ request: task.request, snapshot, history: events, step: task.step });
         const inspection = { taskId: task.id, status: task.status, repository: packet.repository,
           actions: packet.actions, automaticContinuation: false, processState: executionRecovery(store,task.id).reason,
-          recoverySafe: executionRecovery(store,task.id).safe, fingerprint: recoveryFingerprint(snapshot),
-          guidance: 'Observation only. This does not prove provider processes have stopped or that writes succeeded. Do not replay unresolved actions. Preserve the draft and reconcile manually.' };
+          recoverySafe: ['running','interrupted','cancelled'].includes(task.status)&&executionRecovery(store,task.id).safe, fingerprint: recoveryFingerprint(snapshot),
+          continuationReady: task.status==='interrupted' && events.findLast(event=>event.kind==='draft-reconciled')?.data.fingerprint===recoveryFingerprint(snapshot) &&
+            events.findLast(event=>event.kind==='draft-reconciled')?.data.decision==='preserve' &&
+            (events.findLast(event=>event.kind==='continuation-approved')?.seq??0)<(events.findLast(event=>event.kind==='draft-reconciled')?.seq??0),
+          guidance: executionRecovery(store,task.id).safe ? 'Process cleanup or absence verified. Tool outcomes remain unknown. Confirm preservation for review; continuation requires separate explicit approval.' : 'Recovery is blocked while process ownership is unknown or a provider group may remain alive. No action has been replayed. Preserve files and inspect processes externally.' };
         output.log(JSON.stringify(stream ? { type: 'result', inspection } : inspection, null, stream ? 0 : 2));
         return 0;
       }

@@ -172,8 +172,8 @@ let reviewedHash = null;
 let draftWorking = false;
 let recoveryTask = null;
 const recoveryActions=document.createElement('div');recoveryActions.className='draft-actions';
-for(const [type,label] of [['draft-reconcile','Preserve for review'],['draft-abandon','Abandon execution, keep draft']]) {
- const button=document.createElement('button');button.type='button';button.textContent=label;
+for(const [type,label] of [['draft-continue','Continue with project primary'],['draft-reconcile','Preserve for review'],['draft-abandon','Abandon execution, keep draft']]) {
+ const button=document.createElement('button');button.type='button';button.textContent=label;button.dataset.recoveryType=type;
  button.addEventListener('click',()=>{if(recoveryTask)vscode.postMessage({type,id:recoveryTask});});
  recoveryActions.append(button);
 }
@@ -336,6 +336,7 @@ window.addEventListener('message', ({ data }) => {
   } else if (data.type === 'recovery-inspection') {
     recoveryTask=data.inspection.recoverySafe?data.inspection.taskId:null;
     recoveryActions.hidden=!recoveryTask;
+    for(const button of recoveryActions.children)button.hidden=button.dataset.recoveryType==='draft-continue'&&!data.inspection.continuationReady;
     reviewedHash = null; draftAvailable = false; updateDraftActions();
     diffOutput.textContent = JSON.stringify(data.inspection, null, 2);
     status.textContent = 'Recovery inspection only — no provider started';

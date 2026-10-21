@@ -206,7 +206,7 @@ function createExtension(api, runner = runCli) {
             await refreshTasks();
             return;
           }
-          if (['draft-reconcile', 'draft-abandon', 'draft-inspect', 'draft-review', 'draft-accept', 'draft-reject'].includes(message.type) && !active && !starting && !draftBusy && !disposed &&
+          if (['draft-continue', 'draft-reconcile', 'draft-abandon', 'draft-inspect', 'draft-review', 'draft-accept', 'draft-reject'].includes(message.type) && !active && !starting && !draftBusy && !disposed &&
             typeof message.id === 'string' && /^[a-zA-Z0-9_-]{1,80}$/.test(message.id)) {
             const folder = folderForTask();
             if (!folder) { panel.webview.postMessage({ type: 'diff-error', text: 'Open a Git repository folder first.' }); return; }
@@ -216,15 +216,20 @@ function createExtension(api, runner = runCli) {
             draftBusy = true;
             panel.webview.postMessage({ type: 'draft-busy' });
             try {
-              if (['draft-reconcile','draft-abandon'].includes(message.type)) {
+              if (['draft-continue','draft-reconcile','draft-abandon'].includes(message.type)) {
                 const inspection=recoveryInspection;
                 if (!api.workspace.isTrusted || !inspection || inspection.taskId!==message.id || !inspection.recoverySafe) return;
-                const label=message.type==='draft-abandon'?'Abandon execution':'Preserve for review';
+                const provider=loadAgentPolicy().primary;
+                if(message.type==='draft-continue'&&!inspection.continuationReady)return;
+                const label=message.type==='draft-continue'?`Continue with ${provider}`:message.type==='draft-abandon'?'Abandon execution':'Preserve for review';
                 const approval=await api.window.showWarningMessage(`${label}?`,{modal:true,
-                  detail:'No action will be replayed. Ambiguous tool outcomes remain unknown. Draft files are preserved for patch review; no provider will start.'},label);
+                  detail:message.type==='draft-continue'?'This sends the original task and verified draft context to the selected provider with write permission. Inspect ambiguous command effects first. Only this provider starts; failed continuation requires fresh reconciliation. No action log is replayed.':'No action will be replayed. Ambiguous tool outcomes remain unknown. Draft files are preserved for patch review; no provider will start.'},label);
                 if (approval!==label || disposed || folderForTask()!==folder || recoveryInspection!==inspection) return;
-                await runner(nodePath,[script,message.type,message.id,folder.uri.fsPath,inspection.fingerprint,'--yes'],{
-                  cwd:folder.uri.fsPath,env,onChild:()=>{},onEvent:()=>{}});
+                if(message.type==='draft-continue')panel.webview.postMessage({type:'running'});
+                const result=await runner(nodePath,[script,message.type,message.id,folder.uri.fsPath,inspection.fingerprint,...(message.type==='draft-continue'?[provider]:[]),'--yes'],{
+                  cwd:folder.uri.fsPath,env,onChild:child=>{active=child;},onEvent:event=>panel.webview.postMessage({type:'progress',entries:timeline([event])})});
+                active=null;
+                if(message.type==='draft-continue'){panel.webview.postMessage({type:'result',...result});recoveryInspection=null;await refreshTasks();return;}
                 recoveryInspection=null;reviewedDraft=null;
                 panel.webview.postMessage({type:'draft-reconciled',taskId:message.id});
                 await refreshTasks();return;
@@ -272,8 +277,8 @@ function createExtension(api, runner = runCli) {
                 panel.webview.postMessage({ type: 'draft-rejected', taskId: message.id });
               }
               await refreshTasks();
-            } catch (error) { panel.webview.postMessage({ type: 'diff-error', text: error.message }); }
-            finally { draftBusy = false; if (!disposed) panel.webview.postMessage({ type: 'draft-idle' }); }
+            } catch (error) { panel.webview.postMessage({ type: message.type==='draft-continue'?'error':'diff-error', text: error.message }); }
+            finally { active=null; draftBusy = false; if (!disposed) panel.webview.postMessage({ type: 'draft-idle' }); }
             return;
           }
           if (message.type === 'delete-task' && !active && !starting && !draftBusy && typeof message.id === 'string' && /^[a-zA-Z0-9_-]{1,80}$/.test(message.id)) {
