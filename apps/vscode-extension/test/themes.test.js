@@ -46,6 +46,7 @@ test('theme selection persists between panels and rejects unrecognized theme dat
     window: { createWebviewPanel: () => {
       const panel = { webview: { cspSource: 'x', asWebviewUri: (uri) => uri,
         onDidReceiveMessage: (callback) => { handler = callback; }, postMessage: (message) => sent.push(message) } };
+      let close; panel.onDidDispose = (callback) => { close = callback; }; panel.dispose = () => close?.();
       panels.push(panel);
       return panel;
     } },
@@ -60,9 +61,9 @@ test('theme selection persists between panels and rejects unrecognized theme dat
   assert.equal(sent.at(-1).selectedTheme, 'warm-paper');
   await handler({ type: 'theme-select', id: '</style><script>bad</script>' });
   assert.equal(validTheme('unknown'), false);
-  open();
+  panels.at(-1).dispose(); open();
   assert.match(panels[1].webview.html, /body data-codovyn-theme="warm-paper"/);
   await handler({ type: 'theme-select', id: 'inherit' });
-  open();
+  panels.at(-1).dispose(); open();
   assert.match(panels[2].webview.html, /body data-codovyn-theme="inherit"/);
 });

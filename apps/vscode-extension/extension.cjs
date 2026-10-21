@@ -97,11 +97,14 @@ function runCli(command, args, options) {
 function createExtension(api, runner = runCli) {
   return {
     activate(context) {
+      let currentPanel = null;
       const command = api.commands.registerCommand('codovyn.open', () => {
+        if (currentPanel) { currentPanel.reveal?.(); return currentPanel; }
         const panel = api.window.createWebviewPanel('codovyn.task', 'CODOVYN', api.ViewColumn.Beside, {
           enableScripts: true,
           localResourceRoots: [api.Uri.joinPath(context.extensionUri, 'apps', 'vscode-extension', 'media')],
         });
+        currentPanel = panel;
         const nonce = randomBytes(16).toString('base64');
         const savedTheme = context.globalState?.get('codovyn.panelTheme', 'inherit');
         let selectedTheme = validTheme(savedTheme) ? savedTheme : 'inherit';
@@ -148,7 +151,7 @@ function createExtension(api, runner = runCli) {
           sendAgentPolicy();
           refreshTasks();
         });
-        panel.onDidDispose?.(() => { disposed = true; active?.kill('SIGTERM'); folderListener?.dispose(); });
+        panel.onDidDispose?.(() => { if (currentPanel === panel) currentPanel = null; disposed = true; active?.kill('SIGTERM'); folderListener?.dispose(); });
         const taskDataDirectory = dataDirectory(context.globalStorageUri.fsPath);
         const refreshTasks = async () => {
           const folder = folderForTask();

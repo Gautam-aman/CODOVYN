@@ -31,3 +31,14 @@ test('project provider preferences persist with validation and reach only config
   assert.ok(calls.some(c=>c.args.includes('agents')));
   assert.equal(sent.at(-1).agents[0].authentication,'unknown');
 });
+
+test('opening the agent workspace reveals its existing panel and recreates it only after disposal', () => {
+  let open;const panels=[];let reveals=0;
+  const api={commands:{registerCommand:(_,callback)=>{open=callback;return {dispose(){}};}},window:{createWebviewPanel:()=>{
+    let close;const panel={reveal:()=>{reveals++;},onDidDispose:callback=>{close=callback;},dispose:()=>close?.(),
+      webview:{cspSource:'x',asWebviewUri:x=>x,onDidReceiveMessage(){},postMessage(){}}};panels.push(panel);return panel;
+  }},ViewColumn:{Beside:2},Uri:{joinPath:(_, ...parts)=>parts.join('/')},workspace:{workspaceFolders:[]}};
+  createExtension(api).activate({extensionUri:'root',globalStorageUri:{fsPath:'/data'},subscriptions:[]});
+  const first=open();assert.equal(open(),first);assert.equal(panels.length,1);assert.equal(reveals,1);
+  first.dispose();assert.notEqual(open(),first);assert.equal(panels.length,2);
+});
