@@ -1,0 +1,31 @@
+name: Desktop development validation
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/desktop/**'
+      - 'apps/vscode-extension/**'
+      - 'apps/cli/**'
+      - 'packages/**'
+      - 'scripts/run-desktop-host.js'
+      - '.github/workflows/desktop.yml'
+permissions:
+  contents: read
+jobs:
+  macos-arm64:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '26'
+          package-manager-cache: false
+      - run: npm ci --ignore-scripts
+      - run: npm run check
+      - run: npm run build:desktop
+      - run: npm run test:desktop-host
+      - run: npm run package:desktop
