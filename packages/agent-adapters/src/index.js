@@ -155,7 +155,7 @@ export function createClaudeAdapter({ cwd, command = 'claude', prefixArgs = [], 
           const event = parseClaudeEvent(raw);
           if (event?.type === 'tool-start') {
             activeTools.set(event.actionId, event.action);
-            yield event;
+            yield { ...event, safeToRetry: !write && ['Read', 'Glob', 'Grep'].includes(event.action) };
             continue;
           }
           if (raw.type === 'assistant' && Array.isArray(raw.message?.content)) {
@@ -163,7 +163,8 @@ export function createClaudeAdapter({ cwd, command = 'claude', prefixArgs = [], 
               if (block?.type !== 'tool_use' || typeof block.id !== 'string' || activeTools.has(block.id)) continue;
               const action = String(block.name || 'tool');
               activeTools.set(block.id, action);
-              yield { type: 'tool-start', actionId: block.id, action };
+              yield { type: 'tool-start', actionId: block.id, action,
+                safeToRetry: !write && ['Read', 'Glob', 'Grep'].includes(action) };
             }
           }
           if (raw.type === 'user' && Array.isArray(raw.message?.content)) {

@@ -5,6 +5,11 @@ function repositoryChanged(before, after) {
     JSON.stringify(before?.changedPaths ?? []) !== JSON.stringify(after?.changedPaths ?? []);
 }
 
+function pendingToolIds(tools) {
+  const ids = [...tools.keys()];
+  return ids.length === 1 ? ids[0] : ids.length ? ids : null;
+}
+
 /** Executes a stored task, saving every observable event before advancing. */
 export class TaskEngine {
   #running = new Set();
@@ -47,6 +52,18 @@ export class TaskEngine {
     if (!['pending', 'running', 'interrupted'].includes(task.status)) throw new Error(`Cannot run task in ${task.status} state`);
     if (task.status !== 'pending') {
       const history = this.store.events(id);
+      if (task.status === 'interrupted') {
+        const checkpoint = history.findLast((entry) => entry.kind === 'checkpoint');
+        if (checkpoint?.data.repository && checkpoint.data.repository.verified !== false) {
+          let current;
+          try { current = await this.snapshot(); }
+          catch { /* A failed verification must not restart an agent. */ }
+          if (!current || repositoryChanged(checkpoint.data.repository, current)) {
+            this.#record(id, 'recovery-verification-failed', { agent: task.activeAgent });
+            return task;
+          }
+        }
+      }
       if (task.status === 'interrupted' && history.some((entry) =>
         ['repository-changed', 'recovery-verification-failed'].includes(entry.kind))) {
         const started = history.findLast((entry) => entry.kind === 'agent-started');
@@ -55,16 +72,21 @@ export class TaskEngine {
         catch { /* An unreadable repository cannot be reconciled. */ }
         if (!started?.data.repository || !current || repositoryChanged(started.data.repository, current)) return task;
       }
-      let pendingTool = null;
-      let usedTool = false;
+      const pendingTools = new Map();
+      let usedUnsafeTool = false;
       for (const entry of history) {
         if (entry.kind !== 'agent-event') continue;
-        if (entry.data.event.type === 'tool-start') { pendingTool = entry.data.event.actionId; usedTool = true; }
-        if (entry.data.event.type === 'tool-complete' && entry.data.event.actionId === pendingTool) pendingTool = null;
+        const event = entry.data.event;
+        if (event.type === 'tool-start') {
+          pendingTools.set(event.actionId, event.safeToRetry === true);
+          if (event.safeToRetry !== true) usedUnsafeTool = true;
+        }
+        if (event.type === 'tool-complete') pendingTools.delete(event.actionId);
       }
-      if (usedTool) {
+      if (usedUnsafeTool) {
         if (task.status === 'running') this.store.update(id, { status: 'interrupted', activeAgent: task.activeAgent, step: task.step });
-        throw new Error(pendingTool ? `Task has unresolved tool action: ${pendingTool}` : 'Task used tools and requires reconciliation before retry');
+        const unsafePending = [...pendingTools].find(([, safe]) => !safe)?.[0];
+        throw new Error(unsafePending ? `Task has unresolved tool action: ${unsafePending}` : 'Task used tools and requires reconciliation before retry');
       }
       if (task.status === 'running') {
         const started = history.findLast((entry) => entry.kind === 'agent-started');
@@ -104,8 +126,8 @@ export class TaskEngine {
         continue;
       }
       task = this.store.update(task.id, { status: 'running', activeAgent: id, step: task.step });
-      let pendingTool = null;
-      let usedTool = false;
+      const pendingTools = new Map();
+      let usedUnsafeTool = false;
       let completed = false;
       let baseline;
       try {
@@ -121,15 +143,15 @@ export class TaskEngine {
           if (signal?.aborted) return this.#cancel(task, id);
           if (!event || typeof event.type !== 'string') throw new Error('Malformed agent event');
           if (event.type === 'tool-start') {
-            if (pendingTool) throw new Error('Concurrent tool actions are not supported');
             if (typeof event.actionId !== 'string' || !event.actionId) throw new Error('Tool action requires an id');
-            pendingTool = event.actionId;
-            usedTool = true;
+            if (pendingTools.has(event.actionId)) throw new Error('Duplicate tool action id');
+            pendingTools.set(event.actionId, event.safeToRetry === true);
+            if (event.safeToRetry !== true) usedUnsafeTool = true;
           } else if (event.type === 'tool-complete') {
-            if (event.actionId !== pendingTool) throw new Error('Tool completion does not match active action');
-            pendingTool = null;
+            if (!pendingTools.has(event.actionId)) throw new Error('Tool completion does not match an active action');
+            pendingTools.delete(event.actionId);
           } else if (event.type === 'completed') {
-            if (pendingTool) throw new Error('Cannot complete with a pending tool action');
+            if (pendingTools.size) throw new Error('Cannot complete with a pending tool action');
             completed = true;
           }
           this.#record(task.id, 'agent-event', { agent: id, event });
@@ -143,8 +165,8 @@ export class TaskEngine {
         if (signal?.aborted) return this.#cancel(task, id);
         const kind = error instanceof AgentFailure ? error.kind : 'fatal';
         this.#record(task.id, 'agent-failed', { agent: id, kind });
-        expectedSnapshot = await this.#checkpoint(task, id, pendingTool, usedTool, baseline);
-        if (!expectedSnapshot || usedTool || !['quota', 'temporary'].includes(kind)) {
+        expectedSnapshot = await this.#checkpoint(task, id, pendingToolIds(pendingTools), usedUnsafeTool, baseline);
+        if (!expectedSnapshot || usedUnsafeTool || !['quota', 'temporary'].includes(kind)) {
           return this.store.update(task.id, { status: 'interrupted', activeAgent: id, step: task.step });
         }
         previous = id;

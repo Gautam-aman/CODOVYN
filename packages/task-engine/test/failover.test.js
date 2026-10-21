@@ -129,6 +129,75 @@ test('does not repeat a completed tool action after a quota failure', async () =
   store.close();
 });
 
+test('a verified read-only tool may be retried by the fallback after a quota event', async () => {
+  const { store, registry, engine } = setup();
+  registry.register(agent('primary', async function* () {
+    yield { type: 'tool-start', actionId: 'read-1', action: 'Read', safeToRetry: true };
+    throw new AgentFailure('quota', 'limit');
+  }));
+  registry.register(agent('backup', async function* ({ handoff }) {
+    assert.equal(handoff.history.find((e) => e.kind === 'checkpoint').data.pendingTool, 'read-1');
+    yield { type: 'completed' };
+  }));
+  assert.equal((await engine.run('task')).activeAgent, 'backup');
+  store.close();
+});
+
+test('parallel read actions can complete out of order without blocking a handoff', async () => {
+  const { store, registry, engine } = setup();
+  registry.register(agent('primary', async function* () {
+    yield { type: 'tool-start', actionId: 'read-1', action: 'Read', safeToRetry: true };
+    yield { type: 'tool-start', actionId: 'grep-2', action: 'Grep', safeToRetry: true };
+    yield { type: 'tool-complete', actionId: 'grep-2' };
+    yield { type: 'tool-complete', actionId: 'read-1' };
+    throw new AgentFailure('quota', 'limit');
+  }));
+  registry.register(agent('backup', async function* () { yield { type: 'completed' }; }));
+  assert.equal((await engine.run('task')).activeAgent, 'backup');
+  assert.equal(store.events('task').find((e) => e.kind === 'checkpoint').data.pendingTool, null);
+  store.close();
+});
+
+test('restart retries only verified read actions and refuses mixed write history', async () => {
+  const { store, registry } = setup();
+  store.update('task', { status: 'running', activeAgent: 'primary', step: 0 });
+  store.append('task', 'agent-started', { agent: 'primary', repository: {} });
+  store.append('task', 'agent-event', { agent: 'primary', event: {
+    type: 'tool-start', actionId: 'read-1', action: 'Read', safeToRetry: true } });
+  let calls = 0;
+  registry.register(agent('primary', async function* () { calls++; yield { type: 'completed' }; }));
+  const restarted = new TaskEngine({ store, registry });
+  assert.equal((await restarted.run('task')).status, 'completed');
+  assert.equal(calls, 1);
+  store.close();
+
+  const unsafe = setup();
+  unsafe.store.update('task', { status: 'running', activeAgent: 'primary', step: 0 });
+  unsafe.store.append('task', 'agent-started', { agent: 'primary', repository: {} });
+  unsafe.store.append('task', 'agent-event', { agent: 'primary', event: {
+    type: 'tool-start', actionId: 'read-1', action: 'Read', safeToRetry: true } });
+  unsafe.store.append('task', 'agent-event', { agent: 'primary', event: {
+    type: 'tool-start', actionId: 'write-2', action: 'Write' } });
+  await assert.rejects(new TaskEngine({ store: unsafe.store, registry: unsafe.registry }).run('task'), /unresolved tool action: write-2/);
+  unsafe.store.close();
+});
+
+test('interrupted read-only work cannot restart after the checkpointed repository changes', async () => {
+  const { store, registry } = setup();
+  store.update('task', { status: 'interrupted', activeAgent: 'primary', step: 0 });
+  store.append('task', 'agent-started', { agent: 'primary', repository: { workingTreeHash: 'before' } });
+  store.append('task', 'agent-event', { agent: 'primary', event: {
+    type: 'tool-start', actionId: 'read-1', action: 'Read', safeToRetry: true } });
+  store.append('task', 'checkpoint', { failedAgent: 'primary', repository: { workingTreeHash: 'before' } });
+  let calls = 0;
+  registry.register(agent('primary', async function* () { calls++; yield { type: 'completed' }; }));
+  const restarted = new TaskEngine({ store, registry, snapshot: async () => ({ workingTreeHash: 'after' }) });
+  assert.equal((await restarted.run('task')).status, 'interrupted');
+  assert.equal(calls, 0);
+  assert.ok(store.events('task').some((entry) => entry.kind === 'recovery-verification-failed'));
+  store.close();
+});
+
 test('recovers a running task after a process restart when no tool is pending', async () => {
   const { store, registry } = setup();
   store.update('task', { status: 'running', activeAgent: 'primary', step: 0 });

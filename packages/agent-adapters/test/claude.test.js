@@ -36,6 +36,8 @@ test('Claude adapter runs a simulated JSONL CLI with read-only tools', async () 
     a[a.indexOf('--tools')+1] !== 'Read,Glob,Grep' || !a.includes('--no-session-persistence')) process.exit(2);
     let p=''; process.stdin.on('data', c => p += c); process.stdin.on('end', () => {
     if (!p.includes('Inspect repository')) process.exit(3);
+    console.log(JSON.stringify({type:'stream_event',event:{type:'content_block_start',content_block:{type:'tool_use',id:'read-1',name:'Read'}}}));
+    console.log(JSON.stringify({type:'user',message:{content:[{type:'tool_result',tool_use_id:'read-1'}]}}));
     console.log(JSON.stringify({type:'stream_event',event:{delta:{type:'text_delta',text:'Reviewed'}}}));
     console.log(JSON.stringify({type:'result',subtype:'success',is_error:false,result:'Reviewed'})); });`;
   await withSimulatedCli(script, async (adapter) => {
@@ -43,8 +45,9 @@ test('Claude adapter runs a simulated JSONL CLI with read-only tools', async () 
     for await (const event of adapter.run({ handoff: { request: 'Inspect repository', snapshot: { branch: 'main' } } })) {
       events.push(event);
     }
-    assert.deepEqual(events.map((event) => event.type), ['text', 'completed']);
-    assert.equal(events[0].text, 'Reviewed');
+    assert.deepEqual(events.map((event) => event.type), ['tool-start', 'tool-complete', 'text', 'completed']);
+    assert.equal(events[0].safeToRetry, true);
+    assert.equal(events[2].text, 'Reviewed');
   });
 });
 
@@ -62,6 +65,7 @@ test('Claude edit mode limits tools and streams file edit activity', async () =>
     const events = [];
     for await (const event of adapter.run({ handoff: { request: 'Edit a file', snapshot: {} } })) events.push(event);
     assert.deepEqual(events.map((event) => event.type), ['tool-start', 'tool-complete', 'text', 'completed']);
+    assert.equal(events[0].safeToRetry, false);
     assert.equal(events[1].actionId, 'edit-1');
   }, { write: true });
 });
