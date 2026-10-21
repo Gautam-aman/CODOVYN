@@ -3,7 +3,7 @@ import { createInterface } from 'node:readline';
 import { promisify } from 'node:util';
 import { AgentFailure } from '../../agent-core/src/index.js';
 import { createHandoffPacket } from '../../agent-core/src/handoff.js';
-import { manageAgentProcess } from './process.js';
+import { manageAgentProcess, agentEnvironment } from './process.js';
 
 const execute = promisify(execFile);
 
@@ -48,7 +48,7 @@ export function createCodexAdapter({ cwd, command = 'codex', prefixArgs = [], wr
     id: 'codex',
     capabilities: { streaming: true, resume: false, tools: true, writes: write, authenticationStatus: false, usage: true },
     async availability() {
-      try { await execute(command, [...prefixArgs, '--version'], { timeout: 5000 }); return 'available'; }
+      try { await execute(command, [...prefixArgs, '--version'], { timeout: 5000, env: agentEnvironment() }); return 'available'; }
       catch { return 'unavailable'; }
     },
     async *run({ handoff, signal }) {
@@ -56,7 +56,7 @@ export function createCodexAdapter({ cwd, command = 'codex', prefixArgs = [], wr
       const prompt = formatHandoffPrompt(handoff) + (write
         ? '\n\nWork only inside this isolated draft workspace. Do not commit, push, deploy, or modify files outside this worktree. Run relevant local checks and report what changed.' : '');
       const child = spawn(command, [...prefixArgs, 'exec', '--json', '--sandbox', write ? 'workspace-write' : 'read-only', '-'], {
-        cwd, stdio: ['pipe', 'pipe', 'pipe'], shell: false, detached: process.platform !== 'win32',
+        cwd, env: agentEnvironment(), stdio: ['pipe', 'pipe', 'pipe'], shell: false, detached: process.platform !== 'win32',
       });
       const lifecycle = manageAgentProcess(child, signal);
       child.stdin.end(prompt);
@@ -113,7 +113,7 @@ export function createClaudeAdapter({ cwd, command = 'claude', prefixArgs = [], 
     capabilities: { streaming: true, resume: false, tools: true, writes: write,
       authenticationStatus: false, usage: true },
     async availability() {
-      try { await execute(command, [...prefixArgs, '--version'], { timeout: 5000 }); return 'available'; }
+      try { await execute(command, [...prefixArgs, '--version'], { timeout: 5000, env: agentEnvironment() }); return 'available'; }
       catch { return 'unavailable'; }
     },
     async *run({ handoff, signal }) {
@@ -126,7 +126,7 @@ export function createClaudeAdapter({ cwd, command = 'claude', prefixArgs = [], 
         '--permission-mode', write ? 'acceptEdits' : 'plan', '--permission-prompts', 'none',
         '--tools', write ? 'Read,Glob,Grep,Edit,Write' : 'Read,Glob,Grep',
         '--disallowedTools', 'mcp__*', '--no-session-persistence'];
-      const child = spawn(command, args, { cwd, stdio: ['pipe', 'pipe', 'pipe'], shell: false,
+      const child = spawn(command, args, { cwd, env: agentEnvironment(), stdio: ['pipe', 'pipe', 'pipe'], shell: false,
         detached: process.platform !== 'win32' });
       const lifecycle = manageAgentProcess(child, signal);
       child.stdin.end(prompt);

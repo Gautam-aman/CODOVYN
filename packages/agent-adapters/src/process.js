@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import { dirname, delimiter } from 'node:path';
 import { promisify } from 'node:util';
 import { AgentFailure } from '../../agent-core/src/index.js';
 
@@ -8,6 +9,14 @@ function delay(milliseconds) {
   let timer;
   const promise = new Promise((resolve) => { timer = setTimeout(resolve, milliseconds); });
   return { promise, cancel: () => clearTimeout(timer) };
+}
+
+/** Agent CLI shims use the same Node runtime as the shared engine. */
+export function agentEnvironment() {
+  const env = { ...process.env };
+  const pathKey = process.platform === 'win32' ? Object.keys(env).find(key => key.toLowerCase() === 'path') || 'PATH' : 'PATH';
+  env[pathKey] = `${dirname(process.execPath)}${delimiter}${env[pathKey] || ''}`;
+  return env;
 }
 
 /** Stop the provider and its children before allowing a checkpoint or handoff. */

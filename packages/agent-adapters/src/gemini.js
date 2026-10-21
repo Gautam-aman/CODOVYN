@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { promisify } from 'node:util';
 import { AgentFailure } from '../../agent-core/src/index.js';
 import { formatHandoffPrompt } from './index.js';
-import { manageAgentProcess } from './process.js';
+import { manageAgentProcess, agentEnvironment } from './process.js';
 import { boundedJsonLines } from './jsonl.js';
 import { parseGeminiEvent } from './gemini-events.js';
 const execute = promisify(execFile);
@@ -39,7 +39,7 @@ export function createGeminiAdapter({ cwd, command = 'gemini', prefixArgs = [], 
     id: 'gemini', capabilities: { streaming: true, tools: true, writes: write, resume: false, authenticationStatus: false, usage: true, shell: false },
     async availability() {
       try {
-        const { stdout } = await execute(command, [...prefixArgs, '--help'], { cwd: tmpdir(), timeout: 10000, maxBuffer: 1024 * 1024 });
+        const { stdout } = await execute(command, [...prefixArgs, '--help'], { cwd: tmpdir(), env: agentEnvironment(), timeout: 10000, maxBuffer: 1024 * 1024 });
         return ['--admin-policy', '--output-format', '--extensions'].every(flag => stdout.includes(flag)) ? 'available' : 'unavailable';
       } catch { return 'unavailable'; }
     },
@@ -59,7 +59,7 @@ export function createGeminiAdapter({ cwd, command = 'gemini', prefixArgs = [], 
           '--extensions', 'none', '--allowed-mcp-server-names', `codovyn-disabled-${randomUUID()}`,
           ...(model ? ['--model', model] : [])];
         const child = spawn(command, args, { cwd, shell: false, detached: process.platform !== 'win32',
-          stdio: ['pipe', 'pipe', 'pipe'], env: { ...process.env, GEMINI_CLI_SYSTEM_SETTINGS_PATH: settings } });
+          stdio: ['pipe', 'pipe', 'pipe'], env: { ...agentEnvironment(), GEMINI_CLI_SYSTEM_SETTINGS_PATH: settings } });
         lifecycle = manageAgentProcess(child, signal);
         child.stderr.resume();
         child.stdin.end(formatHandoffPrompt(handoff) + '\nUse only permitted file tools. Never execute shell, deploy, commit or push. Report tests for the user to run.');
