@@ -5,6 +5,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createInterface } from 'node:readline/promises';
+import { routeModel } from '../../../packages/agent-router/src/index.js';
 import { AgentRegistry, AgentFailure } from '../../../packages/agent-core/src/index.js';
 import { TaskStore } from '../../../packages/storage/src/index.js';
 import { createHandoffPacket } from '../../../packages/agent-core/src/handoff.js';
@@ -17,6 +18,9 @@ import { validateDraftWorkspace, createDraftWorkspace, reviewDraftWorkspace, acc
 import { createIssue, createPullRequest, issueDetails, listIssues, listPullRequests, listWorkflowRuns, previewPullRequest, pullRequestDetails, pullRequestDiff } from '../../../packages/github-integration/src/index.js';
 
 const usage = `Usage:
+  codovyn route <repository> <request> (preview only)
+  codovyn routed <repository> <request>
+  codovyn routed-edit <repository> <request> --allow-writes
   codovyn agents <directory>
   codovyn configured <repository> <request>
   codovyn configured-edit <repository> <request> --allow-writes
@@ -76,8 +80,21 @@ export async function main(args = process.argv.slice(2), output = console, signa
   github = { createIssue, createPullRequest, issueDetails, listIssues, listPullRequests, listWorkflowRuns, previewPullRequest, pullRequestDetails, pullRequestDiff },
   adapters = { createCodexAdapter, createClaudeAdapter, createGeminiAdapter }, confirm = confirmAction) {
   const [mode, value, ...rest] = args;
-  if (!['agents', 'configured', 'configured-edit', 'demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit', 'draft-reconcile', 'draft-abandon', 'draft-inspect', 'draft-review', 'draft-accept', 'draft-reject', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'pr-preview', 'pr-create', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
+  if (!['route', 'routed', 'routed-edit', 'agents', 'configured', 'configured-edit', 'demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit', 'draft-reconcile', 'draft-abandon', 'draft-inspect', 'draft-review', 'draft-accept', 'draft-reject', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'pr-preview', 'pr-create', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
   const stream = process.env.CODOVYN_EVENT_STREAM === '1';
+  let routing;
+  if (['route','routed','routed-edit'].includes(mode)) {
+    const json=process.env.CODOVYN_ROUTING_POLICY||'';
+    if(json.length>65536)throw new TypeError('Routing policy exceeds size limit');
+    const input=JSON.parse(json);
+    const request=(mode==='routed-edit'&&rest.at(-1)==='--allow-writes'?rest.slice(0,-1):rest).join(' ');
+    routing=routeModel(request,{...input,requiredCapabilities:[...new Set([...(input.requiredCapabilities||[]),'streaming','tools',...(mode==='routed-edit'?['writes']:[])])]});
+    if(routing.selected && (routing.selected.provider==='claude'||(routing.selected.reasoning&&routing.selected.provider!=='codex'))) {
+      routing.considered.find(candidate=>candidate.id===routing.selected.id).reasons.push('unsupported-cli-model-or-reasoning-selector');
+      routing.explanation='Selected adapter cannot apply this model/reasoning selection';routing.selected=null;
+    }
+    if(mode==='route') {output.log(JSON.stringify(stream?{type:'result',routing}:routing));return routing.selected?0:1;}
+  }
   let policy;
   if (mode === 'configured' || mode === 'configured-edit') {
     const json = process.env.CODOVYN_AGENT_POLICY || '';
@@ -297,12 +314,17 @@ export async function main(args = process.argv.slice(2), output = console, signa
         : { task, events: store.events(value) }, null, stream ? 0 : 2));
       return 0;
     }
-    const editMode = ['configured-edit', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit'].includes(mode);
+    const editMode = ['routed-edit', 'configured-edit', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit'].includes(mode);
     const allowWrites = editMode && rest.at(-1) === '--allow-writes';
     const request = (allowWrites ? rest.slice(0, -1) : rest).join(' ').trim();
     if (editMode && !allowWrites) { output.error(`${mode} requires --allow-writes`); return 2; }
     if (!value || !request) { output.error(usage); return 2; }
     const repository = (await repositorySnapshot(value)).root;
+    if (routing && !routing.selected) {
+      const id=randomUUID();store.create({id,request,repositoryRoot:repository,primaryAgent:'codex'});
+      store.append(id,'routing-decision',routing);store.update(id,{status:'failed',activeAgent:null,step:0});
+      output.log(JSON.stringify(stream?{type:'result',taskId:id,status:'failed',routing}:{taskId:id,status:'failed',routing}));return 1;
+    }
     const registry = new AgentRegistry();
     let primaryAgent;
     let fallbackAgents = [];
@@ -320,16 +342,18 @@ export async function main(args = process.argv.slice(2), output = console, signa
       primaryAgent = mode.startsWith('claude') ? 'claude' : mode.startsWith('gemini') ? 'gemini' : 'codex';
       if (mode === 'auto' || mode === 'auto-edit') fallbackAgents = ['claude'];
       if (mode === 'auto-gemini' || mode === 'auto-gemini-edit') fallbackAgents = ['gemini'];
+      if(routing)primaryAgent=routing.selected.provider;
       if (policy) {
         const candidates = agentPolicy.policyCandidates(policy);
         primaryAgent = candidates[0]; fallbackAgents = candidates.slice(1);
       }
       const factories = { codex: adapters.createCodexAdapter, claude: adapters.createClaudeAdapter, gemini: adapters.createGeminiAdapter };
       for (const provider of [primaryAgent, ...fallbackAgents]) {
-        registry.register(factories[provider]({ cwd: draft?.path || repository, write: !!draft, ...(provider === 'gemini' && policy?.geminiModel ? { model: policy.geminiModel } : {}) }));
+        registry.register(factories[provider]({ cwd: draft?.path || repository, write: !!draft, ...(routing?{model:routing.selected.model,...(routing.selected.reasoning?{reasoning:routing.selected.reasoning}:{})}:{}), ...(provider === 'gemini' && policy?.geminiModel ? { model: policy.geminiModel } : {}) }));
       }
     }
     store.create({ id, request, repositoryRoot: repository, primaryAgent, fallbackAgents });
+    if(routing)store.append(id,'routing-decision',routing);
     if (policy) store.append(id, 'agent-policy', policy);
     if (draft) store.append(id, 'draft-created', { baseCommit: draft.baseCommit, branch: draft.branch });
     const engine = new TaskEngine({ store, registry, snapshot: () => repositorySnapshot(draft?.path || repository),

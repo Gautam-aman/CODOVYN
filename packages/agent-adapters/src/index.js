@@ -41,9 +41,11 @@ export function formatHandoffPrompt(handoff) {
 }
 
 /** Uses the installed Codex CLI and its own authentication within the selected sandbox. */
-export function createCodexAdapter({ cwd, command = 'codex', prefixArgs = [], write = false }) {
+export function createCodexAdapter({ cwd, command = 'codex', prefixArgs = [], write = false, model, reasoning }) {
   if (typeof cwd !== 'string' || !cwd) throw new TypeError('Workspace directory is required');
   if (typeof write !== 'boolean') throw new TypeError('Write permission must be explicit');
+  if (model!==undefined && (typeof model!=='string'||!/^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,127}$/.test(model))) throw new TypeError('Invalid Codex model');
+  if (reasoning!==undefined && (!model || !['none','minimal','low','medium','high','xhigh','max','ultra'].includes(reasoning))) throw new TypeError('Invalid Codex reasoning selection');
   return {
     id: 'codex',
     capabilities: { streaming: true, resume: false, tools: true, writes: write, authenticationStatus: false, usage: true },
@@ -56,7 +58,8 @@ export function createCodexAdapter({ cwd, command = 'codex', prefixArgs = [], wr
       const prompt = formatHandoffPrompt(handoff) + (write
         ? '\n\nWork only inside this isolated draft workspace. Do not commit, push, deploy, or modify files outside this worktree. Run relevant local checks and report what changed.' : '');
       execution?.starting();
-      const child = spawn(command, [...prefixArgs, 'exec', '--json', '--sandbox', write ? 'workspace-write' : 'read-only', '-'], {
+      const child = spawn(command, [...prefixArgs, 'exec', '--json', '--sandbox', write ? 'workspace-write' : 'read-only', ...(model?['--model',model]:[]),
+        ...(reasoning?['--config',`model_reasoning_effort=${JSON.stringify(reasoning)}`]:[]), '-'], {
         cwd, env: agentEnvironment(), stdio: ['pipe', 'pipe', 'pipe'], shell: false, detached: process.platform !== 'win32',
       });
       const lifecycle = manageAgentProcess(child, signal);
