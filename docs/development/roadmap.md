@@ -25,3 +25,15 @@ Actual completed commit count comes from Git history.
 External gates: authenticated GitHub CLI for issue administration; provider
 credentials for live agent checks; release credentials for publication. Draft
 work locally when a gate is unavailable.
+
+## Standalone campaign after the main merge
+
+The earlier campaign is historical. New commit counting starts at
+`f8eccc0f5791553a764295f49c2f96f8ee03135d`; see
+[standalone campaign](standalone-campaign.md). The selected foundation and shared
+runtime boundary are recorded in [ADR 0003](../architecture/0003-standalone-foundation.md).
+A macOS arm64 development build now supports native editing, terminal, Git and
+live Codex draft review/application. It is unnotarized and is not a public release.
+Remaining gates include repeatable restart restoration (#13), interrupted writes
+(#9), live Claude/two-provider handoff (#6), routing (#5), accessibility and
+Windows/Linux installation validation. The new 100-commit target remains unmet.

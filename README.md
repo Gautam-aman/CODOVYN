@@ -2,11 +2,31 @@
 
 **One IDE. Every Agent. Endless Flow.**
 
-CODOVYN is an open-source project building a local-first development environment that can preserve task context when a coding agent becomes unavailable. **Your code never stops when your agent does** is the product goal; the current repository is an early runtime foundation, not a finished IDE.
+CODOVYN is an open-source project building a local-first development environment that can preserve task context when a coding agent becomes unavailable. **Your code never stops when your agent does** is the product goal; the repository now includes a standalone macOS arm64 development application, with the companion VS Code extension retained. This is an unnotarized alpha, not a public release.
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE) [![CI](https://github.com/Gautam-aman/CODOVYN/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Gautam-aman/CODOVYN/actions/workflows/ci.yml)
 
-## What works today
+## Standalone desktop
+
+CODOVYN Desktop uses a pinned Code-OSS/VSCodium foundation with its own application identity, icon, data directories, welcome screen and ten full-workbench themes. It includes an editor, explorer, search, terminal, Git, language tooling and bundled Node 26/npm. VS Code and a globally installed Node runtime are not required to run the generated application. Agent-specific CLIs still require installation and authorization.
+
+On **macOS arm64**, building from source requires Node 26, Git and Xcode command-line tools:
+
+```sh
+npm ci --ignore-scripts
+npm run build:desktop
+open dist/desktop/CODOVYN.app
+npm run test:desktop-host
+npm run package:desktop
+```
+
+Output: `dist/desktop/CODOVYN.app` and `dist/desktop/CODOVYN-darwin-arm64-development.dmg`. The development package is ad-hoc signed, not notarized. Windows and Linux desktop packaging is not implemented or tested. No public installer release is available.
+
+![Live Codex patch accepted in the standalone CODOVYN application](docs/assets/desktop-live-reviewed-patch.png)
+
+This native-window capture shows a real authenticated Codex task in CODOVYN Desktop. It edited a greeting and its test in an isolated worktree; the displayed patch was explicitly reviewed and applied, and the resulting test passed. See the [desktop build guide](apps/desktop/README.md) and [architecture decision](docs/architecture/0003-standalone-foundation.md). Advanced routing, live cross-provider failover and bots remain unfinished.
+
+## Shared runtime and companion extension
 
 - A local SQLite task journal stores requests, agent events, checkpoints, and handoff history.
 - A task engine switches to an ordered fallback after a structured quota or temporary failure when the repository is unchanged and no write-capable tool action ran. Explicitly marked Claude read/search actions can be retried; write-capable actions require reconciliation even if completion was recorded.
@@ -21,7 +41,7 @@ CODOVYN is an open-source project building a local-first development environment
 
 ![Live Codex edits, reviewed Git diff, and passing tests inside VS Code](docs/assets/vscode-live-coding-workflow.png)
 
-This is a genuine capture of a live coding task in a disposable repository on VS Code 1.142.0 for macOS. The two-file patch was reviewed and applied through the panel; `npm test` passed in the integrated terminal. See the [verification record](docs/development/validation-2026-10-21.md) for tested versions and remaining limits. The desktop IDE, GitHub bots, routing UI, and website remain planned work.
+This is a genuine capture of a live coding task in a disposable repository on VS Code 1.142.0 for macOS. The two-file patch was reviewed and applied through the panel; `npm test` passed in the integrated terminal. See the [verification record](docs/development/validation-2026-10-21.md) for tested versions and remaining limits. The standalone development application is described above. GitHub bots, routing UI, and website remain planned work.
 
 ## Quick start
 
@@ -117,7 +137,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution steps and [SECURITY.md](
 
 ## Roadmap
 
-The next release gates are live Claude validation and provider-to-provider handoff, safe continuation after interrupted write actions, primary-agent restoration, complete Git/GitHub workflows, and security and accessibility verification. A standalone desktop application and optional cloud services follow a separate technical evaluation. The current runtime must not be described as release-ready.
+The next release gates are live Claude validation and provider-to-provider handoff, safe continuation after interrupted write actions, primary-agent restoration, complete Git/GitHub workflows, and security and accessibility verification. The standalone macOS development application has passed native editing, terminal and live Codex checks; desktop restart automation, Windows/Linux packages and public signing remain open. Optional cloud services remain planned. The current runtime must not be described as release-ready.
 
 ## License
 

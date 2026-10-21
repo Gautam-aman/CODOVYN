@@ -56,3 +56,23 @@ limitations include no encrypted task database, no cross-process writer lock,
 and no independent validation of provider-side sandbox enforcement. Do not
 store sensitive prompts in CODOVYN until those limits are addressed for your
 use case.
+
+## Standalone development distribution
+
+Desktop assembly accepts only pinned SHA-256 editor and Node artifacts from the
+committed manifest. Rebranding uses local ad-hoc signing, not a public developer
+identity or notarization. Do not treat the development DMG as a verified public
+release. Preserve the included upstream and third-party license notices.
+
+The desktop workbench runs installed compatible extensions with the normal
+Code-OSS extension-host privileges. Install only extensions you trust. Provider
+credentials stay in the provider's supported CLI authentication storage; CODOVYN
+does not pass them to its welcome or agent webviews. The native integrations
+allowlist webview actions and retain explicit draft-edit and patch-application
+confirmations. A Git worktree protects the open working tree from unapproved
+patch application; it is not an operating-system security boundary against
+malicious tools or repository build scripts.
+
+Remote-debugging flags used during local verification expose application control.
+They are not part of normal launch instructions and must not be enabled on a
+shared or untrusted network.
