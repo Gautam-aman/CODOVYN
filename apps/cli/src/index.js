@@ -289,6 +289,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   process.on('SIGTERM', () => controller.abort());
   process.on('SIGINT', () => controller.abort());
   main(process.argv.slice(2), console, controller.signal).then((code) => { process.exitCode = code; }).catch((error) => {
+    if (process.env.CODOVYN_EVENT_STREAM === '1') {
+      const message = error.message === 'Commit or remove working-tree changes before starting an edit draft'
+        ? error.message : 'The local task command failed. Check Git and the selected agent CLI, then retry.';
+      console.log(JSON.stringify({ type: 'error', message }));
+    }
     console.error(error.message);
     process.exitCode = 1;
   });

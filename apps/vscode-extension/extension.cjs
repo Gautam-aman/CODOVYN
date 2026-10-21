@@ -47,6 +47,7 @@ function runCli(command, args, options) {
     let buffer = '';
     let totalBytes = 0;
     let result = null;
+    let publicError = null;
     let failed = false;
     const decoder = new StringDecoder('utf8');
     const consume = (line) => {
@@ -54,6 +55,7 @@ function runCli(command, args, options) {
       const message = JSON.parse(line);
       if (message.type === 'event') options.onEvent(message.event);
       if (message.type === 'result') result = message;
+      if (message.type === 'error' && typeof message.message === 'string') publicError = message.message.slice(0, 500);
     };
     child.stdout.on('data', (chunk) => {
       if (failed) return;
@@ -75,7 +77,7 @@ function runCli(command, args, options) {
       try { consume((buffer + decoder.end()).trim()); }
       catch { return reject(new Error('Task emitted invalid progress data')); }
       if (result) resolve(result);
-      else reject(new Error(`Task process exited without a result (status ${code})`));
+      else reject(new Error(publicError || `Task process exited without a result (status ${code})`));
     });
   });
 }

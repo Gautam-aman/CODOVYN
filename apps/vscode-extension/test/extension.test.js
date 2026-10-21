@@ -130,6 +130,13 @@ test('extension process bridge forwards JSONL progress before the final result',
   assert.equal(result.status, 'completed');
 });
 
+test('extension bridge displays a safe CLI preflight error', async () => {
+  const script = `console.log(JSON.stringify({type:'error',message:'Commit or remove working-tree changes before starting an edit draft'})); process.exitCode=1;`;
+  await assert.rejects(runCli(process.execPath, ['-e', script], {
+    cwd: process.cwd(), env: process.env, onChild: () => {}, onEvent: () => {},
+  }), /Commit or remove working-tree changes/);
+});
+
 test('extension requires edit approval and applies only the last reviewed draft hash', async () => {
   let open;
   let handler;

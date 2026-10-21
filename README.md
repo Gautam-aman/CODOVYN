@@ -9,12 +9,12 @@ CODOVYN is an open-source project building a local-first development environment
 ## What works today
 
 - A local SQLite task journal stores requests, agent events, checkpoints, and handoff history.
-- A task engine switches to an ordered fallback after a structured quota or temporary failure when no tool action ran. Any prior tool action requires reconciliation before retry or handoff, even if completion was recorded.
-- Restart recovery resumes a task with no tool action only when its recorded repository baseline still matches. Checkpoints record the real branch, commit, changed paths, and a local working-tree fingerprint.
-- Read-only Codex CLI and Claude Code adapters consume structured stream events using the user's existing CLI authentication. Their live provider paths have **not** been exercised in CI.
+- A task engine switches to an ordered fallback after a structured quota or temporary failure when the repository is unchanged and no write-capable tool action ran. Explicitly marked Claude read/search actions can be retried; write-capable actions require reconciliation even if completion was recorded.
+- Restart recovery checks the saved repository baseline before retrying a task with no write-capable tool action. Checkpoints record the real branch, commit, changed paths, and a local working-tree fingerprint.
+- Codex CLI and Claude Code adapters consume structured stream events using the user's existing CLI authentication. An authenticated Codex read-only run and edit draft were verified locally on macOS; Claude and live provider failover remain unverified.
 - A deterministic demo flow lets contributors inspect a simulated quota handoff without provider credentials or code edits.
 - A CLI opens real Git repositories and displays saved task history.
-- A VS Code extension panel starts local tasks from an open repository, selects Codex, Claude, or automatic Codex-to-Claude fallback, shows a handoff timeline, and offers cancellation and confirmed history deletion. Activation and panel rendering passed an automated Extension Development Host test on VS Code 1.142.0 for macOS. Webview interactions and restart recovery still need host-level verification.
+- A VS Code extension panel starts local tasks from an open repository, selects Codex, Claude, or automatic Codex-to-Claude fallback, shows a handoff timeline, and offers cancellation and confirmed history deletion. It can request an isolated edit draft and apply or discard it after review. Activation and panel rendering passed an automated Extension Development Host test on VS Code 1.142.0 for macOS; demo chat, history selection, and persistence after restarting were checked manually in that host. Live editing from the rendered webview still needs end-to-end host verification.
 - Read-only Git patches, selected-path staging, local commits, branch creation, fetch, fast-forward-only pull, and an explicit branch push work through the CLI. Remote GitHub authentication still comes from the user's Git configuration.
 - Read-only GitHub issue and pull-request lists, selected issue/PR details, bounded PR patch inspection, and Actions run listings work through an installed, authenticated GitHub CLI. Explicit CLI commands can create an issue or, after an interactive diff review, a same-repository PR. PR creation is covered by simulated tests but has not been exercised against GitHub. Automation bots are not implemented.
 
@@ -53,6 +53,16 @@ node apps/cli/src/index.js auto . "Explain the task engine"
 
 The Codex and Claude commands are intentionally read-only and may use the provider accounts configured in their respective CLIs. The `auto` mode starts with Codex and tries Claude after a confirmed eligible failure or unavailability; it does not restore the primary agent. CODOVYN does not provide model access or an API entitlement. No CODOVYN account is needed. See the [Claude adapter guide](docs/agents/claude.md) for its current tool and version requirements.
 
+For a code change, start from a clean committed repository and explicitly allow a separate Git worktree draft. The original working tree remains untouched until you review and apply the patch:
+
+```sh
+node apps/cli/src/index.js codex-edit . "Make a small change and run relevant checks" --allow-writes
+node apps/cli/src/index.js draft-review TASK_ID .
+node apps/cli/src/index.js draft-accept TASK_ID . PATCH_HASH --yes
+```
+
+Use `claude-edit` to restrict Claude Code to Read, Glob, Grep, Edit, and Write tools without shell commands. Use `auto-edit` to try Codex first and Claude after an eligible failure before any write-capable tool action. `draft-reject TASK_ID . --yes` discards the isolated worktree, including ignored build outputs. The VS Code panel asks for edit permission and patch application separately. Review the complete diff before accepting; CODOVYN does not yet provide per-hunk approval, automatic test execution after apply, or safe automatic handoff after a write action.
+
 Git commands operate on a repository you name. Review changes with `node apps/cli/src/index.js diff .`, stage specific paths with `node apps/cli/src/index.js stage . path/to/file`, commit the index with `node apps/cli/src/index.js commit . "Describe change"`, and create and enter a local branch with `node apps/cli/src/index.js branch . feature/name`. Use `node apps/cli/src/index.js fetch .` to update remote-tracking refs, `node apps/cli/src/index.js pull .` to fast-forward a clean current branch, and `node apps/cli/src/index.js push .` only when intended. CODOVYN does not force-push or create a merge commit during pull. Its branch, commit, fetch, pull, and push commands skip repository Git hooks; run your project checks explicitly before committing or pushing. The 1 MiB limit applies to diff display, not to committing staged changes.
 
 Install and authenticate the [GitHub CLI](https://cli.github.com/manual/gh_auth_login) to list open issues and pull requests:
@@ -80,8 +90,8 @@ To build a local VS Code extension archive, run `npm ci --ignore-scripts` and `n
 | Agent | Authentication | Current behavior | Status |
 | --- | --- | --- | --- |
 | Deterministic demo agents | None | Simulated quota event and continuation, no edits | Tested locally |
-| OpenAI Codex CLI | Existing CLI authentication | Read-only JSONL task execution; no session resume | Adapter tested with simulated CLI output; one authenticated read-only run verified on macOS |
-| Claude Code CLI | Existing CLI authentication | Read-only text streaming and usage metadata; no session resume or confirmed quota detection | Adapter tested with simulated CLI output; live run unverified |
+| OpenAI Codex CLI | Existing CLI authentication | Read-only tasks or approved worktree edits, structured tool activity; no session resume | Simulated tests and one authenticated read-only and one draft edit run verified on macOS |
+| Claude Code CLI | Existing CLI authentication | Read-only tasks or restricted worktree edits; no session resume or confirmed quota detection | Simulated tests only; CLI absent locally |
 | Gemini CLI, OpenCode, ACP, local providers | Provider-specific | None yet | Planned |
 
 The [Codex CLI reference](https://learn.chatgpt.com/docs/developer-commands?surface=cli) documents `codex exec --json` and read-only sandbox mode. [Claude Code's CLI reference](https://code.claude.com/docs/en/cli-reference) documents structured streaming and restricted tools. Neither adapter assumes that an unstructured error message proves quota exhaustion.
@@ -106,7 +116,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution steps and [SECURITY.md](
 
 ## Roadmap
 
-The next release gates are live VS Code host and provider validation, permission-aware editing, primary-agent restoration, complete Git/GitHub workflows, and security and accessibility verification. A standalone desktop application and optional cloud services follow a separate technical evaluation. The current runtime must not be described as release-ready.
+The next release gates are end-to-end editing in the VS Code host, live Claude validation, safe continuation after interrupted write actions, primary-agent restoration, complete Git/GitHub workflows, and security and accessibility verification. A standalone desktop application and optional cloud services follow a separate technical evaluation. The current runtime must not be described as release-ready.
 
 ## License
 
