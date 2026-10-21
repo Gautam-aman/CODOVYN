@@ -4,7 +4,8 @@ import { join, resolve } from 'node:path';
 import { execFileSync, spawn } from 'node:child_process';
 import assert from 'node:assert/strict';
 const root = resolve(import.meta.dirname, '..');
-const app = join(root, 'dist/desktop/CODOVYN.app/Contents');
+const app = process.env.CODOVYN_DESKTOP_APP
+  ? resolve(process.env.CODOVYN_DESKTOP_APP, 'Contents') : join(root, 'dist/desktop/CODOVYN.app/Contents');
 const temporary = await mkdtemp(join(tmpdir(), 'codovyn-desktop-host-'));
 try {
   const fixture = join(temporary, 'project');
