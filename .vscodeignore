@@ -9,3 +9,5 @@ package-lock.json
 apps/vscode-extension/host/**
 CONTRIBUTING.md
 CODE_OF_CONDUCT.md
+apps/desktop/**
+tests/**

@@ -1,0 +1,27 @@
+{
+  "name": "codovyn-desktop",
+  "publisher": "codovyn-local",
+  "version": "0.1.0",
+  "displayName": "CODOVYN Desktop",
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "main": "./extension.cjs",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "codovyn.desktop.welcome",
+        "title": "CODOVYN: Welcome"
+      }
+    ],
+    "configurationDefaults": {
+      "workbench.startupEditor": "none",
+      "workbench.colorTheme": "CODOVYN Midnight",
+      "workbench.preferredDarkColorTheme": "CODOVYN Midnight",
+      "workbench.preferredLightColorTheme": "CODOVYN Light"
+    }
+  }
+}

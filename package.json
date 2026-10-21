@@ -45,7 +45,8 @@
     "check": "node scripts/check-syntax.js && node --test",
     "test:extension-host": "node scripts/run-extension-host.js",
     "vscode:prepublish": "npm run check",
-    "package:extension": "vsce package --no-dependencies --githubBranch main --out codovyn-dev.vsix"
+    "package:extension": "vsce package --no-dependencies --githubBranch main --out codovyn-dev.vsix",
+    "build:desktop": "node apps/desktop/build/macos.js"
   },
   "devDependencies": {
     "@vscode/test-electron": "^3.1.0",
