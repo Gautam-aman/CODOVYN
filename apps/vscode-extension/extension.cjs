@@ -3,6 +3,7 @@ const { randomBytes } = require('node:crypto');
 const { lstatSync, statSync } = require('node:fs');
 const { join, resolve } = require('node:path');
 const { StringDecoder } = require('node:string_decoder');
+const { defaultPolicy, validateAgentPolicy } = require('../../packages/agent-core/src/policy.cjs');
 const { themes, validTheme, themeStyles } = require('./themes.cjs');
 
 function runtimePath(api, context) {
@@ -111,6 +112,23 @@ function createExtension(api, runner = runCli) {
         const sendAppearance = (text = '') => panel.webview.postMessage({ type: 'appearance', selectedTheme,
           themes: themes.map(({ id, name, kind }) => ({ id, name, kind })), text });
         const folderForTask = () => api.workspace.workspaceFolders?.find((folder) => folder.uri.fsPath === selectedRoot) || null;
+        const policyKey = () => `codovyn.agentPolicy.${selectedRoot}`;
+        const loadAgentPolicy = () => {
+          try { return validateAgentPolicy(context.globalState?.get(policyKey(), defaultPolicy) || defaultPolicy); }
+          catch { return validateAgentPolicy(defaultPolicy); }
+        };
+        const sendAgentPolicy = (text = '') => panel.webview.postMessage({ type: 'agent-policy', policy: loadAgentPolicy(), text });
+        const inspectAgents = async () => {
+          const folder = folderForTask();
+          if (!folder || !api.workspace.isTrusted || active || starting || draftBusy) { panel.webview.postMessage({ type: 'agent-diagnostics-error', text: 'Open and trust a project, then wait for the current operation before inspecting agents.' }); return; }
+          panel.webview.postMessage({ type: 'agent-diagnostics-loading' });
+          try {
+            const result = await runner(runtimePath(api, context), [join(context.extensionPath, 'apps', 'cli', 'src', 'index.js'), 'agents', folder.uri.fsPath], {
+              cwd: folder.uri.fsPath, env: { ...process.env, CODOVYN_EVENT_STREAM: '1' }, onChild: () => {}, onEvent: () => {},
+            });
+            if (!disposed && folderForTask() === folder) panel.webview.postMessage({ type: 'agent-diagnostics', agents: result.agents || [] });
+          } catch { panel.webview.postMessage({ type: 'agent-diagnostics-error', text: 'Could not inspect agent CLIs. Check the local runtime and CLI installation.' }); }
+        };
         const sendProjects = () => panel.webview.postMessage({ type: 'projects', selectedRoot,
           projects: (api.workspace.workspaceFolders || []).map((folder) => ({
             root: folder.uri.fsPath, name: folder.name || folder.uri.fsPath.split(/[\\/]/).at(-1),
@@ -123,6 +141,7 @@ function createExtension(api, runner = runCli) {
             panel.webview.postMessage({ type: 'project-selected' });
           }
           sendProjects();
+          sendAgentPolicy();
           refreshTasks();
         });
         panel.onDidDispose?.(() => { disposed = true; active?.kill('SIGTERM'); folderListener?.dispose(); });
@@ -144,7 +163,7 @@ function createExtension(api, runner = runCli) {
         panel.webview.onDidReceiveMessage(async (message) => {
           if (!message || typeof message !== 'object') return;
           if (message.type === 'cancel') { active?.kill('SIGTERM'); return; }
-          if (message.type === 'ready') { sendProjects(); sendAppearance(); await refreshTasks(); return; }
+          if (message.type === 'ready') { sendProjects(); sendAppearance(); sendAgentPolicy(); await refreshTasks(); return; }
           if (message.type === 'theme-select' && validTheme(message.id) && !disposed) {
             try {
               await context.globalState?.update('codovyn.panelTheme', message.id);
@@ -153,10 +172,20 @@ function createExtension(api, runner = runCli) {
             } catch { sendAppearance('Could not save the theme. Your previous selection is retained.'); }
             return;
           }
+          if (message.type === 'agent-diagnostics') { await inspectAgents(); return; }
+          if (message.type === 'agent-policy-save' && !active && !starting && !draftBusy && !disposed && folderForTask()) {
+            try {
+              const policy = validateAgentPolicy(message.policy);
+              await context.globalState?.update(policyKey(), policy);
+              sendAgentPolicy('Agent preferences saved locally for this project.');
+            } catch { sendAgentPolicy('Invalid preferences or storage error. Previous settings retained.'); }
+            return;
+          }
           if (message.type === 'tasks') { await refreshTasks(); return; }
           if (message.type === 'project-select' && !active && !starting && !draftBusy && typeof message.root === 'string') {
             if (!api.workspace.workspaceFolders?.some((folder) => folder.uri.fsPath === message.root)) return;
             selectedRoot = message.root;
+            sendAgentPolicy();
             reviewedDraft = null;
             sendProjects();
             panel.webview.postMessage({ type: 'project-selected' });
@@ -266,7 +295,7 @@ function createExtension(api, runner = runCli) {
             return;
           }
           if (message.type !== 'run' || active || starting || draftBusy || disposed) return;
-          if (!['demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit'].includes(message.mode) || typeof message.request !== 'string') return;
+          if (!['configured', 'configured-edit', 'demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit'].includes(message.mode) || typeof message.request !== 'string') return;
           const request = message.request.trim();
           if (!request || request.length > 10000) return;
           const folder = folderForTask();
@@ -274,12 +303,15 @@ function createExtension(api, runner = runCli) {
           if (message.mode !== 'demo' && !api.workspace.isTrusted) {
             panel.webview.postMessage({ type: 'error', text: 'Trust this workspace before using an AI agent.' }); return;
           }
+          const taskPolicy = loadAgentPolicy();
           starting = true;
-          const editMode = ['codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit'].includes(message.mode);
+          const editMode = ['configured-edit', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit'].includes(message.mode);
           if (editMode) {
             panel.webview.postMessage({ type: 'approval-pending' });
-            const agentName = message.mode === 'gemini-edit' ? 'Gemini CLI' : message.mode === 'auto-gemini-edit' ? 'Codex and Gemini CLI' : message.mode === 'claude-edit' ? 'Claude Code' : message.mode === 'auto-edit' ? 'Codex and Claude Code' : 'Codex';
-            const detail = message.mode === 'gemini-edit'
+            const agentName = message.mode === 'configured-edit' ? [taskPolicy.primary, ...(taskPolicy.automatic ? taskPolicy.fallbacks : [])].join(' and ') : message.mode === 'gemini-edit' ? 'Gemini CLI' : message.mode === 'auto-gemini-edit' ? 'Codex and Gemini CLI' : message.mode === 'claude-edit' ? 'Claude Code' : message.mode === 'auto-edit' ? 'Codex and Claude Code' : 'Codex';
+            const detail = message.mode === 'configured-edit'
+              ? 'The configured providers may receive this task and repository context. Codex may run local draft commands; Gemini and Claude use restricted file tools. Automatic handoff stops after write-capable actions. You will review the patch before applying it.'
+              : message.mode === 'gemini-edit'
               ? 'Gemini may edit files inside a separate Git worktree using restricted file tools. Shell commands are unavailable. You will review a patch before changes reach the open repository.'
               : message.mode === 'auto-gemini-edit'
                 ? 'This task may send its request and context to Codex and Gemini. Codex may run draft commands; Gemini uses restricted file tools. Automatic handoff stops after write-capable actions. Review is required before applying changes.'
@@ -313,7 +345,7 @@ function createExtension(api, runner = runCli) {
             const result = await runner(nodePath, [script, message.mode, folder.uri.fsPath, request,
               ...(editMode ? ['--allow-writes'] : [])], {
               cwd: folder.uri.fsPath,
-              env: { ...process.env, CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM: '1' },
+              env: { ...process.env, CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM: '1', CODOVYN_AGENT_POLICY: JSON.stringify(taskPolicy) },
               onChild: (child) => { active = child; },
               onEvent: (event) => {
                 const entries = timeline([event]);

@@ -55,3 +55,13 @@ summary:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-of
 .theme-preview i:nth-child(3) { width: 45%; }
 .theme-preview[data-codovyn-theme="inherit"] { --vscode-editor-background: var(--codovyn-inherited-background); --vscode-editor-foreground: var(--codovyn-inherited-foreground); --vscode-button-background: var(--codovyn-inherited-accent); --vscode-panel-border: var(--codovyn-inherited-border); }
 @media (prefers-reduced-motion: no-preference) { button { transition: background-color 120ms ease; } }
+
+.agent-settings { margin: 20px 0; padding: 16px; border: 1px solid var(--vscode-panel-border); border-radius: 8px; }
+.agent-settings summary { cursor: pointer; font-weight: 600; }
+.agent-settings label { display: block; margin: 12px 0; }
+.agent-settings select, .agent-settings input[type="text"] { display: block; width: 100%; margin-top: 6px; }
+.agent-settings input[type="checkbox"] { width: auto; margin-right: 6px; }
+.agent-settings button { margin: 6px 8px 6px 0; }
+.agent-cards { list-style: none; padding: 0; }
+.agent-cards li { padding: 12px; margin-top: 10px; border: 1px solid var(--vscode-panel-border); border-radius: 6px; overflow-wrap: anywhere; }
+.agent-cards p { color: var(--vscode-descriptionForeground); }

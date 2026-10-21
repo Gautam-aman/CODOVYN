@@ -71,6 +71,8 @@ editOption.value = 'codex-edit';
 editOption.textContent = 'Codex CLI · edit draft';
 agent.append(editOption);
 for (const [value, label] of [
+  ['configured', 'Project agents · read only'],
+  ['configured-edit', 'Project agents · edit draft'],
   ['gemini', 'Gemini CLI · read only (experimental)'],
   ['gemini-edit', 'Gemini CLI · edit draft (experimental)'],
   ['auto-gemini', 'Codex → Gemini · automatic read only'],
@@ -83,6 +85,64 @@ for (const [value, label] of [
   option.textContent = label;
   agent.append(option);
 }
+
+const agentSettings = document.createElement('details');
+agentSettings.className = 'agent-settings';
+const agentSummary = document.createElement('summary'); agentSummary.textContent = 'Project agents';
+const agentHelp = document.createElement('p');
+agentHelp.textContent = 'Choose Project agents above to use these preferences. Enabling automatic switching authorizes sending this task and context to the selected backup providers. No quota or connection status is inferred from installation.';
+agentSettings.append(agentSummary, agentHelp);
+function providerSelect(labelText, optional = false) {
+  const label = document.createElement('label'); label.textContent = labelText;
+  const select = document.createElement('select'); select.setAttribute('aria-label', labelText);
+  for (const value of [...(optional ? [''] : []), 'codex', 'gemini', 'claude']) {
+    const option = document.createElement('option'); option.value = value;
+    option.textContent = value || 'None'; select.append(option);
+  }
+  label.append(select); agentSettings.append(label); return select;
+}
+const primaryProvider = providerSelect('Primary agent');
+const firstBackup = providerSelect('First backup', true);
+const secondBackup = providerSelect('Second backup', true);
+const automaticLabel = document.createElement('label');
+const automaticSwitch = document.createElement('input'); automaticSwitch.type = 'checkbox';
+automaticLabel.append(automaticSwitch, ' Enable automatic switching to configured backups');
+const modelLabel = document.createElement('label'); modelLabel.textContent = 'Gemini model (optional)';
+const geminiModel = document.createElement('input'); geminiModel.type = 'text'; geminiModel.maxLength = 128;
+geminiModel.placeholder = 'Use CLI default'; modelLabel.append(geminiModel);
+const policySave = document.createElement('button'); policySave.type = 'button'; policySave.textContent = 'Save project agents';
+const inspectAgents = document.createElement('button'); inspectAgents.type = 'button'; inspectAgents.textContent = 'Inspect installed agents';
+const policyStatus = document.createElement('p'); policyStatus.setAttribute('role', 'status');
+const agentCards = document.createElement('ul'); agentCards.className = 'agent-cards'; agentCards.setAttribute('aria-label', 'Agent diagnostics');
+agentSettings.append(automaticLabel, modelLabel, policySave, inspectAgents, policyStatus, agentCards);
+document.querySelector('.composer').after(agentSettings);
+policySave.addEventListener('click', () => {
+  if (run.disabled) { policyStatus.textContent = 'Wait for the active operation before changing preferences.'; return; }
+  vscode.postMessage({ type: 'agent-policy-save', policy: { primary: primaryProvider.value,
+    fallbacks: [firstBackup.value, secondBackup.value].filter(Boolean), automatic: automaticSwitch.checked, geminiModel: geminiModel.value.trim() } });
+});
+inspectAgents.addEventListener('click', () => vscode.postMessage({ type: 'agent-diagnostics' }));
+window.addEventListener('message', ({ data }) => {
+  if (data.type === 'agent-policy') {
+    primaryProvider.value = data.policy.primary; firstBackup.value = data.policy.fallbacks[0] || '';
+    secondBackup.value = data.policy.fallbacks[1] || ''; automaticSwitch.checked = data.policy.automatic;
+    geminiModel.value = data.policy.geminiModel; policyStatus.textContent = data.text;
+    inspectAgents.disabled = false;
+    if (data.text.startsWith('Agent preferences saved')) agent.value = 'configured';
+  } else if (data.type === 'agent-diagnostics-loading') {
+    inspectAgents.disabled = true; policyStatus.textContent = 'Inspecting installed CLIs. No provider task is started.';
+  } else if (data.type === 'agent-diagnostics') {
+    inspectAgents.disabled = false; agentCards.replaceChildren(); policyStatus.textContent = 'Authentication and provider availability remain unknown until observed.';
+    for (const entry of data.agents || []) {
+      const card = document.createElement('li'); const title = document.createElement('strong'); title.textContent = entry.id;
+      const description = document.createElement('p'); description.textContent = `${entry.installation}. Authentication: ${entry.authentication}. Availability: ${entry.availability}.`;
+      const capabilities = document.createElement('p'); capabilities.textContent = `Capabilities: ${Object.entries(entry.capabilities || {}).filter(([, enabled]) => enabled === true).map(([name]) => name).join(', ')}`;
+      card.append(title, description, capabilities); agentCards.append(card);
+    }
+  } else if (data.type === 'agent-diagnostics-error') {
+    inspectAgents.disabled = false; policyStatus.textContent = data.text;
+  }
+});
 
 const draftActions = document.createElement('div');
 draftActions.className = 'draft-actions';
