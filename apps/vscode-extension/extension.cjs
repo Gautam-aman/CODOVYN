@@ -29,6 +29,9 @@ function timeline(events) {
     if (entry.kind === 'agent-event' && ['text', 'completed'].includes(entry.data.event.type) && entry.data.event.text) {
       return [{ type: 'message', text: entry.data.event.text }];
     }
+    if (entry.kind === 'agent-event' && entry.data.event.type === 'session') {
+      return [{ type: 'agent', text: `${entry.data.agent}: selected model ${entry.data.event.model}` }];
+    }
     if (entry.kind === 'agent-started') return [{ type: 'agent', text: `Started ${entry.data.agent}` }];
     if (entry.kind === 'agent-event' && entry.data.event.type === 'tool-start') {
       return [{ type: 'tool', text: ['file_change', 'replace', 'write_file', 'Edit', 'Write'].includes(entry.data.event.action) ? 'Editing draft files…' : entry.data.event.action === 'command_execution' ? 'Running a workspace command…' : `Using agent tool: ${entry.data.event.action}` }];
@@ -171,6 +174,10 @@ function createExtension(api, runner = runCli) {
               selectedTheme = message.id;
               sendAppearance('Theme saved on this device.');
             } catch { sendAppearance('Could not save the theme. Your previous selection is retained.'); }
+            return;
+          }
+          if (message.type === 'gemini-setup') {
+            await api.env.openExternal(api.Uri.parse('https://geminicli.com/docs/get-started/authentication/'));
             return;
           }
           if (message.type === 'agent-diagnostics') { await inspectAgents(); return; }

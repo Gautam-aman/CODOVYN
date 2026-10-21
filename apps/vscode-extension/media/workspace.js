@@ -112,9 +112,11 @@ const geminiModel = document.createElement('input'); geminiModel.type = 'text'; 
 geminiModel.placeholder = 'Use CLI default'; modelLabel.append(geminiModel);
 const policySave = document.createElement('button'); policySave.type = 'button'; policySave.textContent = 'Save project agents';
 const inspectAgents = document.createElement('button'); inspectAgents.type = 'button'; inspectAgents.textContent = 'Inspect installed agents';
+const geminiSetup = document.createElement('button'); geminiSetup.type = 'button'; geminiSetup.textContent = 'Gemini authentication guide';
+geminiSetup.addEventListener('click', () => vscode.postMessage({ type: 'gemini-setup' }));
 const policyStatus = document.createElement('p'); policyStatus.setAttribute('role', 'status');
 const agentCards = document.createElement('ul'); agentCards.className = 'agent-cards'; agentCards.setAttribute('aria-label', 'Agent diagnostics');
-agentSettings.append(automaticLabel, modelLabel, policySave, inspectAgents, policyStatus, agentCards);
+agentSettings.append(automaticLabel, modelLabel, policySave, inspectAgents, geminiSetup, policyStatus, agentCards);
 document.querySelector('.composer').after(agentSettings);
 policySave.addEventListener('click', () => {
   if (run.disabled) { policyStatus.textContent = 'Wait for the active operation before changing preferences.'; return; }
