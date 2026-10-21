@@ -5,12 +5,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createClaudeAdapter, parseClaudeEvent } from '../src/index.js';
 
-async function withSimulatedCli(source, run) {
+async function withSimulatedCli(source, run, options = {}) {
   const directory = mkdtempSync(join(tmpdir(), 'codovyn-claude-'));
   try {
     const script = join(directory, 'claude.cjs');
     writeFileSync(script, source);
-    await run(createClaudeAdapter({ cwd: process.cwd(), command: process.execPath, prefixArgs: [script] }));
+    await run(createClaudeAdapter({ cwd: process.cwd(), command: process.execPath, prefixArgs: [script], ...options }));
   } finally { rmSync(directory, { recursive: true, force: true }); }
 }
 
@@ -21,6 +21,9 @@ test('Claude stream text and successful result map to shared events', () => {
     usage: { input_tokens: 2 }, total_cost_usd: 0.001 }),
   { type: 'completed', usage: { input_tokens: 2 }, estimatedCostUsd: 0.001 });
   assert.equal(parseClaudeEvent({ type: 'system', subtype: 'init' }), null);
+  assert.deepEqual(parseClaudeEvent({ type: 'stream_event', event: { type: 'content_block_start',
+    content_block: { type: 'tool_use', id: 'tool-1', name: 'Edit' } } }),
+  { type: 'tool-start', actionId: 'tool-1', action: 'Edit' });
 });
 
 test('Claude failures do not infer quota from unstructured text', () => {
@@ -43,6 +46,24 @@ test('Claude adapter runs a simulated JSONL CLI with read-only tools', async () 
     assert.deepEqual(events.map((event) => event.type), ['text', 'completed']);
     assert.equal(events[0].text, 'Reviewed');
   });
+});
+
+test('Claude edit mode limits tools and streams file edit activity', async () => {
+  const script = `const a=process.argv.slice(1); if (a[a.indexOf('--permission-mode')+1] !== 'acceptEdits' ||
+    a[a.indexOf('--tools')+1] !== 'Read,Glob,Grep,Edit,Write' ||
+    a[a.indexOf('--disallowedTools')+1] !== 'mcp__*' || !a.includes('--permission-prompts')) process.exit(2);
+    let p=''; process.stdin.on('data', c => p += c); process.stdin.on('end', () => {
+    if (!p.includes('isolated draft workspace')) process.exit(3);
+    console.log(JSON.stringify({type:'stream_event',event:{type:'content_block_start',content_block:{type:'tool_use',id:'edit-1',name:'Edit'}}}));
+    console.log(JSON.stringify({type:'user',message:{content:[{type:'tool_result',tool_use_id:'edit-1'}]}}));
+    console.log(JSON.stringify({type:'result',subtype:'success',is_error:false,result:'Edited'})); });`;
+  await withSimulatedCli(script, async (adapter) => {
+    assert.equal(adapter.capabilities.writes, true);
+    const events = [];
+    for await (const event of adapter.run({ handoff: { request: 'Edit a file', snapshot: {} } })) events.push(event);
+    assert.deepEqual(events.map((event) => event.type), ['tool-start', 'tool-complete', 'text', 'completed']);
+    assert.equal(events[1].actionId, 'edit-1');
+  }, { write: true });
 });
 
 test('Claude adapter falls back to final result when no partial text arrived', async () => {

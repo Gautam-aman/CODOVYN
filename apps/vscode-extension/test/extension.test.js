@@ -166,7 +166,9 @@ test('extension requires edit approval and applies only the last reviewed draft 
   createExtension(api, runner).activate({ extensionUri: 'root', extensionPath: '/extension',
     globalStorageUri: { fsPath: '/data' }, subscriptions: [] });
   open();
-  await handler({ type: 'run', mode: 'codex-edit', request: 'Make a small change' });
+  for (const mode of ['codex-edit', 'claude-edit', 'auto-edit']) {
+    await handler({ type: 'run', mode, request: 'Make a small change' });
+  }
   assert.equal(calls.length, 0);
   approve = true;
   await handler({ type: 'run', mode: 'codex-edit', request: 'Make a small change' });

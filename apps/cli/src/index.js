@@ -19,6 +19,8 @@ const usage = `Usage:
   codovyn claude <repository> <request>
   codovyn auto <repository> <request>
   codovyn codex-edit <repository> <request> --allow-writes
+  codovyn claude-edit <repository> <request> --allow-writes
+  codovyn auto-edit <repository> <request> --allow-writes
   codovyn draft-review <task-id> <repository>
   codovyn draft-accept <task-id> <repository> <patch-hash> --yes
   codovyn draft-reject <task-id> <repository> --yes
@@ -60,7 +62,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
   github = { createIssue, createPullRequest, issueDetails, listIssues, listPullRequests, listWorkflowRuns, previewPullRequest, pullRequestDetails, pullRequestDiff },
   adapters = { createCodexAdapter, createClaudeAdapter }, confirm = confirmAction) {
   const [mode, value, ...rest] = args;
-  if (!['demo', 'codex', 'claude', 'auto', 'codex-edit', 'draft-review', 'draft-accept', 'draft-reject', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'pr-preview', 'pr-create', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
+  if (!['demo', 'codex', 'claude', 'auto', 'codex-edit', 'claude-edit', 'auto-edit', 'draft-review', 'draft-accept', 'draft-reject', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'pr-preview', 'pr-create', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
   const stream = process.env.CODOVYN_EVENT_STREAM === '1';
   if (mode === 'issue') {
     if (!value || rest.length !== 1 || !/^[1-9]\d*$/.test(rest[0])) { output.error(usage); return 2; }
@@ -241,9 +243,10 @@ export async function main(args = process.argv.slice(2), output = console, signa
         : { task, events: store.events(value) }, null, stream ? 0 : 2));
       return 0;
     }
-    const allowWrites = mode === 'codex-edit' && rest.at(-1) === '--allow-writes';
+    const editMode = ['codex-edit', 'claude-edit', 'auto-edit'].includes(mode);
+    const allowWrites = editMode && rest.at(-1) === '--allow-writes';
     const request = (allowWrites ? rest.slice(0, -1) : rest).join(' ').trim();
-    if (mode === 'codex-edit' && !allowWrites) { output.error('codex-edit requires --allow-writes'); return 2; }
+    if (editMode && !allowWrites) { output.error(`${mode} requires --allow-writes`); return 2; }
     if (!value || !request) { output.error(usage); return 2; }
     const repository = (await repositorySnapshot(value)).root;
     const registry = new AgentRegistry();
@@ -251,7 +254,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
     let fallbackAgents = [];
     const id = randomUUID();
     let draft;
-    if (mode === 'codex-edit') draft = await createDraftWorkspace(repository, join(dataDirectory, 'drafts'), id);
+    if (editMode) draft = await createDraftWorkspace(repository, join(dataDirectory, 'drafts'), id);
     if (mode === 'demo') {
       primaryAgent = 'simulated-primary';
       fallbackAgents = ['simulated-backup'];
@@ -260,10 +263,14 @@ export async function main(args = process.argv.slice(2), output = console, signa
       registry.register({ id: 'simulated-backup', capabilities: { writes: false }, availability: async () => 'available',
         async *run({ handoff }) { yield { type: 'completed', text: `Simulated continuation: ${handoff.request}` }; } });
     } else {
-      primaryAgent = mode === 'claude' ? 'claude' : 'codex';
-      if (mode !== 'claude') registry.register(adapters.createCodexAdapter({ cwd: draft?.path || repository, write: !!draft }));
-      if (mode === 'claude' || mode === 'auto') registry.register(adapters.createClaudeAdapter({ cwd: repository }));
-      if (mode === 'auto') fallbackAgents = ['claude'];
+      primaryAgent = ['claude', 'claude-edit'].includes(mode) ? 'claude' : 'codex';
+      if (!['claude', 'claude-edit'].includes(mode)) {
+        registry.register(adapters.createCodexAdapter({ cwd: draft?.path || repository, write: !!draft }));
+      }
+      if (['claude', 'claude-edit', 'auto', 'auto-edit'].includes(mode)) {
+        registry.register(adapters.createClaudeAdapter({ cwd: draft?.path || repository, write: !!draft }));
+      }
+      if (mode === 'auto' || mode === 'auto-edit') fallbackAgents = ['claude'];
     }
     store.create({ id, request, repositoryRoot: repository, primaryAgent, fallbackAgents });
     if (draft) store.append(id, 'draft-created', { baseCommit: draft.baseCommit, branch: draft.branch });

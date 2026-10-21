@@ -209,7 +209,7 @@ function createExtension(api, runner = runCli) {
             return;
           }
           if (message.type !== 'run' || active) return;
-          if (!['demo', 'codex', 'claude', 'auto', 'codex-edit'].includes(message.mode) || typeof message.request !== 'string') return;
+          if (!['demo', 'codex', 'claude', 'auto', 'codex-edit', 'claude-edit', 'auto-edit'].includes(message.mode) || typeof message.request !== 'string') return;
           const request = message.request.trim();
           if (!request || request.length > 10000) return;
           const folder = api.workspace.workspaceFolders?.[0];
@@ -217,9 +217,16 @@ function createExtension(api, runner = runCli) {
           if (message.mode !== 'demo' && !api.workspace.isTrusted) {
             panel.webview.postMessage({ type: 'error', text: 'Trust this workspace before using an AI agent.' }); return;
           }
-          if (message.mode === 'codex-edit') {
-            const approval = await api.window.showWarningMessage('Allow Codex to edit an isolated draft for this task?',
-              { modal: true, detail: 'Codex may edit files and run local commands inside a separate Git worktree. You will review a patch before changes reach the open repository. A clean committed repository is required.' },
+          const editMode = ['codex-edit', 'claude-edit', 'auto-edit'].includes(message.mode);
+          if (editMode) {
+            const agentName = message.mode === 'claude-edit' ? 'Claude Code' : message.mode === 'auto-edit' ? 'Codex and Claude Code' : 'Codex';
+            const detail = message.mode === 'claude-edit'
+              ? 'Claude Code may edit files inside a separate Git worktree. Shell commands are unavailable in this mode. You will review a patch before changes reach the open repository.'
+              : message.mode === 'auto-edit'
+                ? 'Codex may edit files and run local commands inside a separate Git worktree. Claude Code may continue an automatic handoff before a tool action. You will review a patch before changes reach the open repository.'
+                : 'Codex may edit files and run local commands inside a separate Git worktree. You will review a patch before changes reach the open repository.';
+            const approval = await api.window.showWarningMessage(`Allow ${agentName} to edit an isolated draft for this task?`,
+              { modal: true, detail: `${detail} A clean committed repository is required.` },
               'Allow draft edits');
             if (approval !== 'Allow draft edits') return;
           }
@@ -230,7 +237,7 @@ function createExtension(api, runner = runCli) {
           const activity = [];
           try {
             const result = await runner(nodePath, [script, message.mode, folder.uri.fsPath, request,
-              ...(message.mode === 'codex-edit' ? ['--allow-writes'] : [])], {
+              ...(editMode ? ['--allow-writes'] : [])], {
               cwd: folder.uri.fsPath,
               env: { ...process.env, CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM: '1' },
               onChild: (child) => { active = child; },

@@ -13,6 +13,15 @@ const editOption = document.createElement('option');
 editOption.value = 'codex-edit';
 editOption.textContent = 'Codex CLI · edit draft';
 agent.append(editOption);
+for (const [value, label] of [
+  ['claude-edit', 'Claude Code · edit draft'],
+  ['auto-edit', 'Codex → Claude · edit draft'],
+]) {
+  const option = document.createElement('option');
+  option.value = value;
+  option.textContent = label;
+  agent.append(option);
+}
 
 const draftActions = document.createElement('div');
 draftActions.className = 'draft-actions';

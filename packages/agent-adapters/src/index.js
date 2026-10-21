@@ -94,6 +94,12 @@ export function createCodexAdapter({ cwd, command = 'codex', prefixArgs = [], wr
 
 /** Translate documented Claude stream-json messages into the shared event contract. */
 export function parseClaudeEvent(raw) {
+  if (raw?.type === 'stream_event' && raw.event?.type === 'content_block_start' &&
+    raw.event.content_block?.type === 'tool_use') {
+    const block = raw.event.content_block;
+    if (typeof block.id !== 'string' || !block.id) throw new AgentFailure('fatal', 'Claude tool event has no action id');
+    return { type: 'tool-start', actionId: block.id, action: String(block.name || 'tool') };
+  }
   if (raw?.type === 'stream_event' && raw.event?.delta?.type === 'text_delta' &&
     typeof raw.event.delta.text === 'string') {
     return { type: 'text', text: raw.event.delta.text };
@@ -108,12 +114,13 @@ export function parseClaudeEvent(raw) {
   return null;
 }
 
-/** Uses Claude Code's authenticated CLI with only read/search tools available. */
-export function createClaudeAdapter({ cwd, command = 'claude', prefixArgs = [] }) {
+/** Uses Claude Code's authenticated CLI with a restricted built-in tool set. */
+export function createClaudeAdapter({ cwd, command = 'claude', prefixArgs = [], write = false }) {
   if (typeof cwd !== 'string' || !cwd) throw new TypeError('Workspace directory is required');
+  if (typeof write !== 'boolean') throw new TypeError('Write permission must be explicit');
   return {
     id: 'claude',
-    capabilities: { streaming: true, resume: false, tools: false, writes: false,
+    capabilities: { streaming: true, resume: false, tools: true, writes: write,
       authenticationStatus: false, usage: true },
     async availability() {
       try { await execute(command, [...prefixArgs, '--version'], { timeout: 5000 }); return 'available'; }
@@ -121,12 +128,14 @@ export function createClaudeAdapter({ cwd, command = 'claude', prefixArgs = [] }
     },
     async *run({ handoff, signal }) {
       if (signal?.aborted) throw new AgentFailure('cancelled', 'Claude Code was cancelled');
-      const prompt = formatHandoffPrompt(handoff);
+      const prompt = formatHandoffPrompt(handoff) + (write
+        ? '\n\nEdit only this isolated draft workspace. Do not commit, push, deploy, or modify files outside the worktree. Shell commands are unavailable in this mode; report checks the user should run.' : '');
       const args = [...prefixArgs, '--bare', '-p',
         'Continue the task described on stdin. Inspect repository files as needed and report the result.',
         '--output-format', 'stream-json', '--verbose', '--include-partial-messages',
-        '--permission-mode', 'plan', '--permission-prompts', 'none',
-        '--tools', 'Read,Glob,Grep', '--no-session-persistence'];
+        '--permission-mode', write ? 'acceptEdits' : 'plan', '--permission-prompts', 'none',
+        '--tools', write ? 'Read,Glob,Grep,Edit,Write' : 'Read,Glob,Grep',
+        '--disallowedTools', 'mcp__*', '--no-session-persistence'];
       const child = spawn(command, args, { cwd, stdio: ['pipe', 'pipe', 'pipe'], signal, shell: false });
       let processError = null;
       child.on('error', (error) => { processError = error; });
@@ -136,6 +145,7 @@ export function createClaudeAdapter({ cwd, command = 'claude', prefixArgs = [] }
       // Provider diagnostics can contain secrets and must not enter task history.
       child.stderr.resume();
       let sawText = false;
+      const activeTools = new Map();
       try {
         for await (const line of createInterface({ input: child.stdout, crlfDelay: Infinity })) {
           if (line.length > 1024 * 1024) throw new AgentFailure('fatal', 'Claude Code event exceeds size limit');
@@ -143,6 +153,27 @@ export function createClaudeAdapter({ cwd, command = 'claude', prefixArgs = [] }
           try { raw = JSON.parse(line); }
           catch { throw new AgentFailure('fatal', 'Claude Code emitted malformed JSONL'); }
           const event = parseClaudeEvent(raw);
+          if (event?.type === 'tool-start') {
+            activeTools.set(event.actionId, event.action);
+            yield event;
+            continue;
+          }
+          if (raw.type === 'assistant' && Array.isArray(raw.message?.content)) {
+            for (const block of raw.message.content) {
+              if (block?.type !== 'tool_use' || typeof block.id !== 'string' || activeTools.has(block.id)) continue;
+              const action = String(block.name || 'tool');
+              activeTools.set(block.id, action);
+              yield { type: 'tool-start', actionId: block.id, action };
+            }
+          }
+          if (raw.type === 'user' && Array.isArray(raw.message?.content)) {
+            for (const block of raw.message.content) {
+              if (block?.type !== 'tool_result' || !activeTools.has(block.tool_use_id)) continue;
+              const action = activeTools.get(block.tool_use_id);
+              activeTools.delete(block.tool_use_id);
+              yield { type: 'tool-complete', actionId: block.tool_use_id, action };
+            }
+          }
           if (event?.type === 'text') sawText = true;
           if (event?.type === 'completed' && !sawText && typeof raw.result === 'string') {
             yield { type: 'text', text: raw.result };
