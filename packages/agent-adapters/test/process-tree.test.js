@@ -4,7 +4,7 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { setTimeout as delay } from 'node:timers/promises';
-import { createCodexAdapter, createClaudeAdapter } from '../src/index.js';
+import { createCodexAdapter, createClaudeAdapter, createGeminiAdapter } from '../src/index.js';
 
 async function fixture(event, callback) {
   const directory = mkdtempSync(join(tmpdir(), 'codovyn-process-tree-'));
@@ -51,5 +51,25 @@ test('cancellation stops a Codex wrapper and its live descendant', async () => {
         handoff: { request: 'Inspect', snapshot: {} }, signal: controller.signal,
       })) controller.abort();
     }, (error) => error.kind === 'cancelled');
+  });
+});
+
+
+test('Gemini authentication failure reaps the provider and its descendants', async () => {
+  await fixture({type:'result',status:'error',error:{type:'FatalAuthenticationError'}}, async options => {
+    await assert.rejects(async () => {
+      for await (const event of createGeminiAdapter(options).run({handoff:{request:'Inspect'}})) void event;
+    }, error => error.kind === 'authentication');
+  });
+});
+
+test('Gemini cancellation stops descendants before returning control', async () => {
+  await fixture({type:'message',role:'assistant',content:'ready'}, async options => {
+    const controller = new AbortController();
+    await assert.rejects(async () => {
+      for await (const event of createGeminiAdapter(options).run({handoff:{request:'Inspect'},signal:controller.signal})) {
+        assert.equal(event.type,'text');controller.abort();
+      }
+    }, error => error.kind === 'cancelled');
   });
 });
