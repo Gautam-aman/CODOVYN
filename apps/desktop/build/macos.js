@@ -4,7 +4,7 @@ import { homedir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { obtainArtifact } from './artifacts.js';
 import { workbenchThemes } from './themes.js';
-import { codovynProduct, desktopIdentity } from './product.js';
+import { codovynProduct, desktopIdentity, macApplicationMetadata } from './product.js';
 
 if (process.platform !== 'darwin' || process.arch !== 'arm64') throw new Error('Only macOS arm64 is currently validated for assembly');
 const root = resolve(import.meta.dirname, '../../..');
@@ -58,10 +58,7 @@ try {
   const plistPath = join(app, 'Contents/Info.plist');
   const plist = JSON.parse(execFileSync('/usr/bin/plutil', ['-convert', 'json', '-o', '-', plistPath], { encoding: 'utf8' }));
   const originalExecutable = plist.CFBundleExecutable;
-  Object.assign(plist, { CFBundleName: 'CODOVYN', CFBundleDisplayName: 'CODOVYN',
-    CFBundleIdentifier: desktopIdentity.bundleId, CFBundleExecutable: 'CODOVYN', CFBundleIconFile: 'CODOVYN.icns' });
-  plist.CFBundleURLTypes = [{ CFBundleURLName: 'CODOVYN', CFBundleURLSchemes: ['codovyn'] }];
-  await writeFile(plistPath, JSON.stringify(plist));
+  await writeFile(plistPath, JSON.stringify(macApplicationMetadata(plist)));
   run('/usr/bin/plutil', ['-convert', 'xml1', plistPath]);
   await rename(join(app, 'Contents/MacOS', originalExecutable), join(app, 'Contents/MacOS/CODOVYN'));
   const frameworks = join(app, 'Contents/Frameworks');
@@ -81,6 +78,7 @@ try {
   }
   await writeFile(join(resources, 'codovyn-build.json'), JSON.stringify({ identity: desktopIdentity,
     artifacts, sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim(),
+    sourceDirty: execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }).trim().length > 0,
     signing: 'ad-hoc-development', platform: 'darwin-arm64' }, null, 2));
   // Preserve the upstream Electron entitlements required for JIT and child runtimes.
   const entitlements = execFileSync('/usr/bin/codesign', ['-d', '--entitlements', ':-', app], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });

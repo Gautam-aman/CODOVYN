@@ -45,3 +45,11 @@ export function codovynProduct(upstream) {
     upstreamCommit: upstream.commit, distribution: 'development', autoUpdates: false };
   return product;
 }
+
+export function macApplicationMetadata(upstream) {
+  return { ...structuredClone(upstream), CFBundleName: desktopIdentity.name,
+    CFBundleDisplayName: desktopIdentity.name, CFBundleIdentifier: desktopIdentity.bundleId,
+    CFBundleExecutable: desktopIdentity.name, CFBundleIconFile: 'CODOVYN.icns',
+    CFBundleShortVersionString: desktopIdentity.version.split('-')[0], CFBundleVersion: '1',
+    CFBundleURLTypes: [{ CFBundleURLName: desktopIdentity.name, CFBundleURLSchemes: ['codovyn'] }] };
+}
