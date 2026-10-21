@@ -225,3 +225,37 @@ test('extension requires edit approval and applies only the last reviewed draft 
   assert.equal(calls.filter((args) => args[1] === 'draft-accept').length, 1);
   assert.ok(sent.some((message) => message.type === 'draft-accepted'));
 });
+
+test('concurrent edit requests cannot start twice while permission is pending', async () => {
+  let open;
+  let handler;
+  let resolveApproval;
+  let starts = 0;
+  const sent = [];
+  const panel = { webview: { cspSource: 'x', asWebviewUri: (uri) => uri,
+    onDidReceiveMessage: (callback) => { handler = callback; }, postMessage: (message) => sent.push(message) } };
+  const api = {
+    commands: { registerCommand: (_id, callback) => { open = callback; return { dispose() {} }; } },
+    window: { createWebviewPanel: () => panel,
+      showWarningMessage: () => new Promise((resolve) => { resolveApproval = resolve; }) },
+    ViewColumn: { Beside: 2 }, Uri: { joinPath: (_root, ...parts) => parts.join('/') },
+    workspace: { workspaceFolders: [{ uri: { fsPath: '/project' } }], isTrusted: true,
+      getConfiguration: () => ({ get: () => 'node' }) },
+  };
+  createExtension(api, async (_node, args, options) => {
+    if (args[1] === 'tasks') return { tasks: [] };
+    starts++;
+    options.onChild({ kill() {} });
+    return { taskId: 'one', status: 'completed', activeAgent: 'codex', events: [] };
+  }).activate({ extensionUri: 'root', extensionPath: '/extension',
+    globalStorageUri: { fsPath: '/data' }, subscriptions: [] });
+  open();
+  const first = handler({ type: 'run', mode: 'codex-edit', request: 'Edit file' });
+  const second = handler({ type: 'run', mode: 'codex-edit', request: 'Edit file again' });
+  await second;
+  assert.equal(starts, 0);
+  assert.equal(sent.filter((message) => message.type === 'approval-pending').length, 1);
+  resolveApproval('Allow draft edits');
+  await first;
+  assert.equal(starts, 1);
+});

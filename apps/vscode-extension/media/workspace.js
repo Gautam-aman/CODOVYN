@@ -108,6 +108,14 @@ window.addEventListener('message', ({ data }) => {
     status.textContent = 'Ready';
     empty.textContent = 'Task steps and agent handoffs will appear here.';
     diffOutput.textContent = 'Choose a diff to review.';
+  } else if (data.type === 'approval-pending') {
+    status.textContent = 'Awaiting edit permission';
+    run.disabled = true;
+    project.disabled = true;
+  } else if (data.type === 'approval-dismissed') {
+    status.textContent = 'Ready';
+    run.disabled = false;
+    project.disabled = false;
   } else if (data.type === 'running') {
     currentTaskId = null;
     draftAvailable = false;

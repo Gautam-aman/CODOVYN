@@ -94,6 +94,8 @@ function createExtension(api, runner = runCli) {
         const media = (...segments) => panel.webview.asWebviewUri(api.Uri.joinPath(context.extensionUri, 'apps', 'vscode-extension', 'media', ...segments));
         panel.webview.html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${panel.webview.cspSource}; script-src 'nonce-${nonce}';"><link rel="stylesheet" href="${media('workspace.css')}"><title>CODOVYN</title></head><body><main><header><div class="mark">C</div><div><h1>CODOVYN</h1><p>One IDE. Every Agent. Endless Flow.</p></div></header><section class="composer"><label for="agent">Agent</label><select id="agent"><option value="demo">Demo handoff</option><option value="codex">Codex CLI · read only</option><option value="claude">Claude Code · read only</option><option value="auto">Codex → Claude · automatic</option></select><label for="request">What would you like to work on?</label><textarea id="request" rows="5" maxlength="10000" placeholder="Describe a task in this repository"></textarea><div class="actions"><button id="run" type="button">Start task</button><button id="cancel" type="button" disabled>Cancel</button></div></section><section class="activity"><div class="section-head"><h2>Task activity</h2><span id="status" role="status" aria-live="polite">Ready</span></div><ol id="timeline" aria-label="Agent activity"></ol><p id="empty">Task steps and agent handoffs will appear here.</p></section><section class="recent"><div class="section-head"><h2>Recent tasks</h2><button id="refresh" type="button">Refresh</button></div><ul id="tasks" aria-label="Recent repository tasks"></ul></section><section class="diff"><div class="section-head"><h2>Repository diff</h2><div class="diff-actions"><button id="working-diff" type="button">Working tree</button><button id="staged-diff" type="button">Staged</button></div></div><pre id="diff-output" tabindex="0" aria-label="Git diff">Choose a diff to review.</pre></section><footer>Local task history stays on this device.</footer></main><script nonce="${nonce}" src="${media('workspace.js')}"></script></body></html>`;
         let active = null;
+        let starting = false;
+        let disposed = false;
         let reviewedDraft = null;
         let selectedRoot = api.workspace.workspaceFolders?.[0]?.uri.fsPath || null;
         const folderForTask = () => api.workspace.workspaceFolders?.find((folder) => folder.uri.fsPath === selectedRoot) || null;
@@ -111,7 +113,7 @@ function createExtension(api, runner = runCli) {
           sendProjects();
           refreshTasks();
         });
-        panel.onDidDispose?.(() => { active?.kill('SIGTERM'); folderListener?.dispose(); });
+        panel.onDidDispose?.(() => { disposed = true; active?.kill('SIGTERM'); folderListener?.dispose(); });
         const taskDataDirectory = dataDirectory(context.globalStorageUri.fsPath);
         const refreshTasks = async () => {
           const folder = folderForTask();
@@ -132,7 +134,7 @@ function createExtension(api, runner = runCli) {
           if (message.type === 'cancel') { active?.kill('SIGTERM'); return; }
           if (message.type === 'ready') { sendProjects(); await refreshTasks(); return; }
           if (message.type === 'tasks') { await refreshTasks(); return; }
-          if (message.type === 'project-select' && !active && typeof message.root === 'string') {
+          if (message.type === 'project-select' && !active && !starting && typeof message.root === 'string') {
             if (!api.workspace.workspaceFolders?.some((folder) => folder.uri.fsPath === message.root)) return;
             selectedRoot = message.root;
             reviewedDraft = null;
@@ -236,7 +238,7 @@ function createExtension(api, runner = runCli) {
             } catch (error) { panel.webview.postMessage({ type: 'error', text: error.message }); }
             return;
           }
-          if (message.type !== 'run' || active) return;
+          if (message.type !== 'run' || active || starting || disposed) return;
           if (!['demo', 'codex', 'claude', 'auto', 'codex-edit', 'claude-edit', 'auto-edit'].includes(message.mode) || typeof message.request !== 'string') return;
           const request = message.request.trim();
           if (!request || request.length > 10000) return;
@@ -245,18 +247,31 @@ function createExtension(api, runner = runCli) {
           if (message.mode !== 'demo' && !api.workspace.isTrusted) {
             panel.webview.postMessage({ type: 'error', text: 'Trust this workspace before using an AI agent.' }); return;
           }
+          starting = true;
           const editMode = ['codex-edit', 'claude-edit', 'auto-edit'].includes(message.mode);
           if (editMode) {
+            panel.webview.postMessage({ type: 'approval-pending' });
             const agentName = message.mode === 'claude-edit' ? 'Claude Code' : message.mode === 'auto-edit' ? 'Codex and Claude Code' : 'Codex';
             const detail = message.mode === 'claude-edit'
               ? 'Claude Code may edit files inside a separate Git worktree. Shell commands are unavailable in this mode. You will review a patch before changes reach the open repository.'
               : message.mode === 'auto-edit'
                 ? 'Codex may edit files and run local commands inside a separate Git worktree. Claude Code may continue an automatic handoff before a tool action. You will review a patch before changes reach the open repository.'
                 : 'Codex may edit files and run local commands inside a separate Git worktree. You will review a patch before changes reach the open repository.';
-            const approval = await api.window.showWarningMessage(`Allow ${agentName} to edit an isolated draft for this task?`,
-              { modal: true, detail: `${detail} A clean committed repository is required.` },
-              'Allow draft edits');
-            if (approval !== 'Allow draft edits') return;
+            let approval;
+            try {
+              approval = await api.window.showWarningMessage(`Allow ${agentName} to edit an isolated draft for this task?`,
+                { modal: true, detail: `${detail} A clean committed repository is required.` },
+                'Allow draft edits');
+            } catch {
+              starting = false;
+              if (!disposed) panel.webview.postMessage({ type: 'approval-dismissed' });
+              return;
+            }
+            if (approval !== 'Allow draft edits' || disposed || folderForTask() !== folder) {
+              starting = false;
+              if (!disposed) panel.webview.postMessage({ type: 'approval-dismissed' });
+              return;
+            }
           }
           reviewedDraft = null;
           panel.webview.postMessage({ type: 'running' });
@@ -280,7 +295,7 @@ function createExtension(api, runner = runCli) {
               timeline: result.events ? timeline(result.events) : activity });
             await refreshTasks();
           } catch (error) { panel.webview.postMessage({ type: 'error', text: error.message }); }
-          finally { active = null; }
+          finally { active = null; starting = false; }
         });
         return panel;
       });
