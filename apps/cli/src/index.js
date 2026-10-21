@@ -302,6 +302,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
       }
     }
     store.create({ id, request, repositoryRoot: repository, primaryAgent, fallbackAgents });
+    if (policy) store.append(id, 'agent-policy', policy);
     if (draft) store.append(id, 'draft-created', { baseCommit: draft.baseCommit, branch: draft.branch });
     const engine = new TaskEngine({ store, registry, snapshot: () => repositorySnapshot(draft?.path || repository),
       onEvent: stream ? (event) => output.log(JSON.stringify({ type: 'event', event })) : undefined });
