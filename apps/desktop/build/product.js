@@ -26,7 +26,7 @@ export function codovynProduct(upstream) {
     documentationUrl: `${repo}/blob/main/README.md`, releaseNotesUrl: `${repo}/blob/main/CHANGELOG.md`,
     downloadUrl: repo, introductoryVideosUrl: `${repo}/blob/main/README.md`,
     tipsAndTricksUrl: `${repo}/tree/main/docs`, checksumFailMoreInfoUrl: `${repo}/blob/main/SECURITY.md`,
-    trustedExtensionAuthAccess: {},
+    trustedExtensionAuthAccess: {}, builtInExtensionsEnabledWithAutoUpdates: [],
     // Code-OSS 1.140 initializes account services unconditionally. Keep its required
     // shape inert instead of retaining Copilot IDs, endpoints or authentication.
     defaultChatAgent: { extensionId: '', chatExtensionId: '', completionsAdvancedSetting: 'codovyn.disabled',
