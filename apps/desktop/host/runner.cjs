@@ -5,6 +5,7 @@ const { execFileSync } = require('node:child_process');
 const vscode = require('vscode');
 exports.run = async () => {
   assert.match(vscode.env.appName, /CODOVYN/);
+  assert.equal(vscode.workspace.getConfiguration('workbench').get('secondarySideBar.defaultVisibility'), 'hidden', 'new workspaces keep the unused auxiliary pane hidden');
   const folder = vscode.workspace.workspaceFolders[0].uri.fsPath;
   const extension = vscode.extensions.getExtension('codovyn-local.codovyn');
   assert.ok(extension, 'packaged agent integration discovered');

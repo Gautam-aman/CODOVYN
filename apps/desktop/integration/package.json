@@ -21,7 +21,8 @@
       "workbench.startupEditor": "none",
       "workbench.colorTheme": "CODOVYN Midnight",
       "workbench.preferredDarkColorTheme": "CODOVYN Midnight",
-      "workbench.preferredLightColorTheme": "CODOVYN Light"
+      "workbench.preferredLightColorTheme": "CODOVYN Light",
+      "workbench.secondarySideBar.defaultVisibility": "hidden"
     }
   }
 }
