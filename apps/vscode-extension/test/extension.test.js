@@ -96,7 +96,7 @@ test('extension starts a repository task and exposes a safe handoff timeline', a
   await messageHandler({ type: 'delete-task', id: 'task-1' });
   assert.equal(deletionCalls, 1);
   assert.ok(sent.some((message) => message.type === 'task-deleted' && message.id === 'task-1'));
-  assert.equal(sent.at(-1).type, 'tasks');
+  assert.equal(sent.at(-1).type, 'draft-idle');
 });
 
 test('extension blocks provider execution in an untrusted workspace', async () => {
@@ -220,7 +220,7 @@ test('extension requires edit approval and applies only the last reviewed draft 
   await handler({ type: 'draft-accept', id: 'edit-1' });
   assert.equal(calls.filter((args) => args[1] === 'draft-accept').length, 0);
   await handler({ type: 'draft-review', id: 'edit-1' });
-  assert.equal(sent.at(-1).type, 'draft-review');
+  assert.equal(sent.findLast((message) => message.type === 'draft-review').patchHash, hash);
   await handler({ type: 'draft-accept', id: 'edit-1' });
   assert.equal(calls.filter((args) => args[1] === 'draft-accept').length, 1);
   assert.ok(sent.some((message) => message.type === 'draft-accepted'));
@@ -258,4 +258,42 @@ test('concurrent edit requests cannot start twice while permission is pending', 
   resolveApproval('Allow draft edits');
   await first;
   assert.equal(starts, 1);
+});
+
+test('draft confirmation keeps its reviewed hash and rejects competing operations', async () => {
+  let open;
+  let handler;
+  let resolveApproval;
+  const calls = [];
+  const sent = [];
+  const api = {
+    commands: { registerCommand: (_id, callback) => { open = callback; return { dispose() {} }; } },
+    window: { createWebviewPanel: () => ({ webview: { cspSource: 'x', asWebviewUri: (uri) => uri,
+      onDidReceiveMessage: (callback) => { handler = callback; }, postMessage: (message) => sent.push(message) } }),
+      showWarningMessage: () => new Promise((resolve) => { resolveApproval = resolve; }) },
+    ViewColumn: { Beside: 2 }, Uri: { joinPath: (_root, ...parts) => parts.join('/') },
+    workspace: { workspaceFolders: [{ uri: { fsPath: '/project' } }, { uri: { fsPath: '/other' } }],
+      isTrusted: true, getConfiguration: () => ({ get: () => 'node' }) },
+  };
+  const hash = 'a'.repeat(64);
+  createExtension(api, async (_node, args) => {
+    calls.push(args);
+    if (args[1] === 'tasks') return { tasks: [] };
+    if (args[1] === 'draft-review') return { patch: '+reviewed', patchHash: hash, changedPaths: ['file'] };
+    if (args[1] === 'draft-accept') return { taskId: 'edit-1' };
+    assert.fail(`Unexpected command ${args[1]}`);
+  }).activate({ extensionUri: 'root', extensionPath: '/extension',
+    globalStorageUri: { fsPath: '/data' }, subscriptions: [] });
+  open();
+  await handler({ type: 'draft-review', id: 'edit-1' });
+  const apply = handler({ type: 'draft-accept', id: 'edit-1' });
+  for (const message of [
+    { type: 'draft-accept', id: 'edit-1' }, { type: 'draft-review', id: 'edit-2' },
+    { type: 'project-select', root: '/other' }, { type: 'run', mode: 'demo', request: 'Competing task' },
+  ]) await handler(message);
+  assert.equal(calls.length, 1);
+  resolveApproval('Apply reviewed patch');
+  await apply;
+  assert.deepEqual(calls.find((args) => args[1] === 'draft-accept').slice(2), ['edit-1', '/project', hash, '--yes']);
+  assert.equal(sent.at(-1).type, 'draft-idle');
 });

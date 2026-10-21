@@ -47,11 +47,12 @@ document.querySelector('.diff').append(draftActions);
 let currentTaskId = null;
 let draftAvailable = false;
 let reviewedHash = null;
+let draftWorking = false;
 
 function updateDraftActions() {
-  reviewDraft.disabled = !draftAvailable || !currentTaskId;
-  acceptDraft.disabled = !reviewedHash;
-  rejectDraft.disabled = !draftAvailable || !currentTaskId || reviewedHash === null;
+  reviewDraft.disabled = draftWorking || !draftAvailable || !currentTaskId;
+  acceptDraft.disabled = draftWorking || !reviewedHash;
+  rejectDraft.disabled = draftWorking || !draftAvailable || !currentTaskId || reviewedHash === null;
 }
 updateDraftActions();
 
@@ -185,6 +186,11 @@ window.addEventListener('message', ({ data }) => {
     empty.textContent = 'Select a saved task or start a new one.';
   } else if (data.type === 'diff') {
     diffOutput.textContent = data.text || 'No tracked changes in this diff.';
+  } else if (data.type === 'draft-busy' || data.type === 'draft-idle') {
+    draftWorking = data.type === 'draft-busy';
+    run.disabled = draftWorking;
+    project.disabled = draftWorking;
+    updateDraftActions();
   } else if (data.type === 'draft-review') {
     currentTaskId = data.taskId;
     draftAvailable = true;

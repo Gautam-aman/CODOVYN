@@ -95,6 +95,7 @@ function createExtension(api, runner = runCli) {
         panel.webview.html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${panel.webview.cspSource}; script-src 'nonce-${nonce}';"><link rel="stylesheet" href="${media('workspace.css')}"><title>CODOVYN</title></head><body><main><header><div class="mark">C</div><div><h1>CODOVYN</h1><p>One IDE. Every Agent. Endless Flow.</p></div></header><section class="composer"><label for="agent">Agent</label><select id="agent"><option value="demo">Demo handoff</option><option value="codex">Codex CLI · read only</option><option value="claude">Claude Code · read only</option><option value="auto">Codex → Claude · automatic</option></select><label for="request">What would you like to work on?</label><textarea id="request" rows="5" maxlength="10000" placeholder="Describe a task in this repository"></textarea><div class="actions"><button id="run" type="button">Start task</button><button id="cancel" type="button" disabled>Cancel</button></div></section><section class="activity"><div class="section-head"><h2>Task activity</h2><span id="status" role="status" aria-live="polite">Ready</span></div><ol id="timeline" aria-label="Agent activity"></ol><p id="empty">Task steps and agent handoffs will appear here.</p></section><section class="recent"><div class="section-head"><h2>Recent tasks</h2><button id="refresh" type="button">Refresh</button></div><ul id="tasks" aria-label="Recent repository tasks"></ul></section><section class="diff"><div class="section-head"><h2>Repository diff</h2><div class="diff-actions"><button id="working-diff" type="button">Working tree</button><button id="staged-diff" type="button">Staged</button></div></div><pre id="diff-output" tabindex="0" aria-label="Git diff">Choose a diff to review.</pre></section><footer>Local task history stays on this device.</footer></main><script nonce="${nonce}" src="${media('workspace.js')}"></script></body></html>`;
         let active = null;
         let starting = false;
+        let draftBusy = false;
         let disposed = false;
         let reviewedDraft = null;
         let selectedRoot = api.workspace.workspaceFolders?.[0]?.uri.fsPath || null;
@@ -134,7 +135,7 @@ function createExtension(api, runner = runCli) {
           if (message.type === 'cancel') { active?.kill('SIGTERM'); return; }
           if (message.type === 'ready') { sendProjects(); await refreshTasks(); return; }
           if (message.type === 'tasks') { await refreshTasks(); return; }
-          if (message.type === 'project-select' && !active && !starting && typeof message.root === 'string') {
+          if (message.type === 'project-select' && !active && !starting && !draftBusy && typeof message.root === 'string') {
             if (!api.workspace.workspaceFolders?.some((folder) => folder.uri.fsPath === message.root)) return;
             selectedRoot = message.root;
             reviewedDraft = null;
@@ -143,13 +144,15 @@ function createExtension(api, runner = runCli) {
             await refreshTasks();
             return;
           }
-          if (['draft-review', 'draft-accept', 'draft-reject'].includes(message.type) && !active &&
+          if (['draft-review', 'draft-accept', 'draft-reject'].includes(message.type) && !active && !starting && !draftBusy && !disposed &&
             typeof message.id === 'string' && /^[a-zA-Z0-9_-]{1,80}$/.test(message.id)) {
             const folder = folderForTask();
             if (!folder) { panel.webview.postMessage({ type: 'diff-error', text: 'Open a Git repository folder first.' }); return; }
             const nodePath = api.workspace.getConfiguration('codovyn').get('nodePath', 'node');
             const script = join(context.extensionPath, 'apps', 'cli', 'src', 'index.js');
             const env = { ...process.env, CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM: '1' };
+            draftBusy = true;
+            panel.webview.postMessage({ type: 'draft-busy' });
             try {
               if (message.type === 'draft-review') {
                 reviewedDraft = null;
@@ -162,13 +165,14 @@ function createExtension(api, runner = runCli) {
                 return;
               }
               if (!reviewedDraft || reviewedDraft.id !== message.id) return;
-              if (message.type === 'draft-accept' && reviewedDraft.hash) {
+              const review = reviewedDraft;
+              if (message.type === 'draft-accept' && review.hash) {
                 const approval = await api.window.showWarningMessage(
-                  `Apply the reviewed changes to ${reviewedDraft.paths.length} repository file(s)?`,
+                  `Apply the reviewed changes to ${review.paths.length} repository file(s)?`,
                   { modal: true, detail: 'CODOVYN will apply only the patch shown in the draft review. The repository must still match its original clean state.' },
                   'Apply reviewed patch');
-                if (approval !== 'Apply reviewed patch') return;
-                await runner(nodePath, [script, 'draft-accept', message.id, folder.uri.fsPath, reviewedDraft.hash, '--yes'], {
+                if (approval !== 'Apply reviewed patch' || disposed || folderForTask() !== folder || reviewedDraft !== review) return;
+                await runner(nodePath, [script, 'draft-accept', message.id, folder.uri.fsPath, review.hash, '--yes'], {
                   cwd: folder.uri.fsPath, env, onChild: () => {}, onEvent: () => {},
                 });
                 reviewedDraft = null;
@@ -176,7 +180,7 @@ function createExtension(api, runner = runCli) {
               } else if (message.type === 'draft-reject') {
                 const approval = await api.window.showWarningMessage('Discard this isolated edit draft?',
                   { modal: true, detail: 'The draft changes and ignored build outputs in its worktree will be deleted.' }, 'Discard draft');
-                if (approval !== 'Discard draft') return;
+                if (approval !== 'Discard draft' || disposed || folderForTask() !== folder || reviewedDraft !== review) return;
                 await runner(nodePath, [script, 'draft-reject', message.id, folder.uri.fsPath, '--yes'], {
                   cwd: folder.uri.fsPath, env, onChild: () => {}, onEvent: () => {},
                 });
@@ -185,17 +189,20 @@ function createExtension(api, runner = runCli) {
               }
               await refreshTasks();
             } catch (error) { panel.webview.postMessage({ type: 'diff-error', text: error.message }); }
+            finally { draftBusy = false; if (!disposed) panel.webview.postMessage({ type: 'draft-idle' }); }
             return;
           }
-          if (message.type === 'delete-task' && !active && typeof message.id === 'string' && /^[a-zA-Z0-9_-]{1,80}$/.test(message.id)) {
+          if (message.type === 'delete-task' && !active && !starting && !draftBusy && typeof message.id === 'string' && /^[a-zA-Z0-9_-]{1,80}$/.test(message.id)) {
             const folder = folderForTask();
             if (!folder) return;
-            const approval = await api.window.showWarningMessage('Delete this CODOVYN task and its saved event history?',
-              { modal: true }, 'Delete task');
-            if (approval !== 'Delete task') return;
-            const nodePath = api.workspace.getConfiguration('codovyn').get('nodePath', 'node');
-            const script = join(context.extensionPath, 'apps', 'cli', 'src', 'index.js');
+            draftBusy = true;
+            panel.webview.postMessage({ type: 'draft-busy' });
             try {
+              const approval = await api.window.showWarningMessage('Delete this CODOVYN task and its saved event history?',
+                { modal: true }, 'Delete task');
+              if (approval !== 'Delete task' || disposed || folderForTask() !== folder) return;
+              const nodePath = api.workspace.getConfiguration('codovyn').get('nodePath', 'node');
+              const script = join(context.extensionPath, 'apps', 'cli', 'src', 'index.js');
               await runner(nodePath, [script, 'task-delete', message.id, folder.uri.fsPath, '--yes'], {
                 cwd: folder.uri.fsPath,
                 env: { ...process.env, CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM: '1' },
@@ -204,9 +211,10 @@ function createExtension(api, runner = runCli) {
               panel.webview.postMessage({ type: 'task-deleted', id: message.id });
               await refreshTasks();
             } catch { panel.webview.postMessage({ type: 'tasks-error', text: 'Could not delete this task.' }); }
+            finally { draftBusy = false; if (!disposed) panel.webview.postMessage({ type: 'draft-idle' }); }
             return;
           }
-          if (message.type === 'diff' && typeof message.staged === 'boolean') {
+          if (message.type === 'diff' && !draftBusy && typeof message.staged === 'boolean') {
             const folder = folderForTask();
             if (!folder) { panel.webview.postMessage({ type: 'diff-error', text: 'Open a Git repository folder first.' }); return; }
             const nodePath = api.workspace.getConfiguration('codovyn').get('nodePath', 'node');
@@ -219,7 +227,7 @@ function createExtension(api, runner = runCli) {
             } catch { panel.webview.postMessage({ type: 'diff-error', text: 'Could not load this diff.' }); }
             return;
           }
-          if (message.type === 'history' && !active && typeof message.id === 'string' && /^[a-zA-Z0-9_-]{1,80}$/.test(message.id)) {
+          if (message.type === 'history' && !active && !starting && !draftBusy && typeof message.id === 'string' && /^[a-zA-Z0-9_-]{1,80}$/.test(message.id)) {
             const folder = folderForTask();
             if (!folder) return;
             const nodePath = api.workspace.getConfiguration('codovyn').get('nodePath', 'node');
@@ -238,7 +246,7 @@ function createExtension(api, runner = runCli) {
             } catch (error) { panel.webview.postMessage({ type: 'error', text: error.message }); }
             return;
           }
-          if (message.type !== 'run' || active || starting || disposed) return;
+          if (message.type !== 'run' || active || starting || draftBusy || disposed) return;
           if (!['demo', 'codex', 'claude', 'auto', 'codex-edit', 'claude-edit', 'auto-edit'].includes(message.mode) || typeof message.request !== 'string') return;
           const request = message.request.trim();
           if (!request || request.length > 10000) return;
