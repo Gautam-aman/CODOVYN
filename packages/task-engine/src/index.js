@@ -49,6 +49,10 @@ export class TaskEngine {
   }
 
   async run(id, options = {}) {
+    const previousTask=this.store.get(id);
+    if (previousTask && previousTask.status !== 'pending' && !this.store.executionLease(id)?.releasedAt) {
+      throw new Error('Task requires verified process reconciliation before execution');
+    }
     const token = randomUUID();
     this.store.claimExecution(id, { token, pid: process.pid, host: hostname() });
     const start = this.#record(id, 'execution-owned', { token });

@@ -8,6 +8,9 @@ const agent = (id, run) => ({ id, capabilities: { resume: true, tools: true }, a
 const setup = () => {
   const store = new TaskStore(':memory:');
   store.create({ id: 'task', request: 'Repair tests', primaryAgent: 'primary', fallbackAgents: ['backup'] });
+  // These historical-state fixtures explicitly represent completed process cleanup.
+  store.claimExecution('task',{token:'fixture-owner-123456',pid:process.pid,host:'fixture'});
+  store.releaseExecution('task','fixture-owner-123456');
   const registry = new AgentRegistry();
   return { store, registry, engine: new TaskEngine({ store, registry, snapshot: async () => ({ branch: 'feature', commit: 'abc' }) }) };
 };

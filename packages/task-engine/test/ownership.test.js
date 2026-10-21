@@ -9,7 +9,7 @@ test('another engine cannot start an owned task while the first awaits its provi
   const registry=new AgentRegistry();registry.register({id:'agent',capabilities:{},availability:async()=> 'available',
     async *run(){entered();await new Promise(resolve=>release=resolve);yield {type:'completed'};}});
   const first=new TaskEngine({store,registry}).run('task');await ready;
-  await assert.rejects(new TaskEngine({store,registry}).run('task'),/unreconciled execution owner/);
+  await assert.rejects(new TaskEngine({store,registry}).run('task'),/process reconciliation/);
   release();await first;assert.ok(store.executionLease('task').releasedAt);store.close();
 });
 test('a provider registration gap retains its durable lease after failure', async () => {
@@ -18,5 +18,12 @@ test('a provider registration gap retains its durable lease after failure', asyn
     async *run({execution}){execution.starting();throw new Error('launch failed before registration');}});
   assert.equal((await new TaskEngine({store,registry}).run('task')).status,'interrupted');
   assert.equal(store.executionLease('task').releasedAt,null);
-  await assert.rejects(new TaskEngine({store,registry}).run('task'),/unreconciled/);store.close();
+  await assert.rejects(new TaskEngine({store,registry}).run('task'),/process reconciliation/);store.close();
+});
+
+test('a legacy running task never acquires a new lease to conceal unknown old processes',async()=>{
+ const store=new TaskStore(':memory:');store.create({id:'task',request:'Edit',primaryAgent:'agent'});
+ store.update('task',{status:'running',activeAgent:'agent',step:0});
+ await assert.rejects(new TaskEngine({store,registry:new AgentRegistry()}).run('task'),/process reconciliation/);
+ assert.equal(store.executionLease('task'),null);assert.equal(store.get('task').status,'running');store.close();
 });
