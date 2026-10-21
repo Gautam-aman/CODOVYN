@@ -9,6 +9,34 @@ const empty = document.getElementById('empty');
 const tasks = document.getElementById('tasks');
 const refresh = document.getElementById('refresh');
 const diffOutput = document.getElementById('diff-output');
+const editOption = document.createElement('option');
+editOption.value = 'codex-edit';
+editOption.textContent = 'Codex CLI · edit draft';
+agent.append(editOption);
+
+const draftActions = document.createElement('div');
+draftActions.className = 'draft-actions';
+const reviewDraft = document.createElement('button');
+reviewDraft.type = 'button';
+reviewDraft.textContent = 'Review agent draft';
+const acceptDraft = document.createElement('button');
+acceptDraft.type = 'button';
+acceptDraft.textContent = 'Apply reviewed patch';
+const rejectDraft = document.createElement('button');
+rejectDraft.type = 'button';
+rejectDraft.textContent = 'Discard draft';
+draftActions.append(reviewDraft, acceptDraft, rejectDraft);
+document.querySelector('.diff').append(draftActions);
+let currentTaskId = null;
+let draftAvailable = false;
+let reviewedHash = null;
+
+function updateDraftActions() {
+  reviewDraft.disabled = !draftAvailable || !currentTaskId;
+  acceptDraft.disabled = !reviewedHash;
+  rejectDraft.disabled = !draftAvailable || !currentTaskId || reviewedHash === null;
+}
+updateDraftActions();
 
 function appendActivity(items) {
   for (const item of items || []) {
@@ -28,6 +56,15 @@ cancel.addEventListener('click', () => vscode.postMessage({ type: 'cancel' }));
 refresh.addEventListener('click', () => vscode.postMessage({ type: 'tasks' }));
 document.getElementById('working-diff').addEventListener('click', () => vscode.postMessage({ type: 'diff', staged: false }));
 document.getElementById('staged-diff').addEventListener('click', () => vscode.postMessage({ type: 'diff', staged: true }));
+reviewDraft.addEventListener('click', () => {
+  if (currentTaskId) vscode.postMessage({ type: 'draft-review', id: currentTaskId });
+});
+acceptDraft.addEventListener('click', () => {
+  if (currentTaskId && reviewedHash) vscode.postMessage({ type: 'draft-accept', id: currentTaskId });
+});
+rejectDraft.addEventListener('click', () => {
+  if (currentTaskId) vscode.postMessage({ type: 'draft-reject', id: currentTaskId });
+});
 request.addEventListener('keydown', (event) => {
   if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); run.click(); }
 });
@@ -35,6 +72,10 @@ request.addEventListener('keydown', (event) => {
 window.addEventListener('message', ({ data }) => {
   if (!data || typeof data !== 'object') return;
   if (data.type === 'running') {
+    currentTaskId = null;
+    draftAvailable = false;
+    reviewedHash = null;
+    updateDraftActions();
     status.textContent = 'Running';
     run.disabled = true;
     cancel.disabled = false;
@@ -44,6 +85,10 @@ window.addEventListener('message', ({ data }) => {
     appendActivity(data.entries);
     if (data.entries?.length) empty.textContent = '';
   } else if (data.type === 'result' || data.type === 'history') {
+    currentTaskId = data.taskId || null;
+    draftAvailable = !!data.draftReviewAvailable;
+    reviewedHash = null;
+    updateDraftActions();
     status.textContent = data.status === 'completed' ? 'Completed' : data.status;
     run.disabled = false;
     cancel.disabled = true;
@@ -83,11 +128,26 @@ window.addEventListener('message', ({ data }) => {
     row.textContent = data.text;
     tasks.append(row);
   } else if (data.type === 'task-deleted') {
+    if (currentTaskId === data.id) { currentTaskId = null; draftAvailable = false; reviewedHash = null; updateDraftActions(); }
     status.textContent = 'Task deleted';
     timeline.replaceChildren();
     empty.textContent = 'Select a saved task or start a new one.';
   } else if (data.type === 'diff') {
     diffOutput.textContent = data.text || 'No tracked changes in this diff.';
+  } else if (data.type === 'draft-review') {
+    currentTaskId = data.taskId;
+    draftAvailable = true;
+    reviewedHash = data.patchHash || '';
+    diffOutput.textContent = data.patch || 'This draft has no changes to apply.';
+    updateDraftActions();
+    diffOutput.focus();
+  } else if (data.type === 'draft-accepted' || data.type === 'draft-rejected') {
+    draftAvailable = false;
+    reviewedHash = null;
+    updateDraftActions();
+    status.textContent = data.type === 'draft-accepted' ? 'Patch applied' : 'Draft discarded';
+    diffOutput.textContent = data.type === 'draft-accepted'
+      ? 'Reviewed patch applied to the repository. Run your project checks before committing.' : 'Draft discarded.';
   } else if (data.type === 'diff-error') {
     diffOutput.textContent = data.text;
   } else if (data.type === 'error') {

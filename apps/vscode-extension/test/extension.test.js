@@ -80,7 +80,8 @@ test('extension starts a repository task and exposes a safe handoff timeline', a
   await messageHandler({ type: 'run', mode: 'demo', request: 'Inspect' });
   const result = sent.find((message) => message.type === 'result');
   assert.equal(result.status, 'completed');
-  assert.deepEqual(result.timeline.map((item) => item.text), ['Switched from primary to backup', 'Done', 'Final answer']);
+  assert.deepEqual(result.timeline.map((item) => item.text),
+    ['Switched from primary to backup', 'Saved a task checkpoint', 'Done', 'Final answer']);
   assert.ok(!JSON.stringify(result).includes('/private/project'));
   assert.equal(sent.at(-1).type, 'tasks');
   await messageHandler({ type: 'history', id: 'task-1' });
@@ -127,4 +128,55 @@ test('extension process bridge forwards JSONL progress before the final result',
   });
   assert.deepEqual(progress, ['handoff']);
   assert.equal(result.status, 'completed');
+});
+
+test('extension requires edit approval and applies only the last reviewed draft hash', async () => {
+  let open;
+  let handler;
+  let approve = false;
+  const calls = [];
+  const sent = [];
+  const panel = { webview: { cspSource: 'x', asWebviewUri: (uri) => uri,
+    onDidReceiveMessage: (callback) => { handler = callback; }, postMessage: (message) => sent.push(message) } };
+  const api = {
+    commands: { registerCommand: (_id, callback) => { open = callback; return { dispose() {} }; } },
+    window: { createWebviewPanel: () => panel,
+      showWarningMessage: async (_text, _options, action) => approve ? action : undefined },
+    ViewColumn: { Beside: 2 }, Uri: { joinPath: (_root, ...parts) => parts.join('/') },
+    workspace: { workspaceFolders: [{ uri: { fsPath: '/project' } }], isTrusted: true,
+      getConfiguration: () => ({ get: () => 'node' }) },
+  };
+  const hash = 'a'.repeat(64);
+  const runner = async (_node, args, options) => {
+    calls.push(args);
+    switch (args[1]) {
+      case 'tasks': return { tasks: [] };
+      case 'codex-edit':
+        assert.deepEqual(args.slice(2), ['/project', 'Make a small change', '--allow-writes']);
+        options.onChild({ kill() {} });
+        options.onEvent({ kind: 'agent-event', data: { event: { type: 'tool-start', action: 'file_change' } } });
+        return { taskId: 'edit-1', status: 'completed', activeAgent: 'codex', draftReviewAvailable: true };
+      case 'draft-review': return { patch: 'diff --git a/file b/file', patchHash: hash, changedPaths: ['file'] };
+      case 'draft-accept':
+        assert.deepEqual(args.slice(2), ['edit-1', '/project', hash, '--yes']);
+        return { taskId: 'edit-1' };
+      default: assert.fail(`Unexpected command: ${args[1]}`);
+    }
+  };
+  createExtension(api, runner).activate({ extensionUri: 'root', extensionPath: '/extension',
+    globalStorageUri: { fsPath: '/data' }, subscriptions: [] });
+  open();
+  await handler({ type: 'run', mode: 'codex-edit', request: 'Make a small change' });
+  assert.equal(calls.length, 0);
+  approve = true;
+  await handler({ type: 'run', mode: 'codex-edit', request: 'Make a small change' });
+  assert.ok(sent.some((message) => message.type === 'progress' && message.entries[0].text === 'Editing draft files…'));
+  assert.ok(sent.some((message) => message.type === 'result' && message.draftReviewAvailable));
+  await handler({ type: 'draft-accept', id: 'edit-1' });
+  assert.equal(calls.filter((args) => args[1] === 'draft-accept').length, 0);
+  await handler({ type: 'draft-review', id: 'edit-1' });
+  assert.equal(sent.at(-1).type, 'draft-review');
+  await handler({ type: 'draft-accept', id: 'edit-1' });
+  assert.equal(calls.filter((args) => args[1] === 'draft-accept').length, 1);
+  assert.ok(sent.some((message) => message.type === 'draft-accepted'));
 });

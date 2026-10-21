@@ -21,6 +21,9 @@ button:disabled { opacity: .5; cursor: default; }
 .diff { margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--vscode-panel-border); }
 .diff-actions { display: flex; gap: 6px; }
 .diff-actions button { padding: 5px 9px; background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); font-size: 12px; }
+.draft-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.draft-actions button { padding: 7px 11px; background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); font-size: 12px; }
+.draft-actions button:nth-child(2):not(:disabled) { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
 #diff-output { margin-top: 16px; padding: 16px; max-height: 420px; overflow: auto; border: 1px solid var(--vscode-panel-border); border-radius: 8px; background: var(--vscode-textCodeBlock-background, var(--vscode-input-background)); font: 12px/1.5 var(--vscode-editor-font-family, monospace); white-space: pre; }
 .section-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 h2 { margin: 0; font-size: 14px; }
