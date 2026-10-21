@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { hostname } from 'node:os';
+import { recoveryFingerprint } from './recovery.js';
 import { createHandoffPacket } from '../../agent-core/src/handoff.js';
 import { AgentFailure } from '../../agent-core/src/index.js';
 
@@ -65,12 +66,25 @@ export class TaskEngine {
     }
   }
 
-  async #runOwned(id, { signal } = {}) {
+  async #runOwned(id, { signal, continuation } = {}) {
     if (this.#running.has(id)) throw new Error(`Task already running: ${id}`);
     const task = this.store.get(id);
     if (!task) throw new Error(`Unknown task: ${id}`);
     if (!['pending', 'running', 'interrupted'].includes(task.status)) throw new Error(`Cannot run task in ${task.status} state`);
-    if (task.status !== 'pending') {
+    let approvedRepository;
+    if (continuation) {
+      const records=this.store.events(id);
+      const reconciled=records.findLast(event=>event.kind==='draft-reconciled');
+      if(records.findLast(event=>event.kind==='continuation-approved')?.seq>=(reconciled?.seq??0))throw new Error('Reconcile again before another continuation');
+      if (task.status!=='interrupted' || reconciled?.data.decision!=='preserve' ||
+          reconciled.data.fingerprint!==continuation.fingerprint || typeof continuation.agent!=='string') throw new Error('Explicit reconciled continuation is required');
+      this.registry.require(continuation.agent);
+      approvedRepository=await this.snapshot();
+      if (recoveryFingerprint(approvedRepository)!==continuation.fingerprint) throw new Error('Draft changed since reconciliation');
+      this.#record(id,'continuation-approved',{agent:continuation.agent,fingerprint:continuation.fingerprint,
+        policy:'Inspect current files; never replay unresolved writes or commands. Outcomes remain unknown.'});
+    }
+    if (task.status !== 'pending' && !continuation) {
       const history = this.store.events(id);
       if (task.status === 'interrupted') {
         const checkpoint = history.findLast((entry) => entry.kind === 'checkpoint');
@@ -122,14 +136,14 @@ export class TaskEngine {
       }
     }
     this.#running.add(id);
-    try { return await this.#run(task, signal); }
+    try { return await this.#run(task, signal, { agent:continuation?.agent, repository:approvedRepository }); }
     finally { this.#running.delete(id); }
   }
 
-  async #run(task, signal) {
-    const candidates = [...new Set([task.activeAgent || task.primaryAgent, ...task.fallbackAgents])];
+  async #run(task, signal, continuation = {}) {
+    const candidates = continuation.agent ? [continuation.agent] : [...new Set([task.activeAgent || task.primaryAgent, ...task.fallbackAgents])];
     let previous = null;
-    let expectedSnapshot = null;
+    let expectedSnapshot = continuation.repository || null;
     for (const id of candidates) {
       if (signal?.aborted) return this.#cancel(task, id);
       const agent = this.registry.require(id);

@@ -35,6 +35,7 @@ const usage = `Usage:
   codovyn codex-edit <repository> <request> --allow-writes
   codovyn claude-edit <repository> <request> --allow-writes
   codovyn auto-edit <repository> <request> --allow-writes
+  codovyn draft-continue <task-id> <repository> <fingerprint> <agent> --yes
   codovyn draft-reconcile <task-id> <repository> <fingerprint> --yes
   codovyn draft-abandon <task-id> <repository> <fingerprint> --yes
   codovyn draft-inspect <task-id> <repository>
@@ -80,7 +81,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
   github = { createIssue, createPullRequest, issueDetails, listIssues, listPullRequests, listWorkflowRuns, previewPullRequest, pullRequestDetails, pullRequestDiff },
   adapters = { createCodexAdapter, createClaudeAdapter, createGeminiAdapter }, confirm = confirmAction) {
   const [mode, value, ...rest] = args;
-  if (!['route', 'routed', 'routed-edit', 'agents', 'configured', 'configured-edit', 'demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit', 'draft-reconcile', 'draft-abandon', 'draft-inspect', 'draft-review', 'draft-accept', 'draft-reject', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'pr-preview', 'pr-create', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
+  if (!['route', 'routed', 'routed-edit', 'agents', 'configured', 'configured-edit', 'demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit', 'draft-continue', 'draft-reconcile', 'draft-abandon', 'draft-inspect', 'draft-review', 'draft-accept', 'draft-reject', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'pr-preview', 'pr-create', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
   const stream = process.env.CODOVYN_EVENT_STREAM === '1';
   let routing;
   if (['route','routed','routed-edit'].includes(mode)) {
@@ -211,11 +212,12 @@ export async function main(args = process.argv.slice(2), output = console, signa
   const dataDirectory = process.env.CODOVYN_DATA_DIR || join(homedir(), '.codovyn');
   const store = new TaskStore(join(dataDirectory, 'tasks.sqlite'));
   try {
-    if (['draft-reconcile', 'draft-abandon', 'draft-inspect', 'draft-review', 'draft-accept', 'draft-reject'].includes(mode)) {
+    if (['draft-continue', 'draft-reconcile', 'draft-abandon', 'draft-inspect', 'draft-review', 'draft-accept', 'draft-reject'].includes(mode)) {
       const [repositoryPath, patchHash, confirmation] = rest;
       if (!value || !repositoryPath ||
         (['draft-review', 'draft-inspect'].includes(mode) && rest.length !== 1) ||
         (['draft-reconcile', 'draft-abandon', 'draft-accept'].includes(mode) && (rest.length !== 3 || confirmation !== '--yes')) ||
+        (mode === 'draft-continue' && (rest.length!==4 || rest[3]!=='--yes' || !agentPolicy.providers.includes(confirmation))) ||
         (mode === 'draft-reject' && (rest.length !== 2 || patchHash !== '--yes'))) {
         output.error(usage); return 2;
       }
@@ -246,6 +248,18 @@ export async function main(args = process.argv.slice(2), output = console, signa
           guidance: 'Observation only. This does not prove provider processes have stopped or that writes succeeded. Do not replay unresolved actions. Preserve the draft and reconcile manually.' };
         output.log(JSON.stringify(stream ? { type: 'result', inspection } : inspection, null, stream ? 0 : 2));
         return 0;
+      }
+      if (mode==='draft-continue') {
+        await validateDraftWorkspace(task.repositoryRoot,directory,task.id,draft.baseCommit);
+        if(events.some(event=>event.kind==='routing-decision'))throw new Error('Routed tasks require a new budget admission before continuation');
+        const provider=confirmation;
+        const factories={codex:adapters.createCodexAdapter,claude:adapters.createClaudeAdapter,gemini:adapters.createGeminiAdapter};
+        const registry=new AgentRegistry();registry.register(factories[provider]({cwd:join(directory,task.id),write:true}));
+        const engine=new TaskEngine({store,registry,snapshot:()=>repositorySnapshot(join(directory,task.id)),
+          onEvent:stream?event=>output.log(JSON.stringify({type:'event',event})):undefined});
+        const continued=await engine.run(task.id,{signal,continuation:{agent:provider,fingerprint:patchHash}});
+        const result={taskId:task.id,status:continued.status,activeAgent:continued.activeAgent,draftReviewAvailable:true,...(stream?{}:{events:store.events(task.id)})};
+        output.log(JSON.stringify(stream?{type:'result',...result}:result));return continued.status==='completed'?0:1;
       }
       if (['draft-reconcile','draft-abandon'].includes(mode)) {
         await validateDraftWorkspace(task.repositoryRoot,directory,task.id,draft.baseCommit);

@@ -36,6 +36,6 @@ export function createHandoffPacket({ request, snapshot = {}, history = [], step
     worktreeIdentity: typeof snapshot.root === 'string' ? createHash('sha256').update(snapshot.root).digest('hex') : null, branch: clipped(snapshot.branch, 256), commit: clipped(snapshot.commit, 128),
     workingTreeHash: clipped(snapshot.workingTreeHash, 128), dirty: typeof snapshot.dirty === 'boolean' ? snapshot.dirty : null,
     changedPaths: Array.isArray(snapshot.changedPaths) ? snapshot.changedPaths.slice(0, 20).map(path => String(path).slice(0, 200)) : [],
-  }, actions: [...actions.values()], providerReports: reports.slice(-6), failures: errors.slice(-6),
+  }, reconciliations: history.filter(entry=>['draft-reconciled','continuation-approved'].includes(entry.kind)).slice(-4).map(entry=>({kind:entry.kind,decision:clipped(entry.data.decision,32),policy:clipped(entry.data.policy||entry.data.actionResolution,256),fingerprint:clipped(entry.data.fingerprint,128)})), actions: [...actions.values()], providerReports: reports.slice(-6), failures: errors.slice(-6),
   continuation: 'Inspect the verified worktree before continuing. Do not replay unresolved or write-capable actions automatically.' };
 }
