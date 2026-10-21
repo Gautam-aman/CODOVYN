@@ -2,14 +2,16 @@
 
 Baseline: `e2664564f6dad2aff45bca45328264ea2ea3aab7`, clean synchronized main.
 All 112 baseline tests passed. All twelve open issue descriptions were read.
-Gemini CLI is not installed in this environment; live Gemini validation is blocked
-until an authorized installation is available. Do not mark #2 complete prematurely.
+At the initial audit Gemini CLI was not installed. It was subsequently installed
+in a temporary directory, but the real invocation exited 41 (authentication).
+See [the checkpoint report](phase2-validation-2026-10-21.md) for delivered work
+and remaining blockers; do not mark #2 complete prematurely.
 
 The shared adapter registry, subprocess lifecycle, journal, worktree drafts and
 pre-write failover can support Gemini directly. The desktop ships the same CLI
 and webview, so extending these integrations reaches both products.
 
-Current gaps: fallback order is hardcoded to Claude, no persisted project agent
+Initial audit gaps: fallback order is hardcoded to Claude, no persisted project agent
 policy, portable context contains only observable text and repository state,
 write history blocks retry conservatively, and no supported primary availability
 probe establishes quota recovery. Preserve these safety gates until tested

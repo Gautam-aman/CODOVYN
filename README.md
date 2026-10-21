@@ -42,7 +42,7 @@ Recovery inspection preserves and exposes ambiguous state without replaying it.
 
 ![Project-specific agent preferences in CODOVYN Desktop](docs/assets/desktop-agent-settings.png)
 
-Native capture of the saved project-agent controls beside code changed by an authorized Codex draft. This demonstrates configuration, not authenticated Gemini execution.
+Native capture of the saved project-agent cards beside code changed by an authorized Codex draft. This demonstrates configuration, not authenticated Gemini execution.
 
 ## Shared runtime and companion extension
 
