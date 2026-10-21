@@ -120,6 +120,42 @@ test('extension blocks provider execution in an untrusted workspace', async () =
   }
 });
 
+test('extension scopes tasks and runs to the selected workspace folder', async () => {
+  let open;
+  let handler;
+  const sent = [];
+  const calls = [];
+  const api = {
+    commands: { registerCommand: (_id, callback) => { open = callback; return { dispose() {} }; } },
+    window: { createWebviewPanel: () => ({ webview: { cspSource: 'x', asWebviewUri: (uri) => uri,
+      onDidReceiveMessage: (callback) => { handler = callback; }, postMessage: (message) => sent.push(message) } }) },
+    ViewColumn: { Beside: 2 }, Uri: { joinPath: (_root, ...parts) => parts.join('/') },
+    workspace: { workspaceFolders: [
+      { name: 'First', uri: { fsPath: '/first' } }, { name: 'Second', uri: { fsPath: '/second' } },
+    ], isTrusted: true, getConfiguration: () => ({ get: () => 'node' }) },
+  };
+  const runner = async (_node, args, options) => {
+    calls.push(args);
+    if (args[1] === 'tasks') return { tasks: [] };
+    if (args[1] === 'demo') {
+      options.onChild({ kill() {} });
+      return { taskId: 'second-task', status: 'completed', activeAgent: 'backup', events: [] };
+    }
+    assert.fail(`Unexpected command ${args[1]}`);
+  };
+  createExtension(api, runner).activate({ extensionUri: 'root', extensionPath: '/extension',
+    globalStorageUri: { fsPath: '/data' }, subscriptions: [] });
+  open();
+  await handler({ type: 'ready' });
+  assert.deepEqual(sent.find((message) => message.type === 'projects').projects.map((entry) => entry.name), ['First', 'Second']);
+  await handler({ type: 'project-select', root: '/outside' });
+  assert.equal(calls.at(-1)[2], '/first');
+  await handler({ type: 'project-select', root: '/second' });
+  assert.equal(calls.at(-1)[2], '/second');
+  await handler({ type: 'run', mode: 'demo', request: 'Inspect second repository' });
+  assert.deepEqual(calls.find((args) => args[1] === 'demo').slice(2), ['/second', 'Inspect second repository']);
+});
+
 test('extension process bridge forwards JSONL progress before the final result', async () => {
   const progress = [];
   const script = `console.log(JSON.stringify({type:'event',event:{kind:'handoff',data:{from:'a',to:'b'}}})); console.log(JSON.stringify({type:'result',status:'completed',taskId:'one'}));`;

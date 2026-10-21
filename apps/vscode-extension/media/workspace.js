@@ -9,6 +9,14 @@ const empty = document.getElementById('empty');
 const tasks = document.getElementById('tasks');
 const refresh = document.getElementById('refresh');
 const diffOutput = document.getElementById('diff-output');
+const projectLabel = document.createElement('label');
+projectLabel.htmlFor = 'project';
+projectLabel.textContent = 'Project';
+const project = document.createElement('select');
+project.id = 'project';
+project.setAttribute('aria-label', 'Project folder');
+document.querySelector('.composer').insertBefore(projectLabel, document.querySelector('label[for="agent"]'));
+document.querySelector('.composer').insertBefore(project, document.querySelector('label[for="agent"]'));
 const editOption = document.createElement('option');
 editOption.value = 'codex-edit';
 editOption.textContent = 'Codex CLI · edit draft';
@@ -61,6 +69,7 @@ run.addEventListener('click', () => {
   if (!value) { request.focus(); return; }
   vscode.postMessage({ type: 'run', mode: agent.value, request: value });
 });
+project.addEventListener('change', () => vscode.postMessage({ type: 'project-select', root: project.value }));
 cancel.addEventListener('click', () => vscode.postMessage({ type: 'cancel' }));
 refresh.addEventListener('click', () => vscode.postMessage({ type: 'tasks' }));
 document.getElementById('working-diff').addEventListener('click', () => vscode.postMessage({ type: 'diff', staged: false }));
@@ -80,13 +89,33 @@ request.addEventListener('keydown', (event) => {
 
 window.addEventListener('message', ({ data }) => {
   if (!data || typeof data !== 'object') return;
-  if (data.type === 'running') {
+  if (data.type === 'projects') {
+    project.replaceChildren();
+    for (const entry of data.projects || []) {
+      const option = document.createElement('option');
+      option.value = entry.root;
+      option.textContent = entry.name;
+      project.append(option);
+    }
+    if (data.selectedRoot) project.value = data.selectedRoot;
+    project.disabled = !data.projects?.length;
+  } else if (data.type === 'project-selected') {
+    currentTaskId = null;
+    draftAvailable = false;
+    reviewedHash = null;
+    updateDraftActions();
+    timeline.replaceChildren();
+    status.textContent = 'Ready';
+    empty.textContent = 'Task steps and agent handoffs will appear here.';
+    diffOutput.textContent = 'Choose a diff to review.';
+  } else if (data.type === 'running') {
     currentTaskId = null;
     draftAvailable = false;
     reviewedHash = null;
     updateDraftActions();
     status.textContent = 'Running';
     run.disabled = true;
+    project.disabled = true;
     cancel.disabled = false;
     timeline.replaceChildren();
     empty.textContent = 'Waiting for agent activity…';
@@ -100,6 +129,7 @@ window.addEventListener('message', ({ data }) => {
     updateDraftActions();
     status.textContent = data.status === 'completed' ? 'Completed' : data.status;
     run.disabled = false;
+    project.disabled = false;
     cancel.disabled = true;
     timeline.replaceChildren();
     appendActivity(data.timeline);
@@ -162,6 +192,7 @@ window.addEventListener('message', ({ data }) => {
   } else if (data.type === 'error') {
     status.textContent = 'Error';
     run.disabled = false;
+    project.disabled = false;
     cancel.disabled = true;
     empty.textContent = data.text;
   }
