@@ -9,10 +9,11 @@ import { AgentRegistry, AgentFailure } from '../../../packages/agent-core/src/in
 import { TaskStore } from '../../../packages/storage/src/index.js';
 import { createHandoffPacket } from '../../../packages/agent-core/src/handoff.js';
 import agentPolicy from '../../../packages/agent-core/src/policy.cjs';
+import { executionRecovery, recoveryFingerprint, reconcileDraft } from '../../../packages/task-engine/src/recovery.js';
 import { TaskEngine } from '../../../packages/task-engine/src/index.js';
 import { commitStaged, createBranch, fetchRemote, pullFastForward, pushCurrentBranch, repositoryDiff, repositorySnapshot, stagePaths } from '../../../packages/git-engine/src/index.js';
 import { createClaudeAdapter, createCodexAdapter, createGeminiAdapter } from '../../../packages/agent-adapters/src/index.js';
-import { createDraftWorkspace, reviewDraftWorkspace, acceptDraftWorkspace, rejectDraftWorkspace } from '../../../packages/git-engine/src/draft-workspace.js';
+import { validateDraftWorkspace, createDraftWorkspace, reviewDraftWorkspace, acceptDraftWorkspace, rejectDraftWorkspace } from '../../../packages/git-engine/src/draft-workspace.js';
 import { createIssue, createPullRequest, issueDetails, listIssues, listPullRequests, listWorkflowRuns, previewPullRequest, pullRequestDetails, pullRequestDiff } from '../../../packages/github-integration/src/index.js';
 
 const usage = `Usage:
@@ -30,6 +31,8 @@ const usage = `Usage:
   codovyn codex-edit <repository> <request> --allow-writes
   codovyn claude-edit <repository> <request> --allow-writes
   codovyn auto-edit <repository> <request> --allow-writes
+  codovyn draft-reconcile <task-id> <repository> <fingerprint> --yes
+  codovyn draft-abandon <task-id> <repository> <fingerprint> --yes
   codovyn draft-inspect <task-id> <repository>
   codovyn draft-review <task-id> <repository>
   codovyn draft-accept <task-id> <repository> <patch-hash> --yes
@@ -73,7 +76,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
   github = { createIssue, createPullRequest, issueDetails, listIssues, listPullRequests, listWorkflowRuns, previewPullRequest, pullRequestDetails, pullRequestDiff },
   adapters = { createCodexAdapter, createClaudeAdapter, createGeminiAdapter }, confirm = confirmAction) {
   const [mode, value, ...rest] = args;
-  if (!['agents', 'configured', 'configured-edit', 'demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit', 'draft-inspect', 'draft-review', 'draft-accept', 'draft-reject', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'pr-preview', 'pr-create', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
+  if (!['agents', 'configured', 'configured-edit', 'demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit', 'draft-reconcile', 'draft-abandon', 'draft-inspect', 'draft-review', 'draft-accept', 'draft-reject', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'pr-preview', 'pr-create', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
   const stream = process.env.CODOVYN_EVENT_STREAM === '1';
   let policy;
   if (mode === 'configured' || mode === 'configured-edit') {
@@ -191,11 +194,11 @@ export async function main(args = process.argv.slice(2), output = console, signa
   const dataDirectory = process.env.CODOVYN_DATA_DIR || join(homedir(), '.codovyn');
   const store = new TaskStore(join(dataDirectory, 'tasks.sqlite'));
   try {
-    if (['draft-inspect', 'draft-review', 'draft-accept', 'draft-reject'].includes(mode)) {
+    if (['draft-reconcile', 'draft-abandon', 'draft-inspect', 'draft-review', 'draft-accept', 'draft-reject'].includes(mode)) {
       const [repositoryPath, patchHash, confirmation] = rest;
       if (!value || !repositoryPath ||
         (['draft-review', 'draft-inspect'].includes(mode) && rest.length !== 1) ||
-        (mode === 'draft-accept' && (rest.length !== 3 || confirmation !== '--yes')) ||
+        (['draft-reconcile', 'draft-abandon', 'draft-accept'].includes(mode) && (rest.length !== 3 || confirmation !== '--yes')) ||
         (mode === 'draft-reject' && (rest.length !== 2 || patchHash !== '--yes'))) {
         output.error(usage); return 2;
       }
@@ -208,18 +211,30 @@ export async function main(args = process.argv.slice(2), output = console, signa
       if (!draft || events.some((entry) => ['draft-accepted', 'draft-rejected'].includes(entry.kind))) {
         output.error('This task has no open edit draft'); return 1;
       }
-      if (task.status === 'running' && mode !== 'draft-inspect') { output.error('A running draft cannot be reviewed or changed'); return 1; }
+      if (task.status === 'running' && !['draft-inspect','draft-reconcile','draft-abandon'].includes(mode)) { output.error('A running draft cannot be reviewed or changed'); return 1; }
+      if (['draft-review','draft-accept','draft-reject'].includes(mode) &&
+          (store.executionLease(task.id)?.releasedAt === null ||
+          (!store.executionLease(task.id) && task.status === 'interrupted'))) {
+        output.error('Reconcile provider ownership before reviewing or changing this draft');return 1;
+      }
       const directory = join(dataDirectory, 'drafts');
       if (mode === 'draft-inspect') {
         // Validate ownership/base commit using the existing worktree review guard.
-        await reviewDraftWorkspace(task.repositoryRoot, directory, task.id, draft.baseCommit);
+        await validateDraftWorkspace(task.repositoryRoot, directory, task.id, draft.baseCommit);
         const snapshot = await repositorySnapshot(join(directory, task.id));
         const packet = createHandoffPacket({ request: task.request, snapshot, history: events, step: task.step });
         const inspection = { taskId: task.id, status: task.status, repository: packet.repository,
-          actions: packet.actions, automaticContinuation: false, processState: 'unverified',
+          actions: packet.actions, automaticContinuation: false, processState: executionRecovery(store,task.id).reason,
+          recoverySafe: executionRecovery(store,task.id).safe, fingerprint: recoveryFingerprint(snapshot),
           guidance: 'Observation only. This does not prove provider processes have stopped or that writes succeeded. Do not replay unresolved actions. Preserve the draft and reconcile manually.' };
         output.log(JSON.stringify(stream ? { type: 'result', inspection } : inspection, null, stream ? 0 : 2));
         return 0;
+      }
+      if (['draft-reconcile','draft-abandon'].includes(mode)) {
+        await validateDraftWorkspace(task.repositoryRoot,directory,task.id,draft.baseCommit);
+        const recovered=await reconcileDraft({store,id:task.id, snapshot:()=>repositorySnapshot(join(directory,task.id)),
+          expectedFingerprint:patchHash,decision:mode==='draft-abandon'?'abandon':'preserve',confirm:confirmation==='--yes'});
+        output.log(JSON.stringify(stream?{type:'result',recovered}:{recovered},null,stream?0:2));return 0;
       }
       if (mode === 'draft-review') {
         const review = await reviewDraftWorkspace(task.repositoryRoot, directory, task.id, draft.baseCommit);

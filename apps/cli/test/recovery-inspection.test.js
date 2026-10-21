@@ -25,7 +25,8 @@ test('recovery inspection preserves partial writes and unresolved actions withou
     writeFileSync(join(draft.path,'file.txt'),'partial write\n');store.close();store=null;
     const lines=[];assert.equal(await main(['draft-inspect','crashed',repository],{log:x=>lines.push(x),error:x=>assert.fail(x)}),0);
     const result=JSON.parse(lines[0]);assert.equal(result.status,'running');assert.equal(result.automaticContinuation,false);
-    assert.equal(result.actions[0].state,'unresolved');assert.equal(result.processState,'unverified');assert.equal(result.repository.dirty,true);
+    assert.equal(result.actions[0].state,'unresolved');assert.equal(result.processState,'legacy-process-ownership-unknown');assert.equal(result.repository.dirty,true);
+    assert.equal(execFileSync('git',['-C',draft.path,'diff','--cached','--name-only'],{encoding:'utf8'}),'');
     assert.equal(readFileSync(join(repository,'file.txt'),'utf8'),'original\n');
     assert.equal(readFileSync(join(draft.path,'file.txt'),'utf8'),'partial write\n');
     store=new TaskStore(join(directory,'data/tasks.sqlite'));assert.equal(store.get('crashed').status,'running');

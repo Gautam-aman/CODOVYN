@@ -36,7 +36,7 @@ async function gitApply(root, args, patch) {
   });
 }
 
-async function validateDraft(repository, draftsDirectory, taskId, baseCommit) {
+export async function validateDraftWorkspace(repository, draftsDirectory, taskId, baseCommit) {
   const path = await realpath(draftPath(draftsDirectory, taskId));
   const root = await realpath(repository);
   if (path !== join(await realpath(draftsDirectory), taskId)) throw new Error('Draft path was redirected');
@@ -64,7 +64,7 @@ export async function createDraftWorkspace(repository, draftsDirectory, taskId) 
 
 /** Include new files in the review, but never stage anything in the user's repository. */
 export async function reviewDraftWorkspace(repository, draftsDirectory, taskId, baseCommit) {
-  const { path } = await validateDraft(repository, draftsDirectory, taskId, baseCommit);
+  const { path } = await validateDraftWorkspace(repository, draftsDirectory, taskId, baseCommit);
   await git(path, ['add', '-A', '--']);
   const patch = await git(path, ['diff', '--cached', '--binary', '--no-ext-diff', '--no-textconv', '--no-color', baseCommit, '--']);
   if (/^(?:new file mode|new mode) (?:120000|160000)$/m.test(patch)) {
@@ -91,7 +91,7 @@ export async function acceptDraftWorkspace(repository, draftsDirectory, taskId, 
 
 /** Rejecting a draft deletes its isolated worktree, including its ignored build outputs. */
 export async function rejectDraftWorkspace(repository, draftsDirectory, taskId, baseCommit) {
-  const { root, path } = await validateDraft(repository, draftsDirectory, taskId, baseCommit);
+  const { root, path } = await validateDraftWorkspace(repository, draftsDirectory, taskId, baseCommit);
   await git(root, ['worktree', 'remove', '--force', path]);
   return { rejected: true };
 }
