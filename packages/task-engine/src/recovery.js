@@ -13,6 +13,7 @@ export function executionRecovery(store, id, { host = hostname(), absent = proce
   if (lease.releasedAt) return { safe: true, reason: 'cleanup-recorded' };
   if (lease.owner.host !== host) return { safe: false, reason: 'different-host' };
   if (!absent(lease.owner.pid)) return { safe: false, reason: 'owner-alive-or-unverifiable' };
+  if(lease.owner.kind==='recovery')return {safe:true,reason:'recovery-owner-absent-no-provider-launch'};
   const history = store.events(id);
   const ownership = history.findLast(event => event.kind === 'execution-owned' && event.data.token === lease.token);
   if (!ownership) return { safe: false, reason: 'ownership-record-missing' };
@@ -57,7 +58,7 @@ export async function reconcileDraft({ store, id, snapshot, expectedFingerprint,
   const previous=store.executionLease(id);
   if (!previous.releasedAt) store.releaseExecution(id,previous.token);
   const token=randomUUID();
-  store.claimExecution(id,{token,pid:process.pid,host:hostname()});
+  store.claimExecution(id,{token,pid:process.pid,host:hostname(),kind:'recovery'});
   try {
     const repository=await snapshot();
     const fingerprint=recoveryFingerprint(repository);

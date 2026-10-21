@@ -8,7 +8,7 @@ const validId = (id) => {
   return id;
 };
 
-/** Durable task records and an ordered event trail. One process owns each database. */
+/** Durable task journal with token-fenced execution ownership across connections. */
 export class TaskStore {
   #db;
 
@@ -111,17 +111,17 @@ export class TaskStore {
   }
 
   /** Atomic ownership: elapsed time never grants another executor access. */
-  claimExecution(id, { token, pid, host }) {
+  claimExecution(id, { token, pid, host, kind = 'execution' }) {
     validId(id);
     if (typeof token !== 'string' || !/^[a-zA-Z0-9-]{16,80}$/.test(token) ||
-        !Number.isSafeInteger(pid) || pid < 1 || typeof host !== 'string' || !host || host.length > 256) {
+        !['execution','recovery'].includes(kind) || !Number.isSafeInteger(pid) || pid < 1 || typeof host !== 'string' || !host || host.length > 256) {
       throw new TypeError('Invalid execution owner');
     }
     if (!this.get(id)) throw new Error('Unknown task');
     const result = this.#db.prepare(`INSERT INTO execution_leases VALUES (?, ?, ?, ?, NULL)
       ON CONFLICT(task_id) DO UPDATE SET token=excluded.token, owner=excluded.owner,
       acquired_at=excluded.acquired_at, released_at=NULL WHERE execution_leases.released_at IS NOT NULL`)
-      .run(id, token, JSON.stringify({ pid, host }), new Date().toISOString());
+      .run(id, token, JSON.stringify({ pid, host, kind }), new Date().toISOString());
     if (result.changes !== 1) throw new Error('Task has an unreconciled execution owner');
     return this.executionLease(id);
   }

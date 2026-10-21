@@ -47,3 +47,11 @@ test('explicit reconciliation binds inspected state and preserves unresolved wri
  assert.ok(store.executionLease('task').releasedAt);
  assert.equal((await reconcileDraft({...options,confirm:true,decision:'abandon'})).status,'cancelled');store.close();
 });
+
+test('a crashed reconciliation owner can be recovered without inventing a provider process',()=>{
+ const store=new TaskStore(':memory:');store.create({id:'task',request:'Edit',primaryAgent:'codex'});
+ store.claimExecution('task',{token:'recovery-token-123456',pid:123,host:'fixture',kind:'recovery'});
+ assert.equal(executionRecovery(store,'task',{host:'fixture',absent:()=>false}).safe,false);
+ assert.equal(executionRecovery(store,'task',{host:'fixture',absent:()=>true}).reason,'recovery-owner-absent-no-provider-launch');
+ assert.equal(store.events('task').length,0);store.close();
+});
