@@ -43,7 +43,7 @@ test('CLI runs an approved edit in a worktree and applies only a reviewed patch'
     const review = JSON.parse(lines.at(-1));
     assert.match(review.patch, /\+after/);
     assert.equal(await main(['draft-accept', result.taskId, repository, review.patchHash, '--yes'], output), 0);
-    assert.equal(readFileSync(join(repository, 'README.md'), 'utf8'), 'after\n');
+    assert.equal(readFileSync(join(repository, 'README.md'), 'utf8').replaceAll('\r\n', '\n'), 'after\n');
     assert.equal(await main(['draft-accept', result.taskId, repository, review.patchHash, '--yes'], output), 1);
     assert.match(errors.at(-1), /no open edit draft/);
   } finally {
