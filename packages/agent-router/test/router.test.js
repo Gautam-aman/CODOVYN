@@ -31,3 +31,10 @@ test('invalid policy never silently becomes a provider request',()=>{
  for(const changes of [{mode:'invalid'},{models:[model('a',90,-1)]},{tokens:{input:Infinity,output:1}},{budget:{taskUsd:-1}},
  {mode:'custom',customModel:'missing'},{secret:'not-accepted'}])assert.throws(()=>validateRouting({...policy,...changes}),TypeError);
 });
+
+test('Auto favors reliable adequate candidates while Economy explicitly minimizes known estimated cost',()=>{
+ const models=[{...model('cheap',90,1),reliability:0.2},{...model('reliable',90,2),reliability:0.95}];
+ assert.equal(routeModel('Explain',{...policy,models}).selected.id,'reliable');
+ assert.equal(routeModel('Explain',{...policy,models,mode:'economy'}).selected.id,'cheap');
+ assert.throws(()=>routeModel('',{...policy,complexity:'simple'}),/Invalid routing request/);
+});

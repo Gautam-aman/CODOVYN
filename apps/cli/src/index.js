@@ -95,7 +95,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
       routing.considered.find(candidate=>candidate.id===routing.selected.id).reasons.push('unsupported-cli-model-or-reasoning-selector');
       routing.explanation='Selected adapter cannot apply this model/reasoning selection';routing.selected=null;
     }
-    if(mode==='route') {output.log(JSON.stringify(stream?{type:'result',routing}:routing));return routing.selected?0:1;}
+    if(mode==='route') {output.log(JSON.stringify(stream?{type:'result',routing}:routing));return 0;}
   }
   let policy;
   if (mode === 'configured' || mode === 'configured-edit') {

@@ -36,7 +36,8 @@ export function validateRouting(input) {
  return structuredClone(input);
 }
 export function routeModel(request,input) {
- const policy=validateRouting(input),complexity=policy.complexity||classifyTask(request);
+ const inferred=classifyTask(request);
+ const policy=validateRouting(input),complexity=policy.complexity||inferred;
  // Classification and user catalogue scores are policy inputs, not measured model benchmarks.
  const minimum={simple:0,moderate:50,complex:80}[complexity];
  const considered=policy.models.map(model=>{
@@ -63,7 +64,8 @@ export function routeModel(request,input) {
  const cost=c=>c.estimatedUsd===null?Infinity:c.estimatedUsd;
  eligible.sort((a,b)=>{
   let difference=0;
-  if(['economy','auto'].includes(policy.mode))difference=cost(a)-cost(b);
+  if(policy.mode==='economy')difference=cost(a)-cost(b);
+  if(policy.mode==='auto')difference=b.reliability-a.reliability||cost(a)-cost(b);
   if(policy.mode==='performance')difference=b.quality-a.quality||b.reliability-a.reliability;
   if(policy.mode==='balanced')difference=Math.abs(a.quality-80)-Math.abs(b.quality-80)||b.reliability-a.reliability;
   return (Number.isNaN(difference)?0:difference)||preference(a)-preference(b)||cost(a)-cost(b)||b.quality-a.quality||a.id.localeCompare(b.id,'en');

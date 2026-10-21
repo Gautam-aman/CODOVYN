@@ -361,10 +361,10 @@ function createExtension(api, runner = runCli) {
               if(serialized.length>65536)throw new Error('Routing settings exceed the local size limit.');
               const preview=await runner(runtimePath(api,context),[join(context.extensionPath,'apps','cli','src','index.js'),'route',folder.uri.fsPath,request],{
                 cwd:folder.uri.fsPath,env:{...process.env,CODOVYN_EVENT_STREAM:'1',CODOVYN_ROUTING_POLICY:serialized},onChild:()=>{},onEvent:()=>{}});
+              panel.webview.postMessage({type:'routing-preview',routing:preview.routing});
               if (!preview.routing?.selected) throw new Error('No eligible model. Check capabilities, reasoning, availability and estimated budget settings.');
               const choice=preview.routing.selected;
               routeSummary=`${choice.provider} / ${choice.model}. Estimated task cost: ${choice.estimatedUsd===null?'unknown':`USD ${choice.estimatedUsd}`}. Admission estimate only; spending is not capped by the CLI.`;
-              panel.webview.postMessage({type:'routing-preview',routing:preview.routing});
               if (!editMode) {
                 const approval=await api.window.showWarningMessage('Send this task to the selected model?',{modal:true,detail:routeSummary},'Use selected model');
                 if(approval!=='Use selected model'||disposed||folderForTask()!==folder){starting=false;panel.webview.postMessage({type:'approval-dismissed'});return;}
