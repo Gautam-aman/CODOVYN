@@ -66,16 +66,21 @@ export function createCodexAdapter({ cwd, command = 'codex', prefixArgs = [], wr
 
       // Never include stderr in task events: provider logs can contain credentials.
       child.stderr.resume();
+      let finished=null;
       try {
         execution?.spawned({ pid: child.pid, group: process.platform !== 'win32' });
         child.stdin.end(prompt);
         for await (const raw of boundedJsonLines(child.stdout)) {
+          if(finished)throw new AgentFailure('fatal','Codex emitted events after completion');
           const event = parseCodexEvent(raw);
-          if (event) yield event;
+          if(event?.type==='completed'){finished=event;await lifecycle.exited;await lifecycle.dispose();}
+          else if (event) yield event;
         }
         const code = await lifecycle.closed;
+        if(signal?.aborted)throw new AgentFailure('cancelled','Agent cancelled before completion');
         if (lifecycle.error()) throw lifecycle.error();
         if (code !== 0) throw new AgentFailure('fatal', `Codex exited with status ${code}`);
+        if(finished)yield finished;
       } catch (error) {
         if (signal?.aborted) throw new AgentFailure('cancelled', 'Codex was cancelled');
         throw error;
@@ -135,12 +140,14 @@ export function createClaudeAdapter({ cwd, command = 'claude', prefixArgs = [], 
 
       // Provider diagnostics can contain secrets and must not enter task history.
       child.stderr.resume();
+      let finished=null;
       let sawText = false;
       const activeTools = new Map();
       try {
         execution?.spawned({ pid: child.pid, group: process.platform !== 'win32' });
         child.stdin.end(prompt);
         for await (const raw of boundedJsonLines(child.stdout)) {
+          if(finished)throw new AgentFailure('fatal','Claude emitted events after completion');
           const event = parseClaudeEvent(raw);
           if (event?.type === 'tool-start') {
             activeTools.set(event.actionId, event.action);
@@ -168,11 +175,14 @@ export function createClaudeAdapter({ cwd, command = 'claude', prefixArgs = [], 
           if (event?.type === 'completed' && !sawText && typeof raw.result === 'string') {
             yield { type: 'text', text: raw.result };
           }
-          if (event) yield event;
+          if(event?.type==='completed'){finished=event;await lifecycle.exited;await lifecycle.dispose();}
+          else if (event) yield event;
         }
         const code = await lifecycle.closed;
+        if(signal?.aborted)throw new AgentFailure('cancelled','Agent cancelled before completion');
         if (lifecycle.error()) throw lifecycle.error();
         if (code !== 0) throw new AgentFailure('fatal', `Claude Code exited with status ${code}`);
+        if(finished)yield finished;
       } catch (error) {
         if (signal?.aborted) throw new AgentFailure('cancelled', 'Claude Code was cancelled');
         throw error;

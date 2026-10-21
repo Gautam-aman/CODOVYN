@@ -25,6 +25,7 @@ export function manageAgentProcess(child, signal) {
   let termination = null;
   child.on('error', (error) => { processError = error; });
   child.stdin.on('error', (error) => { processError = error; });
+  const exited = new Promise(resolve=>{child.once('exit',resolve);child.once('error',()=>resolve(null));});
   const closed = new Promise((resolve) => child.once('close', resolve));
 
   const stop = () => {
@@ -80,6 +81,7 @@ export function manageAgentProcess(child, signal) {
   if (signal?.aborted) abort();
   return {
     closed,
+    exited,
     error: () => processError,
     async dispose() {
       signal?.removeEventListener('abort', abort);

@@ -107,6 +107,7 @@ export function createGeminiAdapter({ cwd, command = 'gemini', prefixArgs = [], 
           } else if (event.type === 'completed') {
             if (active.size) throw new AgentFailure('fatal', 'Gemini completed with unresolved tools');
             finished = event;
+            await lifecycle.exited;await lifecycle.dispose();
           } else yield event;
         }
         const code = await lifecycle.closed;

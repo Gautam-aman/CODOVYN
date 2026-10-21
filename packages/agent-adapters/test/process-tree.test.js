@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createCodexAdapter, createClaudeAdapter, createGeminiAdapter } from '../src/index.js';
 
-async function fixture(event, callback) {
+async function fixture(event, callback, exitAfterEvent = false) {
   const directory = mkdtempSync(join(tmpdir(), 'codovyn-process-tree-'));
   const marker = join(directory, 'late-write.txt');
   const script = join(directory, 'provider.cjs');
@@ -15,7 +15,10 @@ async function fixture(event, callback) {
     const child = require('node:child_process').spawn(process.execPath,
       ['-e', ${JSON.stringify(descendant)}, ${JSON.stringify(marker)}],
       { stdio: ['ignore', 'inherit', 'inherit', 'ipc'] });
-    child.once('message', () => console.log(${JSON.stringify(JSON.stringify(event))}));
+    child.once('message', () => {
+      if(${JSON.stringify(exitAfterEvent)})process.stdout.write(${JSON.stringify(JSON.stringify(event)+'\n')},()=>process.exit(0));
+      else console.log(${JSON.stringify(JSON.stringify(event))});
+    });
     process.stdin.resume();
     setInterval(() => {}, 1000);
   `);
@@ -40,7 +43,7 @@ test('ending iteration at Claude completion reaps its provider and descendants',
       assert.equal(event.type, 'completed');
       break;
     }
-  });
+  }, true);
 });
 
 test('cancellation stops a Codex wrapper and its live descendant', async () => {
