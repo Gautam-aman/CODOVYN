@@ -62,7 +62,7 @@ The runtime persists the chosen policy with the task.
 
 The adapter uses default approval mode with an explicit deny-by-default policy,
 restricted core file tools, disabled hooks/skills and disabled extension selection.
-Shell execution is unavailable, including in edit mode. Gemini must report tests
+Write-tool arguments are restricted to flat, unescaped absolute paths under the canonical draft root, with traversal and Git metadata targets rejected. Editing currently refuses symlink-containing drafts and paths requiring escaped filename characters; these are explicit experimental limitations. Shell execution is unavailable, including in edit mode. Gemini must report tests
 for the user to run rather than pretend shell checks executed. Worktree edits
 still require separate host approval and patch review before reaching the original.
 

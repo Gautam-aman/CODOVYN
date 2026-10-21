@@ -28,7 +28,7 @@ test('fault-injected Codex quota hands an isolated draft to Gemini before review
     const adapters={createCodexAdapter:options=>createCodexAdapter({...options,command:process.execPath,prefixArgs:[primary]}),
       createGeminiAdapter:options=>createGeminiAdapter({...options,command:process.execPath,prefixArgs:[backup]})};
     const lines=[];const output={log:x=>lines.push(x),error:x=>assert.fail(x)};
-    assert.equal(await main(['auto-gemini-edit',repository,'Set answer to 42','--allow-writes'],output,undefined,undefined,adapters),0);
+    assert.equal(await main(['auto-gemini-edit',repository,'Set answer to 42','--allow-writes'],output,undefined,undefined,adapters),0,JSON.stringify(lines));
     const result=JSON.parse(lines.at(-1));
     assert.equal(result.activeAgent,'gemini');
     const checkpoint=result.events.find(e=>e.kind==='checkpoint');

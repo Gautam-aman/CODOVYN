@@ -1,5 +1,5 @@
 import { spawn, execFile } from 'node:child_process';
-import { mkdtemp, writeFile, rm, access, readdir } from 'node:fs/promises';
+import { mkdtemp, writeFile, rm, access, readdir, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -11,10 +11,33 @@ import { boundedJsonLines } from './jsonl.js';
 import { parseGeminiEvent } from './gemini-events.js';
 const execute = promisify(execFile);
 export const geminiReadTools = Object.freeze(['read_file', 'list_directory', 'glob', 'grep_search', 'search_file_content', 'read_many_files']);
-export function geminiPolicy(write) {
+const escapeRegex = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+export function geminiWritePattern(root, platform = process.platform) {
+  const normalized = platform === 'win32' ? root.replaceAll('\\', '/') : root;
+  const prefix = normalized.replace(/\/+$/, '') + '/';
+  if (/["\\\x00-\x1f]/.test(prefix)) throw new AgentFailure('fatal', 'Unsupported Gemini draft path');
+  const scalar = String.raw`(?:"(?:[^"\\]|\\.)*"|true|false|null|-?[0-9]+(?:\.[0-9]+)?)`;
+  const pair = String.raw`"(?:content|old_string|new_string|expected_replacements|allow_multiple|instruction)"\s*:\s*${scalar}`;
+  const path = String.raw`${escapeRegex(prefix)}(?![^"]*\.\.)(?![^"]*\\)(?![^"]*\.[gG][iI][tT](?:[./ :]|"))[^"\\]+`;
+  return String.raw`^\{\s*(?:${pair}\s*,\s*)*"file_path"\s*:\s*"${path}"(?:\s*,\s*${pair})*\s*\}$`;
+}
+export async function assertGeminiDraft(root) {
+  const directories = [root]; let entries = 0;
+  while (directories.length) {
+    const parent = directories.pop();
+    for (const entry of await readdir(parent, { withFileTypes: true })) {
+      if (++entries > 100000) throw new AgentFailure('fatal', 'Gemini draft is too large for permission inspection');
+      if (entry.isSymbolicLink()) throw new AgentFailure('fatal', 'Gemini editing currently requires a draft without symbolic links');
+      if (entry.isDirectory()) directories.push(join(parent, entry.name));
+    }
+  }
+}
+export function geminiPolicy(write, root) {
   return ['[[rule]]', 'toolName = "*"', 'decision = "deny"', 'priority = 998', '',
-    ...[...geminiReadTools, ...(write ? ['replace', 'write_file'] : [])].flatMap(name =>
-      ['[[rule]]', `toolName = "${name}"`, 'decision = "allow"', 'priority = 999', ''])].join('\n');
+    ...geminiReadTools.flatMap(name => ['[[rule]]', `toolName = "${name}"`, 'decision = "allow"', 'priority = 999', '']),
+    ...(write ? ['replace', 'write_file'].flatMap(name => ['[[rule]]', `toolName = "${name}"`,
+      `argsPattern = ${JSON.stringify(geminiWritePattern(root))}`, 'decision = "allow"', 'priority = 999', '']) : []),
+  ].join('\n');
 }
 async function assertUnmanaged() {
   const directory = process.platform === 'darwin' ? '/Library/Application Support/GeminiCli'
@@ -46,12 +69,14 @@ export function createGeminiAdapter({ cwd, command = 'gemini', prefixArgs = [], 
     async *run({ handoff, signal }) {
       if (signal?.aborted) throw new AgentFailure('cancelled', 'Gemini cancelled');
       await assertUnmanaged();
+      const root = await realpath(cwd);
+      if (write) await assertGeminiDraft(root);
       const directory = await mkdtemp(join(tmpdir(), 'codovyn-gemini-policy-'));
       let lifecycle;
       try {
         const policy = join(directory, 'policy.toml');
         const settings = join(directory, 'settings.json');
-        await writeFile(policy, geminiPolicy(write), { mode: 0o600 });
+        await writeFile(policy, geminiPolicy(write, root), { mode: 0o600 });
         await writeFile(settings, JSON.stringify({ hooksConfig: { enabled: false }, skills: { enabled: false },
           tools: { core: tools }, general: { enableAutoUpdate: false } }), { mode: 0o600 });
         const args = [...prefixArgs, '--prompt', 'Continue the task provided on stdin. Inspect files before repeating work.',
@@ -62,7 +87,7 @@ export function createGeminiAdapter({ cwd, command = 'gemini', prefixArgs = [], 
           stdio: ['pipe', 'pipe', 'pipe'], env: { ...agentEnvironment(), GEMINI_CLI_SYSTEM_SETTINGS_PATH: settings } });
         lifecycle = manageAgentProcess(child, signal);
         child.stderr.resume();
-        child.stdin.end(formatHandoffPrompt(handoff) + '\nUse only permitted file tools. Never execute shell, deploy, commit or push. Report tests for the user to run.');
+        child.stdin.end(formatHandoffPrompt(handoff) + '\nUse absolute forward-slash file paths inside this draft, without dot-dot or escaped path components. Use only permitted file tools. Never execute shell, deploy, commit or push. Report tests for the user to run.');
         const active = new Map();
         let finished = false;
         for await (const raw of boundedJsonLines(child.stdout)) {
