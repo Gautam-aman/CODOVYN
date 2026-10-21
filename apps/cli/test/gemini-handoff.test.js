@@ -35,11 +35,11 @@ test('fault-injected Codex quota hands an isolated draft to Gemini before review
     const handoff=result.events.find(e=>e.kind==='handoff');
     assert.ok(checkpoint.seq<handoff.seq);
     assert.equal(checkpoint.data.usedTool,false);
-    assert.equal(readFileSync(join(repository,'answer.cjs'),'utf8'),'module.exports = 0;\n');
+    assert.equal(readFileSync(join(repository,'answer.cjs'),'utf8').replace(/\r\n/g, '\n'),'module.exports = 0;\n');
     assert.equal(await main(['draft-review',result.taskId,repository],output),0);
     const review=JSON.parse(lines.at(-1));assert.match(review.patch,/42/);
     assert.equal(await main(['draft-accept',result.taskId,repository,review.patchHash,'--yes'],output),0);
-    assert.equal(readFileSync(join(repository,'answer.cjs'),'utf8'),'module.exports = 42;\n');
+    assert.equal(readFileSync(join(repository,'answer.cjs'),'utf8').replace(/\r\n/g, '\n'),'module.exports = 42;\n');
     execFileSync(process.execPath,['-e',`require('node:assert/strict').equal(require(${JSON.stringify(join(repository,'answer.cjs'))}),42)`]);
   } finally {
     if(previous===undefined)delete process.env.CODOVYN_DATA_DIR;else process.env.CODOVYN_DATA_DIR=previous;
