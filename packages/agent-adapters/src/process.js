@@ -32,18 +32,28 @@ export function manageAgentProcess(child, signal) {
           }
         }
       } else {
-        const killGroup = (kind) => {
-          try { process.kill(-child.pid, kind); }
-          catch (error) {
-            if (error.code !== 'ESRCH') throw new AgentFailure('fatal', 'Could not stop the agent process group');
+        const killGroup = async (kind) => {
+          for (let attempt = 0; attempt < 10; attempt++) {
+            try { process.kill(-child.pid, kind); return; }
+            catch (error) {
+              if (error.code === 'ESRCH') return;
+              // Darwin can briefly deny signals to an exited group being reaped.
+              // Never ignore the error: retry until the group disappears or stop fails.
+              if (error.code === 'EPERM' && attempt < 9 &&
+                (child.exitCode !== null || child.signalCode !== null)) {
+                await new Promise((resolve) => setTimeout(resolve, 50));
+                continue;
+              }
+              throw new AgentFailure('fatal', `Could not stop the agent process group (${error.code})`);
+            }
           }
         };
-        killGroup('SIGTERM');
+        await killGroup('SIGTERM');
         const grace = delay(750);
         try { await Promise.race([closed, grace.promise]); }
         finally { grace.cancel(); }
         // A wrapper may exit before its children. Kill any remaining group members.
-        killGroup('SIGKILL');
+        await killGroup('SIGKILL');
       }
       const deadline = delay(2000);
       try {
