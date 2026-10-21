@@ -43,3 +43,30 @@ test('CLI auto mode hands a confirmed Codex quota failure to Claude', async () =
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test('configured tasks honor explicit fallback consent and selected primary without auth probing', async () => {
+  const directory = mkdtempSync(join(tmpdir(),'codovyn-policy-'));
+  const repository=join(directory,'repo');mkdirSync(repository);
+  const oldData=process.env.CODOVYN_DATA_DIR;
+  const oldPolicy=process.env.CODOVYN_AGENT_POLICY;
+  try {
+    execFileSync('git',['init','-q',repository]);process.env.CODOVYN_DATA_DIR=join(directory,'data');
+    const calls=[];const adapters={};
+    for(const id of ['codex','gemini','claude'])adapters[`create${id==='codex'?'Codex':id==='gemini'?'Gemini':'Claude'}Adapter`]=()=>({id,capabilities:{writes:false},availability:async()=> 'available',async *run(){calls.push(id);if(id==='codex')throw new AgentFailure('quota','injected');yield {type:'completed'};}});
+    const lines=[];const output={log:x=>lines.push(x),error:x=>assert.fail(x)};
+    process.env.CODOVYN_AGENT_POLICY=JSON.stringify({primary:'codex',fallbacks:['gemini','claude'],automatic:false});
+    assert.equal(await main(['configured',repository,'Inspect'],output,undefined,undefined,adapters),1);
+    assert.deepEqual(calls,['codex']);calls.length=0;
+    process.env.CODOVYN_AGENT_POLICY=JSON.stringify({primary:'codex',fallbacks:['gemini','claude'],automatic:true});
+    assert.equal(await main(['configured',repository,'Inspect'],output,undefined,undefined,adapters),0);
+    assert.deepEqual(calls,['codex','gemini']);
+    assert.equal(JSON.parse(lines.at(-1)).activeAgent,'gemini');
+    calls.length=0;
+    assert.equal(await main(['agents',repository],output,undefined,undefined,adapters),0);
+    assert.deepEqual(calls,[]);
+    assert.ok(JSON.parse(lines.at(-1)).agents.every(a=>a.authentication==='unknown'&&a.availability==='unknown'));
+  } finally {
+    for(const [key,value] of [['CODOVYN_DATA_DIR',oldData],['CODOVYN_AGENT_POLICY',oldPolicy]])if(value===undefined)delete process.env[key];else process.env[key]=value;
+    rmSync(directory,{recursive:true,force:true});
+  }
+});

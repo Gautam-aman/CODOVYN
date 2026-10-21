@@ -7,6 +7,7 @@ import { pathToFileURL } from 'node:url';
 import { createInterface } from 'node:readline/promises';
 import { AgentRegistry, AgentFailure } from '../../../packages/agent-core/src/index.js';
 import { TaskStore } from '../../../packages/storage/src/index.js';
+import agentPolicy from '../../../packages/agent-core/src/policy.cjs';
 import { TaskEngine } from '../../../packages/task-engine/src/index.js';
 import { commitStaged, createBranch, fetchRemote, pullFastForward, pushCurrentBranch, repositoryDiff, repositorySnapshot, stagePaths } from '../../../packages/git-engine/src/index.js';
 import { createClaudeAdapter, createCodexAdapter, createGeminiAdapter } from '../../../packages/agent-adapters/src/index.js';
@@ -14,6 +15,9 @@ import { createDraftWorkspace, reviewDraftWorkspace, acceptDraftWorkspace, rejec
 import { createIssue, createPullRequest, issueDetails, listIssues, listPullRequests, listWorkflowRuns, previewPullRequest, pullRequestDetails, pullRequestDiff } from '../../../packages/github-integration/src/index.js';
 
 const usage = `Usage:
+  codovyn agents <directory>
+  codovyn configured <repository> <request>
+  codovyn configured-edit <repository> <request> --allow-writes
   codovyn demo <repository> <request>
   codovyn codex <repository> <request>
   codovyn claude <repository> <request>
@@ -67,8 +71,25 @@ export async function main(args = process.argv.slice(2), output = console, signa
   github = { createIssue, createPullRequest, issueDetails, listIssues, listPullRequests, listWorkflowRuns, previewPullRequest, pullRequestDetails, pullRequestDiff },
   adapters = { createCodexAdapter, createClaudeAdapter, createGeminiAdapter }, confirm = confirmAction) {
   const [mode, value, ...rest] = args;
-  if (!['demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit', 'draft-review', 'draft-accept', 'draft-reject', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'pr-preview', 'pr-create', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
+  if (!['agents', 'configured', 'configured-edit', 'demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit', 'draft-review', 'draft-accept', 'draft-reject', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'pr-preview', 'pr-create', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
   const stream = process.env.CODOVYN_EVENT_STREAM === '1';
+  let policy;
+  if (mode === 'configured' || mode === 'configured-edit') {
+    const json = process.env.CODOVYN_AGENT_POLICY || '';
+    if (json.length > 4096) throw new TypeError('Agent policy exceeds size limit');
+    policy = agentPolicy.validateAgentPolicy(JSON.parse(json));
+  }
+  if (mode === 'agents') {
+    if (!value || rest.length) { output.error(usage); return 2; }
+    const factories = { codex: adapters.createCodexAdapter, gemini: adapters.createGeminiAdapter, claude: adapters.createClaudeAdapter };
+    const agents = await Promise.all(Object.entries(factories).map(async ([id, factory]) => {
+      const adapter = factory({ cwd: value });
+      const detected = await adapter.availability() === 'available';
+      return { id, installation: detected ? 'detected' : 'not-detected-or-unsupported', authentication: 'unknown',
+        availability: 'unknown', capabilities: adapter.capabilities };
+    }));
+    output.log(JSON.stringify(stream ? { type: 'result', agents } : { agents })); return 0;
+  }
   if (mode === 'issue') {
     if (!value || rest.length !== 1 || !/^[1-9]\d*$/.test(rest[0])) { output.error(usage); return 2; }
     const issue = await github.issueDetails(value, Number(rest[0]));
@@ -248,7 +269,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
         : { task, events: store.events(value) }, null, stream ? 0 : 2));
       return 0;
     }
-    const editMode = ['codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit'].includes(mode);
+    const editMode = ['configured-edit', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit'].includes(mode);
     const allowWrites = editMode && rest.at(-1) === '--allow-writes';
     const request = (allowWrites ? rest.slice(0, -1) : rest).join(' ').trim();
     if (editMode && !allowWrites) { output.error(`${mode} requires --allow-writes`); return 2; }
@@ -271,9 +292,13 @@ export async function main(args = process.argv.slice(2), output = console, signa
       primaryAgent = mode.startsWith('claude') ? 'claude' : mode.startsWith('gemini') ? 'gemini' : 'codex';
       if (mode === 'auto' || mode === 'auto-edit') fallbackAgents = ['claude'];
       if (mode === 'auto-gemini' || mode === 'auto-gemini-edit') fallbackAgents = ['gemini'];
+      if (policy) {
+        const candidates = agentPolicy.policyCandidates(policy);
+        primaryAgent = candidates[0]; fallbackAgents = candidates.slice(1);
+      }
       const factories = { codex: adapters.createCodexAdapter, claude: adapters.createClaudeAdapter, gemini: adapters.createGeminiAdapter };
       for (const provider of [primaryAgent, ...fallbackAgents]) {
-        registry.register(factories[provider]({ cwd: draft?.path || repository, write: !!draft }));
+        registry.register(factories[provider]({ cwd: draft?.path || repository, write: !!draft, ...(provider === 'gemini' && policy?.geminiModel ? { model: policy.geminiModel } : {}) }));
       }
     }
     store.create({ id, request, repositoryRoot: repository, primaryAgent, fallbackAgents });
