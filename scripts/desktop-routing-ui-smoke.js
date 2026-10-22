@@ -165,6 +165,8 @@ try {
   await evaluate("document.querySelector('[data-workspace-view=chat]').dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }))");
   assert.equal(await evaluate("document.querySelector('[data-workspace-view=settings]').getAttribute('aria-selected')"), 'true',
     'End moves to Settings.');
+  assert.equal(await evaluate("vscode.getState()?.activeWorkspaceView"), 'settings',
+    'The selected destination is persisted through the host-supported webview state API.');
   const tabVisibility = await evaluate("[...document.querySelectorAll('[role=tabpanel]')].map(panel => ({ id: panel.id, hidden: panel.hidden, labelled: panel.getAttribute('aria-labelledby') }))");
   assert.equal(tabVisibility.filter(panel => !panel.hidden).length, 1,
     'Switching destinations leaves one visible panel and keeps every panel labelled.');
