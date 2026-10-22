@@ -137,8 +137,9 @@ establish the underlying cause. Issue #16 remains open. Gemini authentication,
 live Gemini tasks, real cross-provider continuation, and hosted Actions remain
 blocked as previously recorded. The reproduced native stall and cleanup evidence
 were added to [issue #16](https://github.com/Gautam-aman/CODOVYN/issues/16#issuecomment-6344308190).
-The latest [CI run for `273474e`](https://github.com/Gautam-aman/CODOVYN/actions/runs/39803770719)
+The [CI run triggered at `273474e`](https://github.com/Gautam-aman/CODOVYN/actions/runs/39803770719)
 and [desktop validation run for `70eea01`](https://github.com/Gautam-aman/CODOVYN/actions/runs/39803685332)
-also failed before any job steps ran. The annotation again cites the account's
+also failed before any job steps ran. A subsequent CI run on `ecada8a` did the
+same. The annotation again cites the account's
 failed recent payment or spending limit; the macOS ARM64 capacity notice is
 separate. Hosted CI remains blocked, not code-validated.
