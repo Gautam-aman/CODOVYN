@@ -26,12 +26,17 @@ not claim authentication or available quota.
 
 ## Configure and preview
 
-Use native Settings JSON, resource-scoped `codovyn.routingPolicy`, then select
-**Model routing · read only** or **Model routing · edit draft** in the CODOVYN panel.
-A preview shows considered candidates and rejection reasons. Native confirmation
-names the selected provider/model and estimated cost before execution. Edit mode
-also retains worktree permission and patch approval. The policy is frozen before
-confirmation; the renderer cannot replace it.
+Open **Model routing** in the CODOVYN agent panel to edit a project-scoped local
+catalogue. Add, edit or remove entries; select a mode; enter user policy scores,
+optional reasoning support, capability requirements, token estimates and local
+USD limits. Save before using **Preview saved policy** with a task in the composer.
+The preview shows considered candidates and rejection reasons without starting
+an agent. Advanced configuration remains available in resource-scoped
+`codovyn.routingPolicy` Settings JSON. Then select **Model routing · read only**
+or **Model routing · edit draft**. Native confirmation names the selected
+provider/model and estimated cost before execution. Edit mode also retains
+worktree permission and patch approval. The policy is frozen before confirmation;
+the renderer cannot replace it.
 
 Example configuration (replace the placeholder with an actually authorized model):
 

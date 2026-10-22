@@ -144,6 +144,30 @@ const routingReasoning = document.createElement('input'); routingReasoning.type 
 const unknownLabel = document.createElement('label');
 const allowUnknown = document.createElement('input'); allowUnknown.type = 'checkbox';
 unknownLabel.append(allowUnknown, ' Permit models with unverified availability');
+const capabilityGroup = document.createElement('fieldset');
+const capabilityLegend = document.createElement('legend'); capabilityLegend.textContent = 'Required task capabilities';
+capabilityGroup.append(capabilityLegend);
+const requiredCapabilities = new Map();
+for (const name of ['streaming', 'tools', 'writes']) {
+  const label = document.createElement('label');
+  const checkbox = document.createElement('input'); checkbox.type = 'checkbox';
+  label.append(checkbox, ` ${name}`); capabilityGroup.append(label); requiredCapabilities.set(name, checkbox);
+}
+const estimateHeading = document.createElement('h3'); estimateHeading.textContent = 'Estimate and budget';
+const estimateHelp = document.createElement('p');
+estimateHelp.textContent = 'Token counts and USD limits are your estimates. They are local admission controls, not a hard provider billing cap. Leave a limit blank for no local limit; unknown prices fail a finite limit.';
+function numericSetting(title, step = 'any') {
+  const label = document.createElement('label'); label.textContent = title;
+  const input = document.createElement('input'); input.type = 'number'; input.min = '0'; input.step = step;
+  label.append(input); return { label, input };
+}
+const inputTokens = numericSetting('Estimated input tokens', '1');
+const outputTokens = numericSetting('Estimated output tokens', '1');
+const taskLimit = numericSetting('Per-task estimate limit (USD)');
+const sessionLimit = numericSetting('Session estimate limit (USD)');
+const monthLimit = numericSetting('Monthly estimate limit (USD)');
+const sessionSpent = numericSetting('External session spending baseline (USD, user-maintained)');
+const monthSpent = numericSetting('External monthly spending baseline (USD, user-maintained)');
 const modelHeading = document.createElement('h3'); modelHeading.textContent = 'Local model catalogue';
 const modelList = document.createElement('div'); modelList.className = 'routing-model-list';
 const addModel = document.createElement('button'); addModel.type = 'button'; addModel.textContent = 'Add model';
@@ -206,6 +230,11 @@ function loadRoutingPolicy(policy) {
   routingCustom.value = savedRoutingPolicy.customModel || '';
   routingReasoning.value = savedRoutingPolicy.reasoning || '';
   allowUnknown.checked = savedRoutingPolicy.allowUnknownAvailability === true;
+  for (const [name, checkbox] of requiredCapabilities) checkbox.checked = Array.isArray(savedRoutingPolicy.requiredCapabilities) && savedRoutingPolicy.requiredCapabilities.includes(name);
+  inputTokens.input.value = savedRoutingPolicy.tokens?.input ?? '';
+  outputTokens.input.value = savedRoutingPolicy.tokens?.output ?? '';
+  for (const [field, key] of [[taskLimit, 'taskUsd'], [sessionLimit, 'sessionUsd'], [monthLimit, 'monthUsd'],
+    [sessionSpent, 'sessionSpentUsd'], [monthSpent, 'monthSpentUsd']]) field.input.value = savedRoutingPolicy.budget?.[key] ?? '';
   modelList.replaceChildren();
   for (const model of (Array.isArray(savedRoutingPolicy.models) ? savedRoutingPolicy.models : []).slice(0, 64)) {
     if (model && typeof model === 'object' && !Array.isArray(model)) addModelCard(model);
@@ -245,13 +274,27 @@ saveRouting.addEventListener('click', () => {
     else delete policy.customModel;
     if (routingReasoning.value.trim()) policy.reasoning = routingReasoning.value.trim();
     else delete policy.reasoning;
+    policy.requiredCapabilities = [...requiredCapabilities].filter(([, checkbox]) => checkbox.checked).map(([name]) => name);
+    if (inputTokens.input.value !== '' || outputTokens.input.value !== '') {
+      if (inputTokens.input.value === '' || outputTokens.input.value === '') throw new Error('Enter both input and output token estimates.');
+      policy.tokens = { input: Number(inputTokens.input.value), output: Number(outputTokens.input.value) };
+    } else delete policy.tokens;
+    const budget = {};
+    for (const [field, key] of [[taskLimit, 'taskUsd'], [sessionLimit, 'sessionUsd'], [monthLimit, 'monthUsd'],
+      [sessionSpent, 'sessionSpentUsd'], [monthSpent, 'monthSpentUsd']]) {
+      if (field.input.value !== '') budget[key] = Number(field.input.value);
+    }
+    if (Object.keys(budget).length) policy.budget = budget;
+    else delete policy.budget;
     if (!models.length) throw new Error('Add at least one model before saving.');
     routingStatus.textContent = 'Validating routing settings…';
     vscode.postMessage({ type: 'routing-policy-save', policy });
   } catch (error) { routingStatus.textContent = error.message; }
 });
 routingSettings.append(routingSummary, routingHelp, routingModeLabel, routingCustomLabel, routingReasoningLabel,
-  unknownLabel, modelHeading, modelList, addModel, saveRouting, previewRouting, routingStatus, routingPreview);
+  unknownLabel, capabilityGroup, estimateHeading, estimateHelp,
+  inputTokens.label, outputTokens.label, taskLimit.label, sessionLimit.label, monthLimit.label,
+  sessionSpent.label, monthSpent.label, modelHeading, modelList, addModel, saveRouting, previewRouting, routingStatus, routingPreview);
 agentSettings.after(routingSettings);
 window.addEventListener('message', ({ data }) => {
   if (data.type === 'routing-policy') { loadRoutingPolicy(data.policy); routingPreview.replaceChildren(); routingStatus.textContent = data.text || ''; }

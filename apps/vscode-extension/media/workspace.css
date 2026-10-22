@@ -67,6 +67,8 @@ summary:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-of
 .agent-cards p { color: var(--vscode-descriptionForeground); }
 .routing-settings > p { color: var(--vscode-descriptionForeground); }
 .routing-model-list { display: grid; gap: 12px; margin: 12px 0; }
+.routing-settings > fieldset { min-width: 0; margin: 12px 0; border: 1px solid var(--vscode-panel-border); border-radius: 8px; }
+.routing-settings > fieldset label { margin: 8px 0; }
 .routing-model { min-width: 0; border: 1px solid var(--vscode-panel-border); border-radius: 8px; padding: 12px; }
 .routing-model legend { padding: 0 5px; font-weight: 600; overflow-wrap: anywhere; }
 .routing-model label { font-size: 12px; }
