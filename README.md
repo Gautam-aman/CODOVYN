@@ -22,7 +22,7 @@ npm run package:desktop
 
 Output: `dist/desktop/CODOVYN.app` and `dist/desktop/CODOVYN-darwin-arm64-development.dmg`. The development package is ad-hoc signed, not notarized. Windows and Linux desktop packaging is not implemented or tested. No public installer release is available.
 
-**Current validation (22 October):** The macOS development app passes native host and two-launch restoration checks. A copied development DMG also passed those checks after earlier Phase 5 UI changes; the latest routing fixes are being revalidated. The historical intermittent stall remains open in [#16](https://github.com/Gautam-aman/CODOVYN/issues/16). The local suite has 179 passing tests. Hosted CI jobs still do not start because of account billing restrictions. Live Gemini and two-provider continuation remain unverified. See the [Phase 4 verification report](docs/development/phase4-validation-2026-10-22.md) for the preceding artifact.
+**Current validation (22 October):** The final macOS development app and a copied, checksum-verified DMG both passed native host and two-launch restoration checks. A real panel journey saved and previewed a fixture routing policy without starting a provider. The historical intermittent stall remains open in [#16](https://github.com/Gautam-aman/CODOVYN/issues/16). The local suite has 179 passing tests; the companion extension host passed. Hosted CI jobs still do not start because of account billing restrictions. Live Gemini and two-provider continuation remain unverified. See the [Phase 5 verification report](docs/development/phase5-validation-2026-10-22.md).
 
 ![Live Codex patch accepted in the standalone CODOVYN application](docs/assets/desktop-live-reviewed-patch.png)
 
