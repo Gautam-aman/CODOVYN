@@ -73,6 +73,9 @@ summary:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-of
 .routing-model legend { padding: 0 5px; font-weight: 600; overflow-wrap: anywhere; }
 .routing-model label { font-size: 12px; }
 .routing-model button { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
+.routing-model-errors { margin: 10px 0 0; padding-left: 20px; color: var(--vscode-errorForeground); }
+.routing-model [aria-invalid="true"] { outline: 1px solid var(--vscode-inputValidation-errorBorder, var(--vscode-errorForeground)); outline-offset: 1px; }
+.routing-model-errors:empty { display: none; }
 .routing-preview { margin-top: 12px; overflow-wrap: anywhere; }
 .routing-preview ul { margin: 8px 0 0; padding-left: 20px; list-style: disc; }
 .routing-preview li { padding: 3px 0; }

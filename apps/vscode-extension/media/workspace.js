@@ -184,43 +184,64 @@ function modelField(card, title, value, type = 'text') {
 }
 function addModelCard(model = {}) {
   const card = document.createElement('fieldset'); card.className = 'routing-model';
+  const errors = document.createElement('ul'); errors.className = 'routing-model-errors'; errors.setAttribute('aria-label', 'Model validation errors');
+  const fieldInputs = new Map();
+  function clearFieldError(field) {
+    const controls = fieldInputs.get(field);
+    for (const control of Array.isArray(controls) ? controls : [controls]) control?.removeAttribute('aria-invalid');
+    const item = errors.querySelector(`[data-field="${field}"]`); if (item) item.remove();
+  }
+  function showFieldErrors(messages) {
+    errors.replaceChildren();
+    for (const [field, message] of Object.entries(messages)) {
+      const item = document.createElement('li'); item.dataset.field = field; item.textContent = message;
+      item.setAttribute('role', 'alert'); errors.append(item);
+      const controls = fieldInputs.get(field);
+      for (const input of Array.isArray(controls) ? controls : [controls]) input?.setAttribute('aria-invalid', 'true');
+    }
+  }
   const legend = document.createElement('legend'); legend.textContent = model.id || 'New model'; card.append(legend);
-  const id = modelField(card, 'Catalogue ID', model.id);
+  const id = modelField(card, 'Catalogue ID', model.id); fieldInputs.set('id', id);
   const providerLabel = document.createElement('label'); providerLabel.textContent = 'Provider';
   const provider = document.createElement('select');
   for (const value of ['codex', 'gemini', 'claude']) {
     const option = document.createElement('option'); option.value = value; option.textContent = value; provider.append(option);
   }
-  provider.value = model.provider || 'codex'; providerLabel.append(provider); card.append(providerLabel);
-  const name = modelField(card, 'Provider model identifier', model.model);
-  const quality = modelField(card, 'User policy quality score (0–100)', model.quality, 'number');
+  provider.value = model.provider || 'codex'; providerLabel.append(provider); card.append(providerLabel); fieldInputs.set('provider', provider);
+  const name = modelField(card, 'Provider model identifier', model.model); fieldInputs.set('model', name);
+  const quality = modelField(card, 'User policy quality score (0–100)', model.quality, 'number'); fieldInputs.set('quality', quality);
   quality.min = '0'; quality.max = '100'; quality.step = '1';
-  const reliability = modelField(card, 'User policy reliability score (0–1)', model.reliability, 'number');
+  const reliability = modelField(card, 'User policy reliability score (0–1)', model.reliability, 'number'); fieldInputs.set('reliability', reliability);
   reliability.min = '0'; reliability.max = '1'; reliability.step = '0.01';
   const availabilityLabel = document.createElement('label'); availabilityLabel.textContent = 'Availability evidence';
   const availability = document.createElement('select');
   for (const value of ['unknown', 'available', 'unavailable']) {
     const option = document.createElement('option'); option.value = value; option.textContent = value; availability.append(option);
   }
-  availability.value = model.availability || 'unknown'; availabilityLabel.append(availability); card.append(availabilityLabel);
-  const capabilities = modelField(card, 'Capabilities (comma-separated: streaming, tools, writes)', (model.capabilities || []).join(', '));
-  const reasoning = modelField(card, 'Supported reasoning settings (comma-separated)', (model.reasoning || []).join(', '));
+  availability.value = model.availability || 'unknown'; availabilityLabel.append(availability); card.append(availabilityLabel); fieldInputs.set('availability', availability);
+  const capabilities = modelField(card, 'Capabilities (comma-separated: streaming, tools, writes)', (model.capabilities || []).join(', ')); fieldInputs.set('capabilities', capabilities);
+  const reasoning = modelField(card, 'Supported reasoning settings (comma-separated)', (model.reasoning || []).join(', ')); fieldInputs.set('reasoning', reasoning);
   const inputPrice = modelField(card, 'Input USD per million tokens (optional)', model.price?.inputPerMillionUsd, 'number');
   const outputPrice = modelField(card, 'Output USD per million tokens (optional)', model.price?.outputPerMillionUsd, 'number');
   inputPrice.min = outputPrice.min = '0'; inputPrice.step = outputPrice.step = 'any';
-  const priceSource = modelField(card, 'Price source (required if priced)', model.price?.source);
+  const priceSource = modelField(card, 'Price source (required if priced)', model.price?.source); fieldInputs.set('price', [inputPrice, outputPrice, priceSource]);
   const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Remove model';
   remove.setAttribute('aria-label', `Remove ${model.id || 'new model'}`);
-  remove.addEventListener('click', () => card.remove()); card.append(remove);
+  remove.addEventListener('click', () => card.remove()); card.append(remove, errors);
+  for (const [field, controls] of fieldInputs) for (const input of Array.isArray(controls) ? controls : [controls]) {
+    input.addEventListener('input', () => clearFieldError(field)); input.addEventListener('change', () => clearFieldError(field));
+  }
   card.readModel = () => {
     const priceFields = [inputPrice.value.trim(), outputPrice.value.trim(), priceSource.value.trim()];
-    if (priceFields.some(Boolean) && !priceFields.every(Boolean)) throw new Error('Provide both prices and a source, or leave all price fields empty.');
-    return { id: id.value.trim(), provider: provider.value, model: name.value.trim(),
+    const value = { id: id.value.trim(), provider: provider.value, model: name.value.trim(),
       quality: quality.value === '' ? NaN : Number(quality.value),
       reliability: reliability.value === '' ? NaN : Number(reliability.value),
       availability: availability.value, capabilities: capabilities.value.split(',').map(value => value.trim()).filter(Boolean),
       reasoning: reasoning.value.split(',').map(value => value.trim()).filter(Boolean),
-      price: priceFields.every(Boolean) ? { inputPerMillionUsd: Number(inputPrice.value), outputPerMillionUsd: Number(outputPrice.value), source: priceSource.value.trim() } : null };
+      priceFields, price: priceFields.every(Boolean) ? { inputPerMillionUsd: Number(inputPrice.value), outputPerMillionUsd: Number(outputPrice.value), source: priceSource.value.trim() } : null };
+    const messages = window.CodovynRoutingForm.validateModel(value); showFieldErrors(messages);
+    if (Object.keys(messages).length) throw new Error('Fix the highlighted model catalogue fields.');
+    delete value.priceFields; return value;
   };
   modelList.append(card);
 }
@@ -267,7 +288,19 @@ function renderRoutingPreview(routing) {
 saveRouting.addEventListener('click', () => {
   if (run.disabled) { routingStatus.textContent = 'Wait for the active task before changing routing settings.'; return; }
   try {
-    const models = [...modelList.children].map(card => card.readModel());
+    const cards = [...modelList.children];
+    const models = cards.map(card => card.readModel());
+    const seen = new Set();
+    for (let index = 0; index < models.length; index++) {
+      if (seen.has(models[index].id)) {
+        const idInput = cards[index].querySelector('input[aria-label="Catalogue ID"]');
+        idInput.setAttribute('aria-invalid', 'true');
+        const errors = cards[index].querySelector('.routing-model-errors');
+        const item = document.createElement('li'); item.dataset.field = 'id'; item.setAttribute('role', 'alert'); item.textContent = 'Catalogue IDs must be unique.'; errors.append(item);
+        throw new Error('Catalogue IDs must be unique.');
+      }
+      seen.add(models[index].id);
+    }
     const policy = { ...savedRoutingPolicy, mode: routingMode.value, models,
       allowUnknownAvailability: allowUnknown.checked };
     if (routingMode.value === 'custom') policy.customModel = routingCustom.value.trim();
