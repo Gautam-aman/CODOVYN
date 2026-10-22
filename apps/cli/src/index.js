@@ -452,7 +452,9 @@ export async function main(args = process.argv.slice(2), output = console, signa
   } finally { store.close(); }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+const entryPath = process.argv[1];
+if (entryPath && (import.meta.url === pathToFileURL(entryPath).href ||
+  import.meta.url === pathToFileURL(realpathSync(entryPath)).href)) {
   const controller = new AbortController();
   process.on('SIGTERM', () => controller.abort());
   process.on('SIGINT', () => controller.abort());
