@@ -195,8 +195,18 @@ try {
   await click('Jump to latest activity');
   await waitFor("document.querySelector('#timeline').scrollHeight - document.querySelector('#timeline').scrollTop - document.querySelector('#timeline').clientHeight <= 5",
     'Jump control did not scroll to the newest event.');
+  await evaluate("window.dispatchEvent(new MessageEvent('message', { data: { type: 'tasks', tasks: [ { id: 'fixture-complete-1', request: 'Refactor Java parser', status: 'completed' }, { id: 'fixture-complete-2', request: 'Document routing policy', status: 'completed' }, { id: 'fixture-interrupted', request: 'Recover parser task', status: 'interrupted' } ] } }))");
+  const allTasks = await evaluate("document.querySelectorAll('#tasks button.task').length");
+  assert.equal(allTasks, 3, 'Task history renders the supplied recent journal entries.');
+  await evaluate("document.querySelector('#task-search').value = 'PARSER'; document.querySelector('#task-search').dispatchEvent(new Event('input', { bubbles: true }))");
+  assert.equal(await evaluate("document.querySelectorAll('#tasks button.task').length"), 2, 'Task search is case-insensitive and filters prompt text.');
+  await evaluate("document.querySelector('#task-status-filter').value = 'interrupted'; document.querySelector('#task-status-filter').dispatchEvent(new Event('change', { bubbles: true }))");
+  assert.equal(await evaluate("document.querySelectorAll('#tasks button.task').length"), 1, 'Status filtering composes with search.');
+  await evaluate("document.querySelector('#task-search').value = 'no-match'; document.querySelector('#task-search').dispatchEvent(new Event('input', { bubbles: true }))");
+  assert.equal(await evaluate("document.querySelector('#tasks').textContent"), 'No recent tasks match this search and status filter.', 'Empty filtered results explain the current state.');
+  await evaluate("document.querySelector('#task-search').value = ''; document.querySelector('#task-search').dispatchEvent(new Event('input', { bubbles: true })); document.querySelector('#task-status-filter').value = 'all'; document.querySelector('#task-status-filter').dispatchEvent(new Event('change', { bubbles: true }))");
   console.log('Verified native routing form: valid workspace save, discard restoration, and associated validation error.',
-    `DOM focus observability: ${focusVerifiedByNativeHarness ? 'yes' : 'unavailable in the isolated webview harness'}.`);
+    `DOM focus observability: ${focusVerifiedByNativeHarness ? 'yes' : 'unavailable in the isolated webview harness'}. Task timeline follow and local recent-task filters also passed.`);
   let exitTimer;
   const exit = await Promise.race([childExited, new Promise((_, reject) => {
     exitTimer = setTimeout(() => reject(new Error('Native host did not finish its bounded lifecycle after routing verification.')), 60_000);

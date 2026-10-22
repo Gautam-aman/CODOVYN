@@ -22,6 +22,39 @@ jumpToLatest.addEventListener('click', () => {
 });
 const tasks = document.getElementById('tasks');
 const refresh = document.getElementById('refresh');
+const taskFilters = document.createElement('div');
+taskFilters.className = 'task-filters';
+const taskSearchLabel = document.createElement('label');
+taskSearchLabel.htmlFor = 'task-search';
+taskSearchLabel.textContent = 'Search recent tasks';
+const taskSearch = document.createElement('input');
+taskSearch.id = 'task-search';
+taskSearch.type = 'search';
+taskSearch.maxLength = 256;
+taskSearch.setAttribute('aria-describedby', 'task-history-note');
+taskSearchLabel.append(taskSearch);
+const taskStatusLabel = document.createElement('label');
+taskStatusLabel.htmlFor = 'task-status-filter';
+taskStatusLabel.textContent = 'Filter by status';
+const taskStatusFilter = document.createElement('select');
+taskStatusFilter.id = 'task-status-filter';
+for (const value of ['all', 'pending', 'running', 'interrupted', 'completed', 'failed', 'cancelled']) {
+  const option = document.createElement('option');
+  option.value = value;
+  option.textContent = value === 'all' ? 'All statuses' : value[0].toUpperCase() + value.slice(1);
+  taskStatusFilter.append(option);
+}
+taskStatusLabel.append(taskStatusFilter);
+const taskHistoryNote = document.createElement('p');
+taskHistoryNote.id = 'task-history-note';
+taskHistoryNote.textContent = 'Searches the 25 most recent tasks returned by the local journal for this project.';
+const taskHistoryCount = document.createElement('p');
+taskHistoryCount.className = 'task-history-count';
+taskHistoryCount.setAttribute('role', 'status');
+taskHistoryCount.setAttribute('aria-live', 'polite');
+taskFilters.append(taskSearchLabel, taskStatusLabel, taskHistoryNote, taskHistoryCount);
+tasks.before(taskFilters);
+let recentTasks = [];
 const diffOutput = document.getElementById('diff-output');
 const appearance = document.createElement('details');
 appearance.className = 'appearance';
@@ -475,6 +508,56 @@ function appendActivity(items) {
   } else jumpToLatest.hidden = false;
 }
 
+function renderTasks() {
+  const query = taskSearch.value.trim().toLocaleLowerCase();
+  const selectedStatus = taskStatusFilter.value;
+  const visibleTasks = recentTasks.filter(task =>
+    (!query || task.request.toLocaleLowerCase().includes(query)) &&
+    (selectedStatus === 'all' || task.status === selectedStatus));
+  tasks.replaceChildren();
+  taskHistoryCount.textContent = `Showing ${visibleTasks.length} of ${recentTasks.length} loaded recent tasks.`;
+  for (const task of visibleTasks) {
+    const row = document.createElement('li');
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'task';
+    button.textContent = `${task.request} · ${task.status}`;
+    button.addEventListener('click', () => vscode.postMessage({ type: 'history', id: task.id }));
+    row.append(button);
+    if (task.draftReviewAvailable) {
+      const draftLabel = document.createElement('span');
+      draftLabel.textContent = 'Draft awaiting review';
+      const inspect = document.createElement('button'); inspect.type = 'button'; inspect.textContent = 'Inspect recovery state';
+      inspect.addEventListener('click', () => vscode.postMessage({ type: 'draft-inspect', id: task.id }));
+      row.append(draftLabel, inspect);
+    } else if (task.status !== 'running') {
+      if (task.status === 'interrupted') {
+        const resume = document.createElement('button'); resume.type = 'button'; resume.textContent = 'Resume safe read task';
+        resume.addEventListener('click', () => vscode.postMessage({ type: 'resume-task', id: task.id })); row.append(resume);
+      }
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'task-delete';
+      remove.textContent = 'Delete';
+      remove.setAttribute('aria-label', `Delete saved task: ${task.request}`);
+      remove.addEventListener('click', () => vscode.postMessage({ type: 'delete-task', id: task.id }));
+      row.append(remove);
+    }
+    tasks.append(row);
+  }
+  if (!recentTasks.length) {
+    const row = document.createElement('li');
+    row.textContent = 'No saved tasks for this repository.';
+    tasks.append(row);
+  } else if (!visibleTasks.length) {
+    const row = document.createElement('li');
+    row.textContent = 'No recent tasks match this search and status filter.';
+    tasks.append(row);
+  }
+}
+taskSearch.addEventListener('input', renderTasks);
+taskStatusFilter.addEventListener('change', renderTasks);
+
 run.addEventListener('click', () => {
   const value = request.value.trim();
   if (!value) { request.focus(); return; }
@@ -566,40 +649,14 @@ window.addEventListener('message', ({ data }) => {
     if (data.type === 'history') request.value = data.request || '';
     empty.textContent = data.timeline?.length ? '' : 'No activity was recorded.';
   } else if (data.type === 'tasks') {
-    tasks.replaceChildren();
-    for (const task of data.tasks || []) {
-      const row = document.createElement('li');
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'task';
-      button.textContent = `${task.request} · ${task.status}`;
-      button.addEventListener('click', () => vscode.postMessage({ type: 'history', id: task.id }));
-      row.append(button);
-      if (task.draftReviewAvailable) {
-        const draftLabel = document.createElement('span');
-        draftLabel.textContent = 'Draft awaiting review';
-        const inspect = document.createElement('button'); inspect.type = 'button'; inspect.textContent = 'Inspect recovery state';
-        inspect.addEventListener('click', () => vscode.postMessage({ type: 'draft-inspect', id: task.id }));
-        row.append(draftLabel, inspect);
-      } else if (task.status !== 'running') {
-        if(task.status==='interrupted'){const resume=document.createElement('button');resume.type='button';resume.textContent='Resume safe read task';resume.addEventListener('click',()=>vscode.postMessage({type:'resume-task',id:task.id}));row.append(resume);}
-        const remove = document.createElement('button');
-        remove.type = 'button';
-        remove.className = 'task-delete';
-        remove.textContent = 'Delete';
-        remove.setAttribute('aria-label', `Delete saved task: ${task.request}`);
-        remove.addEventListener('click', () => vscode.postMessage({ type: 'delete-task', id: task.id }));
-        row.append(remove);
-      }
-      tasks.append(row);
-    }
-    if (!data.tasks?.length) {
-      const row = document.createElement('li');
-      row.textContent = 'No saved tasks for this repository.';
-      tasks.append(row);
-    }
+    recentTasks = Array.isArray(data.tasks) ? data.tasks.filter(task => task &&
+      typeof task.id === 'string' && typeof task.request === 'string' &&
+      ['pending', 'running', 'interrupted', 'completed', 'failed', 'cancelled'].includes(task.status)) : [];
+    renderTasks();
   } else if (data.type === 'tasks-error') {
+    recentTasks = [];
     tasks.replaceChildren();
+    taskHistoryCount.textContent = 'Task history is currently unavailable.';
     const row = document.createElement('li');
     row.textContent = data.text;
     tasks.append(row);
