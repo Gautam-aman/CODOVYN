@@ -45,7 +45,7 @@ saved entry. Invalid input is not persisted by a rejected save.
 
 ## Desktop reliability observations
 
-The standalone application rebuilt from the current source passed
+The standalone application rebuilt from the current clean source passed
 `npm run test:desktop-host`, including editor open/edit/save, search, Git, agent
 panel activation/reuse, bundled CLI routing and terminal using bundled Node.
 `npm run test:desktop-restoration` passed both write and read launches and
@@ -59,11 +59,24 @@ process group was terminated and verified empty; lifecycle diagnostics report
 zero surviving owned processes. Other native runs passed, including the latest
 rebuilt app run, where workspace search completed quickly. The single captured
 stall and variable search latency do not identify a root cause. Issue [#16](https://github.com/Gautam-aman/CODOVYN/issues/16)
-remains open.
+remains open. Multiple bounded host runs passed, including the clean final
+source build; the captured stall remained limited to the search phase. The
+failure did not recur on every run, so no causal fix is claimed.
 
-This checkpoint did not rebuild or relocate a new DMG after the latest UI
-change. Previous DMG evidence remains tied to the earlier source checkpoint;
-it must not be treated as validation of this revision's packaged artifact.
+The final development DMG was rebuilt from clean commit
+`54a0d5d80f2a98014b4d1b98fa04af0d1d236221`, mounted read-only, and its app was
+copied to a disposable install path. The copied build metadata matched that
+commit with `sourceDirty: false`; signature verification and native host tests
+passed. Both native-host and two-launch restoration tests passed against the
+copied app. Lifecycle reports recorded zero surviving test-owned processes:
+host 10.8s, restoration write 4.9s, restoration read 3.4s. macOS emitted a
+sandbox-extension warning while launching the copied app, but the tested
+operations completed and the owned process groups exited cleanly.
+
+Artifact: `dist/desktop/CODOVYN-darwin-arm64-development.dmg`.
+SHA-256: `7984d2fbfc9bed90310350a262f6a3c0c2e02242f3cfdf0f8a491cde2a797da0`.
+It remains ad-hoc signed and unnotarized. This is a locally validated
+development artifact, not a public-release installer.
 
 ## Quality and external validation
 
