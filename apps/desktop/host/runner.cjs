@@ -39,6 +39,19 @@ exports.run = async () => {
   assert.equal(await step('agent-panel', () => vscode.commands.executeCommand('codovyn.open')), panel, 'reopening reveals the existing agent workspace');
   const node = path.resolve(extension.extensionPath, extension.packageJSON.codovynBundledRuntime);
   assert.match(execFileSync(node, ['--version'], { encoding: 'utf8' }), /^v26\./);
+  const routeData = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'codovyn-native-route-'));
+  try {
+    const policy = { mode: 'balanced', models: [{ id: 'native-fixture', provider: 'codex', model: 'fixture',
+      capabilities: ['streaming', 'tools'], reasoning: [], quality: 70, reliability: 0.8,
+      availability: 'unknown', price: null }], allowUnknownAvailability: true };
+    const cli = path.join(extension.extensionPath, 'apps/cli/src/index.js');
+    const output = await step('bundled-cli-route', () => execFileSync(node, [cli, 'route', folder, 'Explain the fixture'], {
+      encoding: 'utf8', cwd: folder, timeout: 10000,
+      env: { ...process.env, CODOVYN_EVENT_STREAM: '1', CODOVYN_ROUTING_POLICY: JSON.stringify(policy), CODOVYN_DATA_DIR: routeData },
+    }));
+    const routing = JSON.parse(output).routing;
+    assert.equal(routing?.selected?.id, 'native-fixture', `bundled CLI executes from the installed app path: ${output.slice(0, 500)}`);
+  } finally { fs.rmSync(routeData, { recursive: true, force: true }); }
   assert.match(execFileSync('git', ['status', '--porcelain'], { cwd: folder, encoding: 'utf8' }), /desktop-smoke.txt/);
   trace('terminal', 'pending');
   const terminal = vscode.window.createTerminal({ name: 'CODOVYN smoke' });
