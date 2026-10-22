@@ -18,6 +18,12 @@ function signalGroup(group, signal) {
   catch (error) { if (error.code !== 'ESRCH') throw error; }
 }
 
+/** Include upstream shared storage: --user-data-dir alone does not isolate it. */
+export function nativeProfileArgs(directory) {
+  return ['--user-data-dir', join(directory, 'profile'), '--extensions-dir', join(directory, 'extensions'),
+    '--shared-data-dir', join(directory, 'shared-data')];
+}
+
 /** POSIX native-test ownership only. Never discover targets by executable name. */
 export async function runDesktopProcess({ executable, args, env, directory, phase,
   timeoutMs = 120000, graceMs = 1500, killGraceMs = 2500 }) {

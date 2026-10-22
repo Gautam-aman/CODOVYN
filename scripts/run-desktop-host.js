@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import assert from 'node:assert/strict';
-import { runDesktopProcess } from './lib/desktop-process.js';
+import { runDesktopProcess, nativeProfileArgs } from './lib/desktop-process.js';
 const root = resolve(import.meta.dirname, '..');
 const app = process.env.CODOVYN_DESKTOP_APP
   ? resolve(process.env.CODOVYN_DESKTOP_APP, 'Contents') : join(root, 'dist/desktop/CODOVYN.app/Contents');
@@ -15,7 +15,7 @@ try {
   await writeFile(join(fixture, 'desktop-smoke.txt'), '');
   execFileSync('git', ['init', '-q', fixture]);
   await runDesktopProcess({ executable: join(app, 'MacOS/CODOVYN'), directory: temporary, phase: 'host',
-    args: [fixture, '--user-data-dir', join(temporary, 'profile'), '--extensions-dir', join(temporary, 'extensions'),
+    args: [fixture, ...nativeProfileArgs(temporary),
       '--extensionDevelopmentPath', join(app, 'Resources/app/extensions/codovyn-desktop'),
       '--extensionTestsPath', join(root, 'apps/desktop/host/runner.cjs'),
       '--disable-workspace-trust', '--skip-welcome', '--skip-release-notes',

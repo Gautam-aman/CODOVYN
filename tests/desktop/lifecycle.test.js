@@ -5,7 +5,7 @@ import { once } from 'node:events';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { runDesktopProcess } from '../../scripts/lib/desktop-process.js';
+import { runDesktopProcess, nativeProfileArgs } from '../../scripts/lib/desktop-process.js';
 const posix = process.platform !== 'win32';
 
 test('native test deadline reaps a TERM-resistant owned tree without touching another process', { skip: !posix }, async () => {
@@ -54,4 +54,11 @@ test('native lifecycle cleans an owned descendant even after the leader exits no
     assert.equal(result.cleanupVerified, true);
     assert.deepEqual(JSON.parse(await readFile(join(directory, 'descendant-lifecycle.json'))).survivors, []);
   } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+
+test('native profiles isolate shared storage as well as settings and extensions', () => {
+  const args = nativeProfileArgs('/tmp/owned-profile');
+  assert.deepEqual(args, ['--user-data-dir', '/tmp/owned-profile/profile', '--extensions-dir', '/tmp/owned-profile/extensions',
+    '--shared-data-dir', '/tmp/owned-profile/shared-data']);
 });
