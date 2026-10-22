@@ -22,7 +22,7 @@ npm run package:desktop
 
 Output: `dist/desktop/CODOVYN.app` and `dist/desktop/CODOVYN-darwin-arm64-development.dmg`. The development package is ad-hoc signed, not notarized. Windows and Linux desktop packaging is not implemented or tested. No public installer release is available.
 
-**Current validation (22 October):** Phase 4 native-host and restart checks pass with bounded owned-process cleanup and isolated shared storage; the copied development DMG has also passed native checks. The earlier intermittent stall did not reproduce, so its underlying cause remains open in [#16](https://github.com/Gautam-aman/CODOVYN/issues/16). See the [Phase 4 verification report](docs/development/phase4-validation-2026-10-22.md). The local suite has 175 passing tests; hosted CI remains blocked by account billing. Live Gemini and two-provider continuation remain unverified.
+**Current validation (22 October):** The macOS development app passes native host and two-launch restoration checks. A copied development DMG also passed those checks after earlier Phase 5 UI changes; the latest routing fixes are being revalidated. The historical intermittent stall remains open in [#16](https://github.com/Gautam-aman/CODOVYN/issues/16). The local suite has 179 passing tests. Hosted CI jobs still do not start because of account billing restrictions. Live Gemini and two-provider continuation remain unverified. See the [Phase 4 verification report](docs/development/phase4-validation-2026-10-22.md) for the preceding artifact.
 
 ![Live Codex patch accepted in the standalone CODOVYN application](docs/assets/desktop-live-reviewed-patch.png)
 
@@ -37,6 +37,9 @@ Gemini integration is **experimental**: CLI 0.65.0 was checked, but the live tas
 failed authentication (exit 41). A deterministic Codex-to-Gemini test verifies an
 injected pre-write interruption, isolated edit, reviewed patch application and
 resulting code. It does not prove live two-provider compatibility.
+An application-level **Gemini CLI Path** setting lets a user select an official
+CLI installed outside the app's PATH; it accepts only an absolute executable path.
+Installation detection still does not prove authentication or quota.
 
 See the [Gemini guide](docs/agents/gemini.md). Portable handoff packets are durable;
 automatic continuation after writes remains disabled. Durable ownership and explicit
@@ -49,6 +52,13 @@ Local [model routing](docs/agents/routing.md) now provides five modes, capabilit
 and reasoning filters, persisted decisions and estimated budget admission. It
 uses atomic local estimate reservations across concurrent requests; this does not
 guarantee hard provider spending caps or measure exact charges.
+The desktop agent panel now includes a local catalogue editor and a saved-policy
+preview. The preview shows candidate rejection reasons without launching a model.
+
+![Model routing form in the standalone CODOVYN development app](docs/assets/desktop-phase5-routing.png)
+
+This is an actual capture from a disposable project in the copied macOS development
+app. Its empty catalogue does not imply access to any model or provider.
 
 ![Project-specific agent preferences in CODOVYN Desktop](docs/assets/desktop-agent-settings.png)
 
@@ -73,7 +83,7 @@ Actual macOS application capture beside code changed through the authorized Code
 
 ![Live Codex edits, reviewed Git diff, and passing tests inside VS Code](docs/assets/vscode-live-coding-workflow.png)
 
-This is a genuine capture of a live coding task in a disposable repository on VS Code 1.142.0 for macOS. The two-file patch was reviewed and applied through the panel; `npm test` passed in the integrated terminal. See the [verification record](docs/development/validation-2026-10-21.md) for tested versions and remaining limits. The standalone development application is described above. GitHub bots, routing UI, and website remain planned work.
+This is a genuine capture of a live coding task in a disposable repository on VS Code 1.142.0 for macOS. The two-file patch was reviewed and applied through the panel; `npm test` passed in the integrated terminal. See the [verification record](docs/development/validation-2026-10-21.md) for tested versions and remaining limits. The standalone development application is described above. GitHub bots and the website remain planned work.
 
 ## Quick start
 
