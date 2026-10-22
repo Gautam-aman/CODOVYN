@@ -17,7 +17,7 @@ test('fault-injected Codex quota hands an isolated draft to Gemini before review
     writeFileSync(join(repository,'answer.cjs'),'module.exports = 0;\n');
     git('add','.');git('-c','user.name=Test','-c','user.email=test@example.invalid','commit','-qm','fixture');
     const primary=join(directory,'codex.cjs');
-    writeFileSync(primary,`if(process.argv.includes('--version')){console.log('fixture');process.exit(0)}process.stdin.resume();process.stdin.on('end',()=>console.log(JSON.stringify({type:'turn.failed',error:{code:429}})));`);
+    writeFileSync(primary,`if(process.argv.includes('--version')){console.log('fixture');process.exit(0)}process.stdin.resume();process.stdin.on('end',()=>{console.log(JSON.stringify({type:'turn.failed',error:{code:429}}));setInterval(()=>{},1000)});`);
     const backup=join(directory,'gemini.cjs');
     writeFileSync(backup,`if(process.argv.includes('--help')){console.log('--admin-policy --output-format --extensions');process.exit(0)}
       let p='';process.stdin.on('data',c=>p+=c);process.stdin.on('end',()=>{
