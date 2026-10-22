@@ -85,6 +85,7 @@
     "package:extension": "vsce package --no-dependencies --githubBranch main --out codovyn-dev.vsix",
     "build:desktop": "node apps/desktop/build/macos.js",
     "test:desktop-host": "node scripts/run-desktop-host.js",
+    "test:desktop-chat": "node scripts/run-desktop-chat.js",
     "package:desktop": "node apps/desktop/build/dmg.js",
     "test:desktop-restoration": "node scripts/run-desktop-restoration.js",
     "test:desktop-routing-ui": "node scripts/desktop-routing-ui-smoke.js"
