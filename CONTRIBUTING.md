@@ -43,9 +43,18 @@ on supported Node platforms without a desktop build or paid provider account.
 See [desktop build details](apps/desktop/README.md), [foundation decision](docs/architecture/0003-standalone-foundation.md),
 and the [standalone campaign](docs/development/standalone-campaign.md).
 
-For approachable desktop work, see [welcome shortcut hints (#12)](https://github.com/Gautam-aman/CODOVYN/issues/12)
-and [appearance controls (#10)](https://github.com/Gautam-aman/CODOVYN/issues/10).
-The two-launch restoration test (#13) is now implemented: run `npm run test:desktop-restoration`. Advanced provider contributors can help with [managed Gemini policy compatibility (#14)](https://github.com/Gautam-aman/CODOVYN/issues/14).
+For approachable desktop work, see [welcome shortcut hints (#12)](https://github.com/Gautam-aman/CODOVYN/issues/12),
+[appearance controls (#10)](https://github.com/Gautam-aman/CODOVYN/issues/10),
+[no-project onboarding (#17)](https://github.com/Gautam-aman/CODOVYN/issues/17),
+[composer shortcut guidance (#18)](https://github.com/Gautam-aman/CODOVYN/issues/18), and
+[task-history loading feedback (#19)](https://github.com/Gautam-aman/CODOVYN/issues/19).
+The [retention controls (#3)](https://github.com/Gautam-aman/CODOVYN/issues/3)
+are also a bounded local-storage/UI contribution. For intermediate work, see
+[repository-scoped task-history pagination (#20)](https://github.com/Gautam-aman/CODOVYN/issues/20)
+and the [routing catalogue (#15)](https://github.com/Gautam-aman/CODOVYN/issues/15).
+The two-launch restoration test (#13) is implemented: run
+`npm run test:desktop-restoration`. Advanced provider contributors can help
+with [managed Gemini policy compatibility (#14)](https://github.com/Gautam-aman/CODOVYN/issues/14).
 Check existing issues before opening another one. Windows/Linux installers and
 public signing are not available yet. The repository is currently private;
 external participation requires maintainer-provided access.
