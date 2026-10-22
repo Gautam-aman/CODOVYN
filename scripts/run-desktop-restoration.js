@@ -29,6 +29,7 @@ try {
     assert.equal(report.error, undefined, JSON.stringify(report));
     if (phase === 'read') {
       assert.equal(report.workspace, true); assert.equal(report.editor, true); assert.equal(report.localState, true);
+      assert.equal(report.savedContent, true); assert.equal(report.routingPreferences, true);
       await mkdir(join(root, 'dist/desktop'), { recursive: true });
       await writeFile(join(root, 'dist/desktop/restoration-result.json'), JSON.stringify(report, null, 2));
     }
