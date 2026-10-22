@@ -62,7 +62,8 @@
     "build:desktop": "node apps/desktop/build/macos.js",
     "test:desktop-host": "node scripts/run-desktop-host.js",
     "package:desktop": "node apps/desktop/build/dmg.js",
-    "test:desktop-restoration": "node scripts/run-desktop-restoration.js"
+    "test:desktop-restoration": "node scripts/run-desktop-restoration.js",
+    "test:desktop-routing-ui": "node scripts/desktop-routing-ui-smoke.js"
   },
   "devDependencies": {
     "@vscode/test-electron": "^3.1.0",

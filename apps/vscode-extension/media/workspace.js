@@ -172,6 +172,7 @@ const modelHeading = document.createElement('h3'); modelHeading.textContent = 'L
 const modelList = document.createElement('div'); modelList.className = 'routing-model-list';
 const addModel = document.createElement('button'); addModel.type = 'button'; addModel.textContent = 'Add model';
 const saveRouting = document.createElement('button'); saveRouting.type = 'button'; saveRouting.textContent = 'Save routing policy';
+const cancelRouting = document.createElement('button'); cancelRouting.type = 'button'; cancelRouting.textContent = 'Discard unsaved edits';
 const previewRouting = document.createElement('button'); previewRouting.type = 'button'; previewRouting.textContent = 'Preview saved policy';
 const routingPreview = document.createElement('div'); routingPreview.className = 'routing-preview';
 routingPreview.setAttribute('role', 'region'); routingPreview.setAttribute('aria-label', 'Routing decision preview');
@@ -243,7 +244,12 @@ function addModelCard(model = {}) {
   const priceSource = modelField(card, 'Price source (required if priced)', model.price?.source); fieldInputs.set('price', [inputPrice, outputPrice, priceSource]);
   const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Remove model';
   remove.setAttribute('aria-label', `Remove ${model.id || 'new model'}`);
-  remove.addEventListener('click', () => card.remove()); card.append(remove, errors);
+  remove.addEventListener('click', () => {
+    const cards = [...modelList.children], index = cards.indexOf(card);
+    const focusCard = cards[index + 1] || cards[index - 1];
+    card.remove();
+    (focusCard?.querySelector('[aria-label="Catalogue ID"]') || addModel).focus();
+  }); card.append(remove, errors);
   for (const [field, controls] of fieldInputs) for (const input of Array.isArray(controls) ? controls : [controls]) {
     input.addEventListener('input', () => clearFieldError(field)); input.addEventListener('change', () => clearFieldError(field));
   }
@@ -263,7 +269,7 @@ function addModelCard(model = {}) {
     }
     delete value.priceFields; return value;
   };
-  modelList.append(card);
+  modelList.append(card); return card;
 }
 function loadRoutingPolicy(policy) {
   savedRoutingPolicy = policy && typeof policy === 'object' && !Array.isArray(policy) ? policy : {};
@@ -281,7 +287,11 @@ function loadRoutingPolicy(policy) {
     if (model && typeof model === 'object' && !Array.isArray(model)) addModelCard(model);
   }
 }
-addModel.addEventListener('click', () => addModelCard());
+addModel.addEventListener('click', () => addModelCard().querySelector('[aria-label="Catalogue ID"]').focus());
+cancelRouting.addEventListener('click', () => {
+  loadRoutingPolicy(savedRoutingPolicy);
+  routingStatus.textContent = 'Unsaved routing edits were discarded.';
+});
 previewRouting.addEventListener('click', () => {
   if (!request.value.trim()) { routingStatus.textContent = 'Enter a task in the composer to preview routing.'; return; }
   routingStatus.textContent = 'Previewing the saved policy without starting an agent…';
@@ -345,7 +355,7 @@ saveRouting.addEventListener('click', () => {
 routingSettings.append(routingSummary, routingHelp, routingModeLabel, routingCustomLabel, routingReasoningLabel,
   unknownLabel, capabilityGroup, estimateHeading, estimateHelp,
   inputTokens.label, outputTokens.label, taskLimit.label, sessionLimit.label, monthLimit.label,
-  sessionSpent.label, monthSpent.label, modelHeading, modelList, addModel, saveRouting, previewRouting, routingStatus, routingPreview);
+  sessionSpent.label, monthSpent.label, modelHeading, modelList, addModel, saveRouting, cancelRouting, previewRouting, routingStatus, routingPreview);
 agentSettings.after(routingSettings);
 window.addEventListener('message', ({ data }) => {
   if (data.type === 'routing-policy') { loadRoutingPolicy(data.policy); routingPreview.replaceChildren(); routingStatus.textContent = data.text || ''; }

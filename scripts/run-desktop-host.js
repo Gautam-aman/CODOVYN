@@ -13,6 +13,7 @@ let passed = false;
 try {
   const fixture = join(temporary, 'project');
   await mkdir(fixture);
+  if (process.env.CODOVYN_HOST_WORKSPACE_FILE) await writeFile(process.env.CODOVYN_HOST_WORKSPACE_FILE, fixture, 'utf8');
   await writeFile(join(fixture, 'desktop-smoke.txt'), '');
   execFileSync('git', ['init', '-q', fixture]);
   await runDesktopProcess({ signal: cancellation.signal, executable: join(app, 'MacOS/CODOVYN'), directory: temporary, phase: 'host',

@@ -103,3 +103,26 @@ add/edit/remove and restart persistence through the form, high-contrast and
 narrow/zoom layouts, broader keyboard navigation, and screen-reader testing.
 Existing two-launch tests cover project-scoped routing preferences, not every
 catalogue form interaction. No issue was closed in this checkpoint.
+
+## Routing form follow-up
+
+The local catalogue form now has an explicit **Discard unsaved edits** action.
+Adding a row directs focus to its ID field, and removing a row returns focus to
+the next row, previous row, or Add model control. Canceling reloads the last
+host-confirmed saved policy, so rejected saves do not replace persisted values.
+
+`npm run test:desktop-routing-ui` runs a bounded native-host/webview check using
+an isolated disposable workspace. It verified that a valid fixture catalogue
+is saved to that workspace's `.vscode/settings.json`, discarded field edits and
+new unsaved rows revert to the saved model, and an invalid ID remains editable
+with its associated alert and ARIA error relationship. The smoke test is an
+explicit macOS command and is excluded from portable unit-test discovery. This
+DevTools harness cannot observe focus reliably inside the embedded webview, so
+it does not count as keyboard-focus verification. Narrow/zoom layout, high
+contrast, broader keyboard navigation, and screen-reader behavior remain open
+under issue #15.
+
+Follow-up checks: `npm run check` passes 184 tests with 0 failures or skips and
+syntax-checks 92 JavaScript files; the native routing UI smoke test passes; and
+`npm run test:extension-host` passes against VS Code 1.143.0. The extension host
+logs the existing upstream `agentsWindowActivation` proposal warning.
