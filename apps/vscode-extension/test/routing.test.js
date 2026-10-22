@@ -13,5 +13,8 @@ test('desktop routing previews host settings and requires approval before dispat
  assert.equal(calls.filter(c=>c.args.includes('routed')).length,0);
  approved=true;policy.mode='economy';await handler({type:'run',mode:'routed',request:'Explain'});
  const execution=calls.find(c=>c.args.includes('routed'));assert.equal(JSON.parse(execution.options.env.CODOVYN_ROUTING_POLICY).mode,'economy');
+ const preview=calls.find(c=>c.args.includes('route'));
+ assert.equal(execution.options.env.CODOVYN_SESSION_ID,preview.options.env.CODOVYN_SESSION_ID);
+ assert.equal(execution.options.env.CODOVYN_DATA_DIR,preview.options.env.CODOVYN_DATA_DIR);
  assert.ok(sent.some(m=>m.type==='routing-preview'));
 });

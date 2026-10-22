@@ -30,3 +30,11 @@ test('unknown historical cost and conservative micro-USD rounding cannot silentl
  assert.throws(()=>store.reserveRouteBudget('tiny',{session:'other',estimatedUsd:0.0000001,budget:{taskUsd:0.0000001},now}),/exceeded/);
  assert.throws(()=>store.reserveRouteBudget('known',{session:'../invalid',estimatedUsd:0,now}),/scope/);store.close();
 });
+
+test('only proven unstarted preparation can void a reservation',()=>{
+ const store=new TaskStore(':memory:');for(const id of ['unstarted','owned'])store.create({id,request:'Inspect',primaryAgent:'codex'});
+ for(const id of ['unstarted','owned'])store.reserveRouteBudget(id,{session:'session',estimatedUsd:0.5,now});
+ store.voidUnstartedRoute('unstarted');assert.equal(store.hasRouteBudget('unstarted'),false);assert.equal(store.get('unstarted').status,'failed');
+ store.claimExecution('owned',{token:'owner-token-123456',pid:process.pid,host:'fixture'});store.releaseExecution('owned','owner-token-123456');
+ assert.throws(()=>store.voidUnstartedRoute('owned'),/may have started/);assert.equal(store.hasRouteBudget('owned'),true);store.close();
+});

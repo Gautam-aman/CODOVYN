@@ -53,6 +53,7 @@ export class TaskEngine {
 
   async run(id, options = {}) {
     const previousTask=this.store.get(id);
+    if(this.store.events(id).some(event=>event.kind==='routing-decision')&&!this.store.hasRouteBudget(id))throw new Error('Routed task requires an active budget reservation');
     if (previousTask && previousTask.status !== 'pending' && !this.store.executionLease(id)?.releasedAt) {
       throw new Error('Task requires verified process reconciliation before execution');
     }

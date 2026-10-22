@@ -31,3 +31,25 @@ test('routed execution persists its decision and applies validated model/reasoni
   rmSync(directory,{recursive:true,force:true});
  }
 });
+
+test('concurrent routed requests with stale previews cannot reserve the same remaining monthly estimate',async()=>{
+ const directory=mkdtempSync(join(tmpdir(),'codovyn-budget-dispatch-'));
+ const oldData=process.env.CODOVYN_DATA_DIR,oldPolicy=process.env.CODOVYN_ROUTING_POLICY;
+ try {
+  const repository=join(directory,'repo');execFileSync('git',['init','-q',repository]);
+  process.env.CODOVYN_DATA_DIR=join(directory,'data');
+  process.env.CODOVYN_ROUTING_POLICY=JSON.stringify({mode:'economy',tokens:{input:1000,output:1000},budget:{monthUsd:0.003,monthSpentUsd:0},
+    models:[{id:'fixture',provider:'codex',model:'fixture',quality:90,reliability:1,reasoning:[],capabilities:['streaming','tools'],availability:'available',price:{inputPerMillionUsd:1,outputPerMillionUsd:1,source:'fixture only'}}]});
+  let calls=0;const adapters={createCodexAdapter:()=>{calls++;return {id:'codex',capabilities:{streaming:true,tools:true,writes:false},availability:async()=> 'available',async *run(){yield {type:'completed'};}};}};
+  const outputs=[[],[]];const results=await Promise.all(outputs.map(lines=>main(['routed',repository,'Explain'],{log:x=>lines.push(x),error:()=>{}},undefined,undefined,adapters)));
+  assert.deepEqual([...results].sort(),[0,1]);assert.equal(calls,1);
+  const rejected=JSON.parse(outputs[results.indexOf(1)].at(-1));assert.equal(rejected.budgetRejected,true);
+  const accepted=JSON.parse(outputs[results.indexOf(0)].at(-1));
+  assert.ok(accepted.events.find(e=>e.kind==='budget-reserved').seq<accepted.events.find(e=>e.kind==='agent-started').seq);
+  assert.equal(accepted.events.find(e=>e.kind==='budget-reserved').data.hardSpendingGuarantee,false);
+ }finally{
+  if(oldData===undefined)delete process.env.CODOVYN_DATA_DIR;else process.env.CODOVYN_DATA_DIR=oldData;
+  if(oldPolicy===undefined)delete process.env.CODOVYN_ROUTING_POLICY;else process.env.CODOVYN_ROUTING_POLICY=oldPolicy;
+  rmSync(directory,{recursive:true,force:true});
+ }
+});

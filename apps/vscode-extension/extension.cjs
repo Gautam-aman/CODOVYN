@@ -44,6 +44,7 @@ function timeline(events) {
     if (entry.kind === 'draft-rejected') return [{ type: 'checkpoint', text: 'Discarded the edit draft' }];
     if(entry.kind==='restoration-decision')return [{type:'checkpoint',text:`Primary restoration: ${entry.data.reason}`}];
     if(entry.kind==='primary-restored')return [{type:'handoff',text:`Selected preferred ${entry.data.to} at a verified boundary`}];
+    if(entry.kind==='budget-reserved')return [{type:'checkpoint',text:`Reserved local estimate: USD ${entry.data.estimatedUsd??'unknown'}; actual charges remain unknown`}];
     if (entry.kind === 'routing-decision') return [{type:'agent',text:`Routing: ${entry.data.explanation} · cost ${entry.data.selected?.estimatedUsd??'unknown'} · estimate only`}];
     if (entry.kind === 'draft-reconciled') return [{type:'checkpoint',text:`Recovery: ${entry.data.decision}; ambiguous actions were not replayed`}];
     if (entry.kind === 'checkpoint') return [{ type: 'checkpoint', text: 'Saved a task checkpoint' }];
@@ -110,6 +111,7 @@ function createExtension(api, runner = runCli) {
         });
         currentPanel = panel;
         const nonce = randomBytes(16).toString('base64');
+        const routingSession=randomBytes(16).toString('hex');
         const savedTheme = context.globalState?.get('codovyn.panelTheme', 'inherit');
         let selectedTheme = validTheme(savedTheme) ? savedTheme : 'inherit';
         const media = (...segments) => panel.webview.asWebviewUri(api.Uri.joinPath(context.extensionUri, 'apps', 'vscode-extension', 'media', ...segments));
@@ -378,7 +380,7 @@ function createExtension(api, runner = runCli) {
               const serialized=JSON.stringify(taskRouting);
               if(serialized.length>65536)throw new Error('Routing settings exceed the local size limit.');
               const preview=await runner(runtimePath(api,context),[join(context.extensionPath,'apps','cli','src','index.js'),'route',folder.uri.fsPath,request],{
-                cwd:folder.uri.fsPath,env:{...process.env,CODOVYN_EVENT_STREAM:'1',CODOVYN_ROUTING_POLICY:serialized},onChild:()=>{},onEvent:()=>{}});
+                cwd:folder.uri.fsPath,env:{...process.env,CODOVYN_DATA_DIR:taskDataDirectory,CODOVYN_SESSION_ID:routingSession,CODOVYN_EVENT_STREAM:'1',CODOVYN_ROUTING_POLICY:serialized},onChild:()=>{},onEvent:()=>{}});
               panel.webview.postMessage({type:'routing-preview',routing:preview.routing});
               if (!preview.routing?.selected) throw new Error('No eligible model. Check capabilities, reasoning, availability and estimated budget settings.');
               const choice=preview.routing.selected;
@@ -428,7 +430,7 @@ function createExtension(api, runner = runCli) {
             const result = await runner(nodePath, [script, message.mode, folder.uri.fsPath, request,
               ...(editMode ? ['--allow-writes'] : [])], {
               cwd: folder.uri.fsPath,
-              env: { ...process.env, CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM: '1', CODOVYN_AGENT_POLICY: JSON.stringify(taskPolicy), ...(taskRouting?{CODOVYN_ROUTING_POLICY:JSON.stringify(taskRouting)}:{}) },
+              env: { ...process.env, CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM: '1', CODOVYN_AGENT_POLICY: JSON.stringify(taskPolicy), ...(taskRouting?{CODOVYN_ROUTING_POLICY:JSON.stringify(taskRouting),CODOVYN_SESSION_ID:routingSession}:{}) },
               onChild: (child) => { active = child; },
               onEvent: (event) => {
                 const entries = timeline([event]);
@@ -438,7 +440,8 @@ function createExtension(api, runner = runCli) {
             });
             panel.webview.postMessage({ type: 'result', status: result.status, taskId: result.taskId,
               activeAgent: result.activeAgent, draftReviewAvailable: !!result.draftReviewAvailable,
-              timeline: result.events ? timeline(result.events) : activity });
+              timeline: result.budgetRejected ? [{type:'error',text:'Local budget reservation was refused. Another task may have reserved the remaining estimate, or earlier charges are unknown. No provider started.'}] : result.routing&&!result.routing.selected ? [{type:'error',text:'No eligible routing candidate. Review the decision and budget rejection reasons.'}] : result.events ? timeline(result.events) : activity });
+            if(result.routing)panel.webview.postMessage({type:'routing-preview',routing:result.routing});
             await refreshTasks();
           } catch (error) { panel.webview.postMessage({ type: 'error', text: error.message }); }
           finally { active = null; starting = false; }

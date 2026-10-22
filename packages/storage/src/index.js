@@ -185,6 +185,22 @@ export class TaskStore {
     } catch(error){this.#db.exec('ROLLBACK');throw error;}
   }
 
+  hasRouteBudget(id) {
+    return !!this.#db.prepare('SELECT 1 FROM routing_reservations WHERE task_id=?').get(validId(id));
+  }
+
+  voidUnstartedRoute(id) {
+    validId(id);this.#db.exec('BEGIN IMMEDIATE');
+    try {
+      if(this.get(id)?.status!=='pending'||this.executionLease(id)||this.events(id).some(event=>['agent-started','provider-starting'].includes(event.kind))) {
+        throw new Error('Cannot refund a request that may have started');
+      }
+      this.#db.prepare('DELETE FROM routing_reservations WHERE task_id=?').run(id);
+      this.append(id,'budget-voided',{reason:'Preparation failed before any execution owner or provider launch'});
+      this.update(id,{status:'failed',activeAgent:null,step:0});this.#db.exec('COMMIT');
+    }catch(error){this.#db.exec('ROLLBACK');throw error;}
+  }
+
   providerStatus(agent, repositoryRoot) {
     const row=this.#db.prepare(`SELECT events.kind,events.created_at,events.seq FROM events
       JOIN tasks ON tasks.id=events.task_id WHERE tasks.repository_root=?

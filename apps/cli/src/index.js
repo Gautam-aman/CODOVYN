@@ -5,7 +5,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createInterface } from 'node:readline/promises';
-import { routeModel } from '../../../packages/agent-router/src/index.js';
+import { routeModel, validateRouting } from '../../../packages/agent-router/src/index.js';
 import { AgentRegistry, AgentFailure } from '../../../packages/agent-core/src/index.js';
 import { TaskStore } from '../../../packages/storage/src/index.js';
 import { createHandoffPacket } from '../../../packages/agent-core/src/handoff.js';
@@ -84,13 +84,23 @@ export async function main(args = process.argv.slice(2), output = console, signa
   const [mode, value, ...rest] = args;
   if (!['resume', 'route', 'routed', 'routed-edit', 'agents', 'configured', 'configured-edit', 'demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit', 'draft-continue', 'draft-reconcile', 'draft-abandon', 'draft-inspect', 'draft-review', 'draft-accept', 'draft-reject', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'pr-preview', 'pr-create', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
   const stream = process.env.CODOVYN_EVENT_STREAM === '1';
-  let routing;
+  const dataDirectory = process.env.CODOVYN_DATA_DIR || join(homedir(), '.codovyn');
+  const routingSession=process.env.CODOVYN_SESSION_ID||'cli-default';
+  let routing, routingBudget;
   if (['route','routed','routed-edit'].includes(mode)) {
     const json=process.env.CODOVYN_ROUTING_POLICY||'';
     if(json.length>65536)throw new TypeError('Routing policy exceeds size limit');
-    const input=JSON.parse(json);
+    const input=validateRouting(JSON.parse(json));
+    routingBudget=input.budget||{};
+    const ledger=new TaskStore(join(dataDirectory,'tasks.sqlite'));let totals;
+    try{totals=ledger.routeBudgetTotals(routingSession);}finally{ledger.close();}
+    const budget={...routingBudget};
+    for(const [key,window] of [['sessionSpentUsd','session'],['monthSpentUsd','month']]) {
+      if(typeof budget[key]==='number')budget[key]=totals[window].unknownRequests?null:budget[key]+totals[window].estimatedUsd;
+    }
     const request=(mode==='routed-edit'&&rest.at(-1)==='--allow-writes'?rest.slice(0,-1):rest).join(' ');
-    routing=routeModel(request,{...input,requiredCapabilities:[...new Set([...(input.requiredCapabilities||[]),'streaming','tools',...(mode==='routed-edit'?['writes']:[])])]});
+    routing=routeModel(request,{...input,budget,requiredCapabilities:[...new Set([...(input.requiredCapabilities||[]),'streaming','tools',...(mode==='routed-edit'?['writes']:[])])]});
+    routing.localReservations=totals;
     if(routing.selected && (routing.selected.provider==='claude'||(routing.selected.reasoning&&routing.selected.provider!=='codex'))) {
       routing.considered.find(candidate=>candidate.id===routing.selected.id).reasons.push('unsupported-cli-model-or-reasoning-selector');
       routing.explanation='Selected adapter cannot apply this model/reasoning selection';routing.selected=null;
@@ -210,7 +220,6 @@ export async function main(args = process.argv.slice(2), output = console, signa
       null, stream ? 0 : 2));
     return 0;
   }
-  const dataDirectory = process.env.CODOVYN_DATA_DIR || join(homedir(), '.codovyn');
   const store = new TaskStore(join(dataDirectory, 'tasks.sqlite'));
   try {
     if(mode==='resume') {
@@ -358,7 +367,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
     if (!value || !request) { output.error(usage); return 2; }
     const repository = (await repositorySnapshot(value)).root;
     if (routing && !routing.selected) {
-      const id=randomUUID();store.create({id,request,repositoryRoot:repository,primaryAgent:'codex'});
+      const id=randomUUID();store.create({id,request,repositoryRoot:repository,primaryAgent:'unselected'});
       store.append(id,'routing-decision',routing);store.update(id,{status:'failed',activeAgent:null,step:0});
       output.log(JSON.stringify(stream?{type:'result',taskId:id,status:'failed',routing}:{taskId:id,status:'failed',routing}));return 1;
     }
@@ -366,8 +375,23 @@ export async function main(args = process.argv.slice(2), output = console, signa
     let primaryAgent;
     let fallbackAgents = [];
     const id = randomUUID();
+    if(routing) {
+      store.create({id,request,repositoryRoot:repository,primaryAgent:routing.selected.provider,fallbackAgents:[]});
+      store.append(id,'routing-decision',routing);
+      try {
+        const totals=store.reserveRouteBudget(id,{session:routingSession,estimatedUsd:routing.selected.estimatedUsd,budget:routingBudget});
+        store.append(id,'budget-reserved',{estimatedUsd:routing.selected.estimatedUsd,totals,hardSpendingGuarantee:false});
+      }catch {
+        store.append(id,'budget-admission-rejected',{reason:'Local budget changed, has unknown charges, or exceeds safe accounting limits'});
+        store.update(id,{status:'failed',activeAgent:null,step:0});
+        output.log(JSON.stringify({...(stream?{type:'result'}:{}),taskId:id,status:'failed',routing,budgetRejected:true}));return 1;
+      }
+    }
     let draft;
-    if (editMode) draft = await createDraftWorkspace(repository, join(dataDirectory, 'drafts'), id);
+    try {
+    if (editMode) {draft = await createDraftWorkspace(repository, join(dataDirectory, 'drafts'), id);
+      if(routing)store.append(id,'draft-created',{baseCommit:draft.baseCommit,branch:draft.branch});
+    }
     if (mode === 'demo') {
       primaryAgent = 'simulated-primary';
       fallbackAgents = ['simulated-backup'];
@@ -389,10 +413,10 @@ export async function main(args = process.argv.slice(2), output = console, signa
         registry.register(factories[provider]({ cwd: draft?.path || repository, write: !!draft, ...(routing?{model:routing.selected.model,...(routing.selected.reasoning?{reasoning:routing.selected.reasoning}:{})}:{}), ...(provider === 'gemini' && policy?.geminiModel ? { model: policy.geminiModel } : {}) }));
       }
     }
-    store.create({ id, request, repositoryRoot: repository, primaryAgent, fallbackAgents });
-    if(routing)store.append(id,'routing-decision',routing);
+    }catch(error){if(routing)store.voidUnstartedRoute(id);throw error;}
+    if(!routing)store.create({ id, request, repositoryRoot: repository, primaryAgent, fallbackAgents });
     if (policy) store.append(id, 'agent-policy', policy);
-    if (draft) store.append(id, 'draft-created', { baseCommit: draft.baseCommit, branch: draft.branch });
+    if (draft&&!routing) store.append(id, 'draft-created', { baseCommit: draft.baseCommit, branch: draft.branch });
     const engine = new TaskEngine({ store, registry, restoration:{enabled:policy?.restorePrimary===true}, snapshot: () => repositorySnapshot(draft?.path || repository),
       onEvent: stream ? (event) => output.log(JSON.stringify({ type: 'event', event })) : undefined });
     const task = await engine.run(id, { signal });
