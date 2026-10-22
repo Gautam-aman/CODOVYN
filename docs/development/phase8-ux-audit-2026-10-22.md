@@ -30,22 +30,29 @@ native sidebar width. The activity timeline retains its existing follow-tail
 behavior: events received while another view is open do not read hidden-panel
 geometry, and returning to Activity follows the tail only when that was the
 reader's prior behavior.
+While another destination is active, new streamed entries also add a compact
+Activity count badge and update that tab's accessible name. Opening Activity or
+starting a new task clears the count. The count uses actual progress events and
+does not announce every event through a live region.
 
 ## Evidence
 
 The [native workspace capture](../assets/desktop-phase8-workspace-navigation.png)
 shows the five destinations and task history in the actual CODOVYN development
 application. Its project, task names, and agent status are disposable smoke-test
-fixtures; it is not evidence of a live agent handoff. The prior
+fixtures; it is not evidence of a live agent handoff. A second
+[capture](../assets/desktop-phase8-activity-indicator.png) shows the Activity
+count while History is selected. The prior
 [Phase 7 history capture](../assets/desktop-phase7-task-history.png) documents
 the previous single-page hierarchy.
 
 `npm run test:desktop-routing-ui` ran against the rebuilt native application.
 It checked destination labels and panel associations, selected-tab behavior,
 ArrowRight/Home/End navigation, tab geometry, panel switching, retention of an
-unsaved routing form, task/cancel status while navigating, routing save/discard
-and validation, activity follow/jump behavior, history filters, and recovery
-row geometry. The harness can dispatch keyboard events and inspect the resulting
+unsaved routing form, task/cancel status while navigating, streamed-event
+counting and badge clearing, routing save/discard and validation, activity
+follow/jump behavior, history filters, and recovery row geometry. The harness
+can dispatch keyboard events and inspect the resulting
 webview state, but it does not provide a full OS-level screen-reader or focus
 audit. Issue [#15](https://github.com/Gautam-aman/CODOVYN/issues/15) remains open
 for that broader accessibility and restart-persistence acceptance.
