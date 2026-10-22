@@ -1,0 +1,115 @@
+{
+  "recordedOn": "2026-10-22",
+  "phaseStart": "e57fe1c6275fdfb37a327d9db0434353a55c848e",
+  "artifactSource": "34cd0e810bf4f70cfdd743f92a60c394c613eaa0",
+  "artifactSourceDirty": false,
+  "dmgSha256": "c5e3102c464771ed2717c5c56d52ffbf33769fe15db834fd220d6ed1cd313b81",
+  "platform": "darwin-arm64",
+  "signing": "ad-hoc-development",
+  "localTests": {
+    "total": 175,
+    "passed": 175,
+    "failed": 0,
+    "skipped": 0
+  },
+  "finalCopiedInstallation": {
+    "host": {
+      "phase": "host",
+      "pid": 18532,
+      "result": {
+        "code": 0,
+        "signal": null
+      },
+      "survivors": [],
+      "elapsedMs": 7417,
+      "timeoutMs": 120000,
+      "graceMs": 1500,
+      "killGraceMs": 2500,
+      "lastProgress": "{\"phase\":\"terminal\",\"state\":\"complete\",\"pid\":18572,\"at\":\"2026-10-22T04:20:45.729Z\"}"
+    },
+    "write": {
+      "phase": "write",
+      "pid": 19201,
+      "result": {
+        "code": 0,
+        "signal": null
+      },
+      "survivors": [],
+      "elapsedMs": 3496,
+      "timeoutMs": 120000,
+      "graceMs": 1500,
+      "killGraceMs": 2500,
+      "lastProgress": "{\"phase\":\"write\",\"operation\":\"native-quit\",\"state\":\"complete\",\"pid\":19284,\"at\":\"2026-10-22T04:20:49.204Z\"}"
+    },
+    "read": {
+      "phase": "read",
+      "pid": 19342,
+      "result": {
+        "code": 0,
+        "signal": null
+      },
+      "survivors": [],
+      "elapsedMs": 1559,
+      "timeoutMs": 120000,
+      "graceMs": 1500,
+      "killGraceMs": 2500,
+      "lastProgress": "{\"phase\":\"read\",\"operation\":\"native-quit\",\"state\":\"complete\",\"pid\":19379,\"at\":\"2026-10-22T04:20:51.138Z\"}"
+    }
+  },
+  "previousArtifactRepetitions": [
+    {
+      "iteration": 1,
+      "script": "test:desktop-host",
+      "exit": 0,
+      "sentinelAlive": true
+    },
+    {
+      "iteration": 1,
+      "script": "test:desktop-restoration",
+      "exit": 0,
+      "sentinelAlive": true
+    },
+    {
+      "iteration": 2,
+      "script": "test:desktop-host",
+      "exit": 0,
+      "sentinelAlive": true
+    },
+    {
+      "iteration": 2,
+      "script": "test:desktop-restoration",
+      "exit": 0,
+      "sentinelAlive": true
+    },
+    {
+      "iteration": 3,
+      "script": "test:desktop-host",
+      "exit": 0,
+      "sentinelAlive": true
+    },
+    {
+      "iteration": 3,
+      "script": "test:desktop-restoration",
+      "exit": 0,
+      "sentinelAlive": true
+    }
+  ],
+  "separateInstanceEvidence": {
+    "sentinelAliveAfterAllTests": true,
+    "sentinelPid": 59589,
+    "nativeTestProcessesRemaining": [],
+    "sentinelCleanupRemaining": []
+  },
+  "liveCodex": {
+    "taskId": "389ebdd7-dbe0-4a70-badc-5b93cc9a0e65",
+    "patchHash": "ad7bb01b40edfc5963e61cc1932973bb07a0fdb20c071e3abc692644397db27b",
+    "independentTestsPassed": 1
+  },
+  "liveGemini": "blocked-authentication-not-retried",
+  "historicalStallCause": "unresolved-not-reproduced",
+  "hostedCi": {
+    "run": 39721565595,
+    "jobsStarted": false,
+    "blocker": "account-payment-or-spending-restriction"
+  }
+}

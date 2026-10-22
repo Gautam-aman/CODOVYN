@@ -35,3 +35,11 @@ phase traces, bounded application output, lifecycle results, and the isolated
 editor logs/profile. Successful lifecycle summaries are copied to `dist/desktop`.
 The default tests exclude globally installed Node from PATH. Neither a timeout
 nor an unsuccessful cleanup counts as a passing native test.
+
+Native tests isolate `--user-data-dir`, `--extensions-dir`, and the editor's
+separate `--shared-data-dir`. A user-data override alone still shares the latter
+with ordinary sessions. Repeated host/restart checks and copied-DMG results are
+recorded in the [Phase 4 report](../../docs/development/phase4-validation-2026-10-22.md).
+The original intermittent stall has not reproduced; passing reruns do not prove
+its cause. Retain the failing directory and last pending phase when reporting it.
+Do not delete a real user profile or terminate applications by executable name.

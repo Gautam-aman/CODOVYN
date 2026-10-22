@@ -20,6 +20,23 @@ changes an actual isolated worktree, reviews/applies the patch and verifies the
 result. This is fault injection, not a naturally occurring quota event or proof
 of live Gemini tool-policy enforcement.
 
+## Authentication blocker: owner action
+
+The last authorized-access check returned exit 41, the documented authentication
+failure. Installation/version detection is not authentication evidence. Do not
+repeat headless requests while that prerequisite is unresolved.
+
+In the owner's own terminal, make the intended official CLI discoverable, check
+`gemini --version`, then run `gemini` interactively and complete its Google sign-in
+flow. Headless execution can use an existing cached login when supported; API-key
+and Vertex AI setups must follow the provider's account-specific instructions.
+Organization accounts may require a Google Cloud project. See the official
+[authentication setup](https://geminicli.com/docs/get-started/authentication/)
+and [exit-code reference](https://geminicli.com/docs/resources/troubleshooting/).
+Do not send credentials in chat, put them in repository settings, or expose them to
+the panel. After owner-side setup, first validate a bounded read-only task before
+attempting edits, cancellation, or an explicitly approved cross-provider handoff.
+
 ## Desktop setup
 
 Install a compatible official Gemini CLI and authenticate it according to its
