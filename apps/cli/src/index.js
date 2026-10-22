@@ -2,7 +2,8 @@
 import { randomUUID } from 'node:crypto';
 import { homedir } from 'node:os';
 import { readFile, stat } from 'node:fs/promises';
-import { join } from 'node:path';
+import { accessSync, constants, realpathSync, statSync } from 'node:fs';
+import { isAbsolute, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createInterface } from 'node:readline/promises';
 import { routeModel, validateRouting } from '../../../packages/agent-router/src/index.js';
@@ -78,12 +79,30 @@ async function confirmAction(word) {
   finally { prompt.close(); }
 }
 
+function configuredGeminiCommand() {
+  const command = process.env.CODOVYN_GEMINI_COMMAND;
+  if (!command) return undefined;
+  try {
+    if (command.length > 4096 || !isAbsolute(command)) throw new Error('not absolute');
+    const resolved = realpathSync(command);
+    if (!statSync(resolved).isFile()) throw new Error('not a file');
+    accessSync(resolved, constants.X_OK);
+    return resolved;
+  } catch {
+    throw new TypeError('Configured Gemini CLI path must be an absolute executable file');
+  }
+}
+
 export async function main(args = process.argv.slice(2), output = console, signal,
   github = { createIssue, createPullRequest, issueDetails, listIssues, listPullRequests, listWorkflowRuns, previewPullRequest, pullRequestDetails, pullRequestDiff },
   adapters = { createCodexAdapter, createClaudeAdapter, createGeminiAdapter }, confirm = confirmAction) {
   const [mode, value, ...rest] = args;
   if (!['resume', 'route', 'routed', 'routed-edit', 'agents', 'configured', 'configured-edit', 'demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit', 'draft-continue', 'draft-reconcile', 'draft-abandon', 'draft-inspect', 'draft-review', 'draft-accept', 'draft-reject', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'pr-preview', 'pr-create', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
   const stream = process.env.CODOVYN_EVENT_STREAM === '1';
+  const geminiAdapter = options => {
+    const command = configuredGeminiCommand();
+    return adapters.createGeminiAdapter({ ...options, ...(command ? { command } : {}) });
+  };
   const dataDirectory = process.env.CODOVYN_DATA_DIR || join(homedir(), '.codovyn');
   const routingSession=process.env.CODOVYN_SESSION_ID||'cli-default';
   let routing, routingBudget;
@@ -115,12 +134,18 @@ export async function main(args = process.argv.slice(2), output = console, signa
   }
   if (mode === 'agents') {
     if (!value || rest.length) { output.error(usage); return 2; }
-    const factories = { codex: adapters.createCodexAdapter, gemini: adapters.createGeminiAdapter, claude: adapters.createClaudeAdapter };
+    const factories = { codex: adapters.createCodexAdapter, gemini: geminiAdapter, claude: adapters.createClaudeAdapter };
     const agents = await Promise.all(Object.entries(factories).map(async ([id, factory]) => {
-      const adapter = factory({ cwd: value });
-      const detected = await adapter.availability() === 'available';
-      return { id, installation: detected ? 'detected' : 'not-detected-or-unsupported', authentication: 'unknown',
-        availability: 'unknown', capabilities: adapter.capabilities };
+      try {
+        const adapter = factory({ cwd: value });
+        const detected = await adapter.availability() === 'available';
+        return { id, installation: detected ? 'detected' : 'not-detected-or-unsupported', authentication: 'unknown',
+          availability: 'unknown', capabilities: adapter.capabilities };
+      } catch (error) {
+        return { id, installation: 'configuration-error', authentication: 'unknown', availability: 'unknown',
+          diagnostic: error?.message === 'Configured Gemini CLI path must be an absolute executable file'
+            ? error.message : 'CLI inspection failed.' };
+      }
     }));
     output.log(JSON.stringify(stream ? { type: 'result', agents } : { agents })); return 0;
   }
@@ -230,7 +255,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
       if(events.some(event=>['draft-created','routing-decision'].includes(event.kind)))throw new Error('Use explicit draft recovery or a new budget admission for this task');
       const saved=events.findLast(event=>event.kind==='agent-policy')?.data;
       const policy=saved?agentPolicy.validateAgentPolicy(saved):null;
-      const factories={codex:adapters.createCodexAdapter,gemini:adapters.createGeminiAdapter,claude:adapters.createClaudeAdapter};
+      const factories={codex:adapters.createCodexAdapter,gemini:geminiAdapter,claude:adapters.createClaudeAdapter};
       const registry=new AgentRegistry();
       for(const provider of new Set([task.primaryAgent,task.activeAgent,...task.fallbackAgents].filter(Boolean))) {
         if(!agentPolicy.providers.includes(provider))throw new Error('Unsupported recovery provider');
@@ -285,7 +310,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
         await validateDraftWorkspace(task.repositoryRoot,directory,task.id,draft.baseCommit);
         if(events.some(event=>event.kind==='routing-decision'))throw new Error('Routed tasks require a new budget admission before continuation');
         const provider=confirmation;
-        const factories={codex:adapters.createCodexAdapter,claude:adapters.createClaudeAdapter,gemini:adapters.createGeminiAdapter};
+        const factories={codex:adapters.createCodexAdapter,claude:adapters.createClaudeAdapter,gemini:geminiAdapter};
         const registry=new AgentRegistry();registry.register(factories[provider]({cwd:join(directory,task.id),write:true}));
         const engine=new TaskEngine({store,registry,snapshot:()=>repositorySnapshot(join(directory,task.id)),
           onEvent:stream?event=>output.log(JSON.stringify({type:'event',event})):undefined});
@@ -408,7 +433,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
         const candidates = agentPolicy.policyCandidates(policy);
         primaryAgent = candidates[0]; fallbackAgents = candidates.slice(1);
       }
-      const factories = { codex: adapters.createCodexAdapter, claude: adapters.createClaudeAdapter, gemini: adapters.createGeminiAdapter };
+      const factories = { codex: adapters.createCodexAdapter, claude: adapters.createClaudeAdapter, gemini: geminiAdapter };
       for (const provider of [primaryAgent, ...fallbackAgents]) {
         registry.register(factories[provider]({ cwd: draft?.path || repository, write: !!draft, ...(routing?{model:routing.selected.model,...(routing.selected.reasoning?{reasoning:routing.selected.reasoning}:{})}:{}), ...(provider === 'gemini' && policy?.geminiModel ? { model: policy.geminiModel } : {}) }));
       }

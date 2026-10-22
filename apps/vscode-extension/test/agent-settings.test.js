@@ -4,11 +4,11 @@ import { createRequire } from 'node:module';
 const { createExtension } = createRequire(import.meta.url)('../extension.cjs');
 test('project provider preferences persist with validation and reach only configured executions', async () => {
   let open, handler;
-  const state=new Map(); const sent=[]; const calls=[]; const links=[];
+  const state=new Map(); const sent=[]; const calls=[]; const links=[]; const commands=[];
   const folders=[{name:'A',uri:{fsPath:'/a'}},{name:'B',uri:{fsPath:'/b'}}];
-  const api={commands:{registerCommand:(_,cb)=>{open=cb;return {dispose(){}};}},window:{
+  const api={commands:{registerCommand:(_,cb)=>{open=cb;return {dispose(){}};},executeCommand:async(...args)=>commands.push(args)},window:{
     createWebviewPanel:()=>({webview:{cspSource:'x',asWebviewUri:x=>x,onDidReceiveMessage:cb=>{handler=cb;},postMessage:x=>sent.push(x)}})},
-    env:{openExternal:async uri=>links.push(uri)},ViewColumn:{Beside:2},Uri:{parse:x=>x,joinPath:(_, ...p)=>p.join('/')},workspace:{workspaceFolders:folders,isTrusted:true,getConfiguration:()=>({get:()=> 'node'})}};
+    env:{openExternal:async uri=>links.push(uri)},ViewColumn:{Beside:2},Uri:{parse:x=>x,joinPath:(_, ...p)=>p.join('/')},workspace:{workspaceFolders:folders,isTrusted:true,getConfiguration:()=>({get:key=>key==='geminiCliPath'?'/opt/gemini':'node'})}};
   const runner=async(command,args,options)=>{calls.push({args,options});return args.includes('tasks')?{tasks:[]}:args.includes('agents')?{agents:[{id:'codex',authentication:'unknown'}]}:{status:'completed',taskId:'test',events:[]};};
   const context={extensionUri:'root',extensionPath:'/extension',globalStorageUri:{fsPath:'/private-data'},subscriptions:[],globalState:{get:(k,f)=>state.get(k)??f,update:async(k,v)=>state.set(k,v)}};
   createExtension(api,runner).activate(context);open();
@@ -27,8 +27,11 @@ test('project provider preferences persist with validation and reach only config
   assert.deepEqual(sent.findLast(x=>x.type==='agent-policy').policy,policy);
   await handler({type:'gemini-setup',url:'https://untrusted.invalid'});
   assert.deepEqual(links,['https://geminicli.com/docs/get-started/authentication/']);
+  await handler({type:'gemini-path-settings'});
+  assert.deepEqual(commands,[['workbench.action.openSettings','codovyn.geminiCliPath']]);
   await handler({type:'agent-diagnostics'});
   assert.ok(calls.some(c=>c.args.includes('agents')));
+  assert.equal(calls.find(c=>c.args.includes('agents')).options.env.CODOVYN_GEMINI_COMMAND,'/opt/gemini');
   assert.equal(sent.at(-1).agents[0].authentication,'unknown');
 });
 

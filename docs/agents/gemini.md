@@ -22,8 +22,10 @@ of live Gemini tool-policy enforcement.
 
 ## Authentication blocker: owner action
 
-The last authorized-access check returned exit 41, the documented authentication
-failure. Installation/version detection is not authentication evidence. Do not
+The last live access check returned exit 41 during an authentication failure. The
+current official headless reference does not list 41 among its general exit codes,
+so treat this as observed version-specific behavior, not a portable guarantee.
+Installation/version detection is not authentication evidence. Do not
 repeat headless requests while that prerequisite is unresolved.
 
 In the owner's own terminal, make the intended official CLI discoverable, check
@@ -40,8 +42,11 @@ attempting edits, cancellation, or an explicitly approved cross-provider handoff
 ## Desktop setup
 
 Install a compatible official Gemini CLI and authenticate it according to its
-own documentation. It must be discoverable on the application's PATH. The shared
-runtime prepends its bundled Node directory for Node-based CLI wrappers.
+own documentation. It must be discoverable on the application's PATH, or set
+**CODOVYN: Gemini CLI Path** in user settings to an absolute executable path.
+This is an application-level setting; project files cannot replace the chosen
+executable. The shared runtime prepends its bundled Node directory for Node-based
+CLI wrappers. CODOVYN validates a configured path before launching Gemini.
 
 Open **Project agents** in the CODOVYN panel. Choose primary and ordered backups,
 optionally set a Gemini model identifier, and save. Automatic switching defaults
@@ -52,7 +57,10 @@ to use saved preferences. Direct provider modes remain available as overrides.
 **Inspect installed agents** uses CLI version/help checks, not a paid provider
 request. Detection does not establish authentication, model access, quota or
 availability; those statuses remain unknown. The Gemini authentication-guide
-button opens an allowlisted official URL. No credentials enter the webview.
+button opens an allowlisted official URL. **Set Gemini CLI path** opens the native
+setting. No credentials enter the webview. A CLI installed in a temporary npm
+prefix may be detected through this setting without changing the system PATH;
+temporary directories are unsuitable for a durable installation.
 
 Settings are local and scoped to the selected project. Gemini reasoning controls are not exposed. [Routing](routing.md) supports model
 selection and estimated admission; [restoration](recovery.md) requires a safe retry
@@ -91,8 +99,8 @@ Policy arguments/settings are tested with fixtures; enforcement by an authentica
 real provider remains unverified. A worktree is not an OS sandbox against a
 malicious installed CLI or repository content. Only trust intended CLIs/projects.
 
-Only supported structured error types and the documented authentication exit code
-establish authentication failure. Current streaming error messages do not reliably
+Only supported structured error types and the observed authentication exit code
+establish authentication failure for the tested CLI version. Current streaming error messages do not reliably
 expose a quota code: arbitrary “429” or “quota” text stays unknown/fatal and does
 not enable automatic switching. No guessed reset times or remaining quota are shown.
 

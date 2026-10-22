@@ -33,12 +33,18 @@
           "default": "node",
           "description": "Path to a Node.js 26 or newer executable used by the local runtime."
         },
+        "codovyn.geminiCliPath": {
+          "type": "string",
+          "default": "",
+          "scope": "application",
+          "description": "Optional absolute path to an executable Gemini CLI. Set this in user settings when Gemini is installed outside CODOVYN's PATH. Authentication remains managed by the official CLI."
+        },
         "codovyn.routingPolicy": {
           "type": "object",
           "default": {},
           "scope": "resource",
           "restricted": true,
-          "description": "Explicit local model catalogue and routing policy. Configure in Settings JSON; no prices or model access are inferred. See docs/agents/routing.md."
+          "description": "Explicit local model catalogue and routing policy. Edit in the CODOVYN agent workspace or Settings JSON; no prices or model access are inferred. See docs/agents/routing.md."
         }
       }
     }

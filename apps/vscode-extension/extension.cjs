@@ -13,6 +13,11 @@ function runtimePath(api, context) {
   return configured === 'node' && bundled ? resolve(context.extensionPath, bundled) : configured;
 }
 
+function providerEnvironment(api) {
+  const command = api.workspace.getConfiguration('codovyn').get('geminiCliPath', '');
+  return { ...process.env, ...(command ? { CODOVYN_GEMINI_COMMAND: command } : {}) };
+}
+
 function dataDirectory(globalStoragePath) {
   const privatePath = join(globalStoragePath, 'private');
   try {
@@ -144,7 +149,7 @@ function createExtension(api, runner = runCli) {
           panel.webview.postMessage({ type: 'agent-diagnostics-loading' });
           try {
             const result = await runner(runtimePath(api, context), [join(context.extensionPath, 'apps', 'cli', 'src', 'index.js'), 'agents', folder.uri.fsPath], {
-              cwd: folder.uri.fsPath, env: { ...process.env, CODOVYN_EVENT_STREAM: '1' }, onChild: () => {}, onEvent: () => {},
+              cwd: folder.uri.fsPath, env: { ...providerEnvironment(api), CODOVYN_EVENT_STREAM: '1' }, onChild: () => {}, onEvent: () => {},
             });
             if (!disposed && folderForTask() === folder) panel.webview.postMessage({ type: 'agent-diagnostics', agents: result.agents || [] });
           } catch { panel.webview.postMessage({ type: 'agent-diagnostics-error', text: 'Could not inspect agent CLIs. Check the local runtime and CLI installation.' }); }
@@ -175,7 +180,7 @@ function createExtension(api, runner = runCli) {
           try {
             const result = await runner(nodePath, [script, 'tasks', folder.uri.fsPath], {
               cwd: folder.uri.fsPath,
-              env: { ...process.env, CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM: '1' },
+              env: { ...providerEnvironment(api), CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM: '1' },
               onChild: () => {}, onEvent: () => {},
             });
             panel.webview.postMessage({ type: 'tasks', tasks: result.tasks || [] });
@@ -195,6 +200,10 @@ function createExtension(api, runner = runCli) {
           }
           if (message.type === 'gemini-setup') {
             await api.env.openExternal(api.Uri.parse('https://geminicli.com/docs/get-started/authentication/'));
+            return;
+          }
+          if (message.type === 'gemini-path-settings') {
+            await api.commands.executeCommand('workbench.action.openSettings', 'codovyn.geminiCliPath');
             return;
           }
           if (message.type === 'agent-diagnostics') { await inspectAgents(); return; }
@@ -241,7 +250,7 @@ function createExtension(api, runner = runCli) {
             if (!folder) { panel.webview.postMessage({ type: 'diff-error', text: 'Open a Git repository folder first.' }); return; }
             const nodePath = runtimePath(api, context);
             const script = join(context.extensionPath, 'apps', 'cli', 'src', 'index.js');
-            const env = { ...process.env, CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM: '1' };
+            const env = { ...providerEnvironment(api), CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM: '1' };
             draftBusy = true;
             panel.webview.postMessage({ type: 'draft-busy' });
             try {
@@ -314,7 +323,7 @@ function createExtension(api, runner = runCli) {
           if(message.type==='resume-task'&&!active&&!starting&&!draftBusy&&!disposed&&typeof message.id==='string'&&/^[a-zA-Z0-9_-]{1,80}$/.test(message.id)) {
             const folder=folderForTask();if(!folder||!api.workspace.isTrusted)return;
             const command=runtimePath(api,context),script=join(context.extensionPath,'apps','cli','src','index.js');
-            const options={cwd:folder.uri.fsPath,env:{...process.env,CODOVYN_DATA_DIR:taskDataDirectory,CODOVYN_EVENT_STREAM:'1'},onChild:()=>{},onEvent:()=>{}};
+            const options={cwd:folder.uri.fsPath,env:{...providerEnvironment(api),CODOVYN_DATA_DIR:taskDataDirectory,CODOVYN_EVENT_STREAM:'1'},onChild:()=>{},onEvent:()=>{}};
             draftBusy=true;panel.webview.postMessage({type:'draft-busy'});
             try {
               const history=await runner(command,[script,'history',message.id,folder.uri.fsPath],options);
@@ -342,7 +351,7 @@ function createExtension(api, runner = runCli) {
               const script = join(context.extensionPath, 'apps', 'cli', 'src', 'index.js');
               await runner(nodePath, [script, 'task-delete', message.id, folder.uri.fsPath, '--yes'], {
                 cwd: folder.uri.fsPath,
-                env: { ...process.env, CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM: '1' },
+                env: { ...providerEnvironment(api), CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM: '1' },
                 onChild: () => {}, onEvent: () => {},
               });
               panel.webview.postMessage({ type: 'task-deleted', id: message.id });
@@ -359,7 +368,7 @@ function createExtension(api, runner = runCli) {
             try {
               const args = [script, 'diff', folder.uri.fsPath, ...(message.staged ? ['--staged'] : [])];
               const result = await runner(nodePath, args, { cwd: folder.uri.fsPath,
-                env: { ...process.env, CODOVYN_EVENT_STREAM: '1' }, onChild: () => {}, onEvent: () => {} });
+                env: { ...providerEnvironment(api), CODOVYN_EVENT_STREAM: '1' }, onChild: () => {}, onEvent: () => {} });
               panel.webview.postMessage({ type: 'diff', text: result.diff || '' });
             } catch { panel.webview.postMessage({ type: 'diff-error', text: 'Could not load this diff.' }); }
             return;
@@ -372,7 +381,7 @@ function createExtension(api, runner = runCli) {
             try {
               const result = await runner(nodePath, [script, 'history', message.id, folder.uri.fsPath], {
                 cwd: folder.uri.fsPath,
-                env: { ...process.env, CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM: '1' },
+                env: { ...providerEnvironment(api), CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM: '1' },
                 onChild: () => {}, onEvent: () => {},
               });
               const events = result.events || [];
@@ -405,7 +414,7 @@ function createExtension(api, runner = runCli) {
               const serialized=JSON.stringify(taskRouting);
               if(serialized.length>65536)throw new Error('Routing settings exceed the local size limit.');
               const preview=await runner(runtimePath(api,context),[join(context.extensionPath,'apps','cli','src','index.js'),'route',folder.uri.fsPath,request],{
-                cwd:folder.uri.fsPath,env:{...process.env,CODOVYN_DATA_DIR:taskDataDirectory,CODOVYN_SESSION_ID:routingSession,CODOVYN_EVENT_STREAM:'1',CODOVYN_ROUTING_POLICY:serialized},onChild:()=>{},onEvent:()=>{}});
+                cwd:folder.uri.fsPath,env:{...providerEnvironment(api),CODOVYN_DATA_DIR:taskDataDirectory,CODOVYN_SESSION_ID:routingSession,CODOVYN_EVENT_STREAM:'1',CODOVYN_ROUTING_POLICY:serialized},onChild:()=>{},onEvent:()=>{}});
               panel.webview.postMessage({type:'routing-preview',routing:preview.routing});
               if (!preview.routing?.selected) throw new Error('No eligible model. Check capabilities, reasoning, availability and estimated budget settings.');
               const choice=preview.routing.selected;
@@ -455,7 +464,7 @@ function createExtension(api, runner = runCli) {
             const result = await runner(nodePath, [script, message.mode, folder.uri.fsPath, request,
               ...(editMode ? ['--allow-writes'] : [])], {
               cwd: folder.uri.fsPath,
-              env: { ...process.env, CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM: '1', CODOVYN_AGENT_POLICY: JSON.stringify(taskPolicy), ...(taskRouting?{CODOVYN_ROUTING_POLICY:JSON.stringify(taskRouting),CODOVYN_SESSION_ID:routingSession}:{}) },
+              env: { ...providerEnvironment(api), CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM: '1', CODOVYN_AGENT_POLICY: JSON.stringify(taskPolicy), ...(taskRouting?{CODOVYN_ROUTING_POLICY:JSON.stringify(taskRouting),CODOVYN_SESSION_ID:routingSession}:{}) },
               onChild: (child) => { active = child; },
               onEvent: (event) => {
                 const entries = timeline([event]);

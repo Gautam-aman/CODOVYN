@@ -118,10 +118,12 @@ const policySave = document.createElement('button'); policySave.type = 'button';
 const inspectAgents = document.createElement('button'); inspectAgents.type = 'button'; inspectAgents.textContent = 'Inspect installed agents';
 const geminiSetup = document.createElement('button'); geminiSetup.type = 'button'; geminiSetup.textContent = 'Gemini authentication guide';
 geminiSetup.addEventListener('click', () => vscode.postMessage({ type: 'gemini-setup' }));
+const geminiPathSettings = document.createElement('button'); geminiPathSettings.type = 'button'; geminiPathSettings.textContent = 'Set Gemini CLI path';
+geminiPathSettings.addEventListener('click', () => vscode.postMessage({ type: 'gemini-path-settings' }));
 const policyStatus = document.createElement('p'); policyStatus.setAttribute('role', 'status');
 let savedAgentPolicy = null;
 const agentCards = document.createElement('ul'); agentCards.className = 'agent-cards'; agentCards.setAttribute('aria-label', 'Agent diagnostics');
-agentSettings.append(automaticLabel, restoreLabel, modelLabel, policySave, inspectAgents, geminiSetup, policyStatus, agentCards);
+agentSettings.append(automaticLabel, restoreLabel, modelLabel, policySave, inspectAgents, geminiSetup, geminiPathSettings, policyStatus, agentCards);
 document.querySelector('.composer').after(agentSettings);
 
 const routingSettings = document.createElement('details');
@@ -255,6 +257,11 @@ window.addEventListener('message', ({ data }) => {
       const description = document.createElement('p'); description.textContent = `${entry.installation}. Authentication: ${entry.authentication}. Availability: ${entry.availability}.`;
       const capabilities = document.createElement('p'); capabilities.textContent = `Capabilities: ${Object.entries(entry.capabilities || {}).filter(([, enabled]) => enabled === true).map(([name]) => name).join(', ')}`;
       card.append(title, role, description, capabilities); agentCards.append(card);
+      if (entry.id === 'gemini' && entry.installation !== 'detected') {
+        const setup = document.createElement('p');
+        setup.textContent = entry.diagnostic || 'Gemini CLI was not found in CODOVYN’s runtime PATH, or this version lacks required headless flags. Install the official CLI or set its absolute executable path in user settings.';
+        card.append(setup);
+      }
     }
   } else if (data.type === 'agent-diagnostics-error') {
     inspectAgents.disabled = false; policyStatus.textContent = data.text;
