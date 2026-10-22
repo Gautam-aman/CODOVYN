@@ -36,7 +36,16 @@ exports.run = async () => {
   assert.match(fs.readFileSync(file.fsPath, 'utf8'), /Edited by CODOVYN Desktop/);
   const panel = await step('agent-panel', () => vscode.commands.executeCommand('codovyn.open'));
   assert.match(panel.webview.html, /Task activity/);
+  assert.match(panel.webview.html, /routing-form\.cjs/, 'catalogue validator is loaded by the real agent webview');
   assert.equal(await step('agent-panel', () => vscode.commands.executeCommand('codovyn.open')), panel, 'reopening reveals the existing agent workspace');
+  const inspectionHold = process.env.CODOVYN_HOST_INSPECTION_HOLD_MS;
+  if (inspectionHold !== undefined) {
+    const duration = Number(inspectionHold);
+    assert.ok(Number.isSafeInteger(duration) && duration > 0 && duration <= 30000, 'inspection hold must be between 1 and 30000 ms');
+    trace('inspection-hold', 'pending');
+    await new Promise(resolve => setTimeout(resolve, duration));
+    trace('inspection-hold', 'complete');
+  }
   const node = path.resolve(extension.extensionPath, extension.packageJSON.codovynBundledRuntime);
   assert.match(execFileSync(node, ['--version'], { encoding: 'utf8' }), /^v26\./);
   const routeData = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'codovyn-native-route-'));
