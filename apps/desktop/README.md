@@ -21,3 +21,17 @@ See [foundation decision](../../docs/architecture/0003-standalone-foundation.md)
 Run `npm run test:desktop-host` after building. `CODOVYN_DESKTOP_APP=/absolute/path/CODOVYN.app npm run test:desktop-host` tests a copied installation. `npm run package:desktop` creates and verifies the development DMG; the image must still be mounted and its copied application exercised before claiming installation validation. CI runs the native workflow on macOS arm64 without provider credentials.
 
 `npm run test:desktop-restoration` launches the normal application twice with one disposable profile. It saves a theme, workspace, editor and local extension state, quits normally, then verifies restoration without passing the project folder on the second launch. No provider account is used.
+
+### Native test deadlines and diagnostics
+
+Each host/restoration launch owns a new POSIX process group. The execution deadline
+is 120 seconds, followed by at most 1.5 seconds of graceful termination and 2.5
+seconds of forced-cleanup polling (individual process-table reads have a two-second
+bound). Cleanup checks for live members even if the original parent exited first.
+This is a macOS/POSIX test harness, not Windows process-ownership support.
+
+A failed run retains its disposable directory and prints its location. It contains
+phase traces, bounded application output, lifecycle results, and the isolated
+editor logs/profile. Successful lifecycle summaries are copied to `dist/desktop`.
+The default tests exclude globally installed Node from PATH. Neither a timeout
+nor an unsuccessful cleanup counts as a passing native test.
