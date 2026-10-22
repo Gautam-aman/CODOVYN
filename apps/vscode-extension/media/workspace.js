@@ -123,6 +123,112 @@ let savedAgentPolicy = null;
 const agentCards = document.createElement('ul'); agentCards.className = 'agent-cards'; agentCards.setAttribute('aria-label', 'Agent diagnostics');
 agentSettings.append(automaticLabel, restoreLabel, modelLabel, policySave, inspectAgents, geminiSetup, policyStatus, agentCards);
 document.querySelector('.composer').after(agentSettings);
+
+const routingSettings = document.createElement('details');
+routingSettings.className = 'agent-settings routing-settings';
+const routingSummary = document.createElement('summary'); routingSummary.textContent = 'Model routing';
+const routingHelp = document.createElement('p');
+routingHelp.textContent = 'Models, scores, availability and prices are your local catalogue entries, not verified provider facts. Unknown availability requires explicit permission. Saved policies apply to Model routing tasks.';
+const routingModeLabel = document.createElement('label'); routingModeLabel.textContent = 'Routing mode';
+const routingMode = document.createElement('select');
+for (const value of ['auto', 'economy', 'balanced', 'performance', 'custom']) {
+  const option = document.createElement('option'); option.value = value; option.textContent = value[0].toUpperCase() + value.slice(1); routingMode.append(option);
+}
+routingModeLabel.append(routingMode);
+const routingCustomLabel = document.createElement('label'); routingCustomLabel.textContent = 'Custom model ID (Custom mode only)';
+const routingCustom = document.createElement('input'); routingCustom.type = 'text'; routingCustom.maxLength = 128; routingCustomLabel.append(routingCustom);
+const routingReasoningLabel = document.createElement('label'); routingReasoningLabel.textContent = 'Required reasoning setting (optional)';
+const routingReasoning = document.createElement('input'); routingReasoning.type = 'text'; routingReasoning.maxLength = 128; routingReasoningLabel.append(routingReasoning);
+const unknownLabel = document.createElement('label');
+const allowUnknown = document.createElement('input'); allowUnknown.type = 'checkbox';
+unknownLabel.append(allowUnknown, ' Permit models with unverified availability');
+const modelHeading = document.createElement('h3'); modelHeading.textContent = 'Local model catalogue';
+const modelList = document.createElement('div'); modelList.className = 'routing-model-list';
+const addModel = document.createElement('button'); addModel.type = 'button'; addModel.textContent = 'Add model';
+const saveRouting = document.createElement('button'); saveRouting.type = 'button'; saveRouting.textContent = 'Save routing policy';
+const routingStatus = document.createElement('p'); routingStatus.setAttribute('role', 'status'); routingStatus.setAttribute('aria-live', 'polite');
+let savedRoutingPolicy = {};
+function modelField(card, title, value, type = 'text') {
+  const label = document.createElement('label'); label.textContent = title;
+  const input = document.createElement('input'); input.type = type; input.value = value ?? '';
+  input.setAttribute('aria-label', title); label.append(input); card.append(label); return input;
+}
+function addModelCard(model = {}) {
+  const card = document.createElement('fieldset'); card.className = 'routing-model';
+  const legend = document.createElement('legend'); legend.textContent = model.id || 'New model'; card.append(legend);
+  const id = modelField(card, 'Catalogue ID', model.id);
+  const providerLabel = document.createElement('label'); providerLabel.textContent = 'Provider';
+  const provider = document.createElement('select');
+  for (const value of ['codex', 'gemini', 'claude']) {
+    const option = document.createElement('option'); option.value = value; option.textContent = value; provider.append(option);
+  }
+  provider.value = model.provider || 'codex'; providerLabel.append(provider); card.append(providerLabel);
+  const name = modelField(card, 'Provider model identifier', model.model);
+  const quality = modelField(card, 'User policy quality score (0–100)', model.quality, 'number');
+  quality.min = '0'; quality.max = '100'; quality.step = '1';
+  const reliability = modelField(card, 'User policy reliability score (0–1)', model.reliability, 'number');
+  reliability.min = '0'; reliability.max = '1'; reliability.step = '0.01';
+  const availabilityLabel = document.createElement('label'); availabilityLabel.textContent = 'Availability evidence';
+  const availability = document.createElement('select');
+  for (const value of ['unknown', 'available', 'unavailable']) {
+    const option = document.createElement('option'); option.value = value; option.textContent = value; availability.append(option);
+  }
+  availability.value = model.availability || 'unknown'; availabilityLabel.append(availability); card.append(availabilityLabel);
+  const capabilities = modelField(card, 'Capabilities (comma-separated: streaming, tools, writes)', (model.capabilities || []).join(', '));
+  const reasoning = modelField(card, 'Supported reasoning settings (comma-separated)', (model.reasoning || []).join(', '));
+  const inputPrice = modelField(card, 'Input USD per million tokens (optional)', model.price?.inputPerMillionUsd, 'number');
+  const outputPrice = modelField(card, 'Output USD per million tokens (optional)', model.price?.outputPerMillionUsd, 'number');
+  inputPrice.min = outputPrice.min = '0'; inputPrice.step = outputPrice.step = 'any';
+  const priceSource = modelField(card, 'Price source (required if priced)', model.price?.source);
+  const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Remove model';
+  remove.setAttribute('aria-label', `Remove ${model.id || 'new model'}`);
+  remove.addEventListener('click', () => card.remove()); card.append(remove);
+  card.readModel = () => {
+    const priceFields = [inputPrice.value.trim(), outputPrice.value.trim(), priceSource.value.trim()];
+    if (priceFields.some(Boolean) && !priceFields.every(Boolean)) throw new Error('Provide both prices and a source, or leave all price fields empty.');
+    return { id: id.value.trim(), provider: provider.value, model: name.value.trim(),
+      quality: quality.value === '' ? NaN : Number(quality.value),
+      reliability: reliability.value === '' ? NaN : Number(reliability.value),
+      availability: availability.value, capabilities: capabilities.value.split(',').map(value => value.trim()).filter(Boolean),
+      reasoning: reasoning.value.split(',').map(value => value.trim()).filter(Boolean),
+      price: priceFields.every(Boolean) ? { inputPerMillionUsd: Number(inputPrice.value), outputPerMillionUsd: Number(outputPrice.value), source: priceSource.value.trim() } : null };
+  };
+  modelList.append(card);
+}
+function loadRoutingPolicy(policy) {
+  savedRoutingPolicy = policy && typeof policy === 'object' && !Array.isArray(policy) ? policy : {};
+  routingMode.value = savedRoutingPolicy.mode || 'auto';
+  routingCustom.value = savedRoutingPolicy.customModel || '';
+  routingReasoning.value = savedRoutingPolicy.reasoning || '';
+  allowUnknown.checked = savedRoutingPolicy.allowUnknownAvailability === true;
+  modelList.replaceChildren();
+  for (const model of (Array.isArray(savedRoutingPolicy.models) ? savedRoutingPolicy.models : []).slice(0, 64)) {
+    if (model && typeof model === 'object' && !Array.isArray(model)) addModelCard(model);
+  }
+}
+addModel.addEventListener('click', () => addModelCard());
+saveRouting.addEventListener('click', () => {
+  if (run.disabled) { routingStatus.textContent = 'Wait for the active task before changing routing settings.'; return; }
+  try {
+    const models = [...modelList.children].map(card => card.readModel());
+    const policy = { ...savedRoutingPolicy, mode: routingMode.value, models,
+      allowUnknownAvailability: allowUnknown.checked };
+    if (routingMode.value === 'custom') policy.customModel = routingCustom.value.trim();
+    else delete policy.customModel;
+    if (routingReasoning.value.trim()) policy.reasoning = routingReasoning.value.trim();
+    else delete policy.reasoning;
+    if (!models.length) throw new Error('Add at least one model before saving.');
+    routingStatus.textContent = 'Validating routing settings…';
+    vscode.postMessage({ type: 'routing-policy-save', policy });
+  } catch (error) { routingStatus.textContent = error.message; }
+});
+routingSettings.append(routingSummary, routingHelp, routingModeLabel, routingCustomLabel, routingReasoningLabel,
+  unknownLabel, modelHeading, modelList, addModel, saveRouting, routingStatus);
+agentSettings.after(routingSettings);
+window.addEventListener('message', ({ data }) => {
+  if (data.type === 'routing-policy') { loadRoutingPolicy(data.policy); routingStatus.textContent = data.text || ''; }
+  if (data.type === 'routing-policy-error') routingStatus.textContent = data.text;
+});
 policySave.addEventListener('click', () => {
   if (run.disabled) { policyStatus.textContent = 'Wait for the active operation before changing preferences.'; return; }
   vscode.postMessage({ type: 'agent-policy-save', policy: { primary: primaryProvider.value,
