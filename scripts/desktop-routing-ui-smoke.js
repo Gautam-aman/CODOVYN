@@ -236,7 +236,17 @@ try {
   const runningAfterSwitch = await evaluate("({ status: document.querySelector('#status').textContent, cancelDisabled: document.querySelector('#cancel').disabled })");
   assert.deepEqual(runningAfterSwitch, runningBeforeSwitch,
     'Changing workspace views preserves the active task status and cancellation control.');
+  await evaluate("window.dispatchEvent(new MessageEvent('message', { data: { type: 'progress', entries: [{ type: 'tool', text: 'Hidden activity 1' }, { type: 'tool', text: 'Hidden activity 2' }] } }))");
+  assert.equal(await evaluate("document.querySelector('[data-workspace-view=activity]').getAttribute('aria-label')"), 'Activity, 2 new updates',
+    'Real streamed activity received in another view is visibly and accessibly counted.');
+  assert.equal(await evaluate("getComputedStyle(document.querySelector('[data-workspace-view=activity]'), '::after').content"), '"2"',
+    'The new-activity count is visibly styled on the Activity destination.');
   await selectTab('activity');
+  assert.equal(await evaluate("document.querySelector('[data-workspace-view=activity]').getAttribute('aria-label')"), 'Activity',
+    'Opening Activity clears its unread indicator.');
+  assert.equal(await evaluate("getComputedStyle(document.querySelector('[data-workspace-view=activity]'), '::after').content"), 'none',
+    'The visual update badge clears when Activity is opened.');
+  await evaluate("window.dispatchEvent(new MessageEvent('message', { data: { type: 'running' } }))");
   await evaluate("document.querySelector('#timeline').scrollTop = document.querySelector('#timeline').scrollHeight");
   await evaluate("window.dispatchEvent(new MessageEvent('message', { data: { type: 'progress', entries: Array.from({ length: 48 }, (_, index) => ({ type: 'tool', text: `Fixture activity ${index}` })) } }))");
   await new Promise(resolve => setTimeout(resolve, 100));

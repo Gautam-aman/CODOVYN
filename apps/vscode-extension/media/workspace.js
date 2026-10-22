@@ -7,6 +7,7 @@ const status = document.getElementById('status');
 const timeline = document.getElementById('timeline');
 let activeWorkspaceView = 'chat';
 let activityFollowsLatest = true;
+let unseenActivityCount = 0;
 const empty = document.getElementById('empty');
 const jumpToLatest = document.createElement('button');
 jumpToLatest.type = 'button';
@@ -514,6 +515,20 @@ function appendActivity(items) {
   } else jumpToLatest.hidden = activityFollowsLatest;
 }
 
+function updateActivityUnreadBadge() {
+  const tab = workspaceTabButtons.get('activity');
+  const label = unseenActivityCount > 99 ? 'Activity, more than 99 new updates' :
+    (unseenActivityCount ? `Activity, ${unseenActivityCount} new updates` : 'Activity');
+  tab.setAttribute('aria-label', label);
+  tab.dataset.unreadCount = unseenActivityCount ? (unseenActivityCount > 99 ? '99+' : String(unseenActivityCount)) : '';
+}
+
+function markActivityUnread(items) {
+  if (activeWorkspaceView === 'activity' || !Array.isArray(items) || !items.length) return;
+  unseenActivityCount = Math.min(100, unseenActivityCount + items.length);
+  updateActivityUnreadBadge();
+}
+
 function renderTasks() {
   const query = taskSearch.value.trim().toLocaleLowerCase();
   const selectedStatus = taskStatusFilter.value;
@@ -656,6 +671,8 @@ function activateWorkspaceView(id, { focusTab = false } = {}) {
   }
   for (const [view, panel] of workspacePanels) panel.hidden = view !== id;
   if (id === 'activity') {
+    unseenActivityCount = 0;
+    updateActivityUnreadBadge();
     if (activityFollowsLatest) timeline.scrollTop = timeline.scrollHeight;
     jumpToLatest.hidden = activityFollowsLatest;
   }
@@ -680,6 +697,7 @@ for (const [id, tab] of workspaceTabButtons) {
     activateWorkspaceView(workspaceTabs[next][0], { focusTab: true });
   });
 }
+updateActivityUnreadBadge();
 const savedWorkspaceView = vscode.getState?.()?.activeWorkspaceView;
 activateWorkspaceView(workspacePanels.has(savedWorkspaceView) ? savedWorkspaceView : 'chat');
 
@@ -740,10 +758,13 @@ window.addEventListener('message', ({ data }) => {
     project.disabled = true;
     cancel.disabled = false;
     timeline.replaceChildren();
+    unseenActivityCount = 0;
+    updateActivityUnreadBadge();
     activityFollowsLatest = true;
     jumpToLatest.hidden = true;
     empty.textContent = 'Waiting for agent activity…';
   } else if (data.type === 'progress') {
+    markActivityUnread(data.entries);
     appendActivity(data.entries);
     if (data.entries?.length) empty.textContent = '';
   } else if (data.type === 'result' || data.type === 'history') {
