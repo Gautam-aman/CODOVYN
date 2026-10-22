@@ -52,6 +52,10 @@ guarantee hard provider spending caps or measure exact charges.
 
 Native capture of the saved project-agent cards beside code changed by an authorized Codex draft. This demonstrates configuration, not authenticated Gemini execution.
 
+![CODOVYN native agent preferences and optional safe-boundary restoration](docs/assets/desktop-phase3-agent-controls.png)
+
+Actual macOS application capture beside code changed through the authorized Codex CLI. The checked restoration preference is local configuration; this image is not evidence of live Gemini failover.
+
 ## Shared runtime and companion extension
 
 - A local SQLite task journal stores requests, agent events, checkpoints, and handoff history.
