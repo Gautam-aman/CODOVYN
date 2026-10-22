@@ -159,6 +159,10 @@ try {
   await evaluate("document.querySelector('[data-workspace-view=activity]').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))");
   assert.equal(await evaluate("document.querySelector('[data-workspace-view=history]').getAttribute('aria-selected')"), 'true',
     'ArrowRight advances the roving workspace tabs.');
+  assert.equal(await evaluate("document.activeElement?.dataset?.workspaceView"), 'history',
+    'ArrowRight moves keyboard focus with the selected tab.');
+  assert.equal(await evaluate("document.querySelector('[data-workspace-view=history]').tabIndex"), 0,
+    'Only the newly selected tab remains in the normal tab order.');
   await evaluate("document.querySelector('[data-workspace-view=history]').dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }))");
   assert.equal(await evaluate("document.querySelector('[data-workspace-view=chat]').getAttribute('aria-selected')"), 'true',
     'Home returns focus navigation to Chat.');
