@@ -148,6 +148,9 @@ const modelHeading = document.createElement('h3'); modelHeading.textContent = 'L
 const modelList = document.createElement('div'); modelList.className = 'routing-model-list';
 const addModel = document.createElement('button'); addModel.type = 'button'; addModel.textContent = 'Add model';
 const saveRouting = document.createElement('button'); saveRouting.type = 'button'; saveRouting.textContent = 'Save routing policy';
+const previewRouting = document.createElement('button'); previewRouting.type = 'button'; previewRouting.textContent = 'Preview saved policy';
+const routingPreview = document.createElement('div'); routingPreview.className = 'routing-preview';
+routingPreview.setAttribute('role', 'region'); routingPreview.setAttribute('aria-label', 'Routing decision preview');
 const routingStatus = document.createElement('p'); routingStatus.setAttribute('role', 'status'); routingStatus.setAttribute('aria-live', 'polite');
 let savedRoutingPolicy = {};
 function modelField(card, title, value, type = 'text') {
@@ -209,6 +212,29 @@ function loadRoutingPolicy(policy) {
   }
 }
 addModel.addEventListener('click', () => addModelCard());
+previewRouting.addEventListener('click', () => {
+  if (!request.value.trim()) { routingStatus.textContent = 'Enter a task in the composer to preview routing.'; return; }
+  routingStatus.textContent = 'Previewing the saved policy without starting an agent…';
+  vscode.postMessage({ type: 'routing-policy-preview', request: request.value.trim() });
+});
+function renderRoutingPreview(routing) {
+  routingPreview.replaceChildren();
+  const heading = document.createElement('strong'); heading.textContent = routing?.explanation || 'No routing decision available';
+  routingPreview.append(heading);
+  const notice = document.createElement('p');
+  notice.textContent = 'This is a local admission estimate. It does not verify model access, quota, authentication or provider billing.';
+  routingPreview.append(notice);
+  const list = document.createElement('ul');
+  for (const candidate of (Array.isArray(routing?.considered) ? routing.considered : []).slice(0, 64)) {
+    const item = document.createElement('li');
+    const reasons = Array.isArray(candidate.reasons) ? candidate.reasons : [];
+    const cost = candidate.estimatedUsd === null || candidate.estimatedUsd === undefined
+      ? 'cost unknown' : `estimated USD ${candidate.estimatedUsd}`;
+    item.textContent = `${candidate.id}: ${reasons.length ? `rejected: ${reasons.join(', ')}` : 'eligible'} · ${cost} · ${candidate.availability || 'availability unknown'}`;
+    list.append(item);
+  }
+  routingPreview.append(list);
+}
 saveRouting.addEventListener('click', () => {
   if (run.disabled) { routingStatus.textContent = 'Wait for the active task before changing routing settings.'; return; }
   try {
@@ -225,11 +251,15 @@ saveRouting.addEventListener('click', () => {
   } catch (error) { routingStatus.textContent = error.message; }
 });
 routingSettings.append(routingSummary, routingHelp, routingModeLabel, routingCustomLabel, routingReasoningLabel,
-  unknownLabel, modelHeading, modelList, addModel, saveRouting, routingStatus);
+  unknownLabel, modelHeading, modelList, addModel, saveRouting, previewRouting, routingStatus, routingPreview);
 agentSettings.after(routingSettings);
 window.addEventListener('message', ({ data }) => {
-  if (data.type === 'routing-policy') { loadRoutingPolicy(data.policy); routingStatus.textContent = data.text || ''; }
+  if (data.type === 'routing-policy') { loadRoutingPolicy(data.policy); routingPreview.replaceChildren(); routingStatus.textContent = data.text || ''; }
   if (data.type === 'routing-policy-error') routingStatus.textContent = data.text;
+  if (data.type === 'routing-policy-preview-result') {
+    renderRoutingPreview(data.routing);
+    routingStatus.textContent = 'Preview complete. Execution still requires native approval.';
+  }
 });
 policySave.addEventListener('click', () => {
   if (run.disabled) { policyStatus.textContent = 'Wait for the active operation before changing preferences.'; return; }

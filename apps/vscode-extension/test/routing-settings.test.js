@@ -10,6 +10,7 @@ test('routing settings are validated, saved per trusted project, and restored on
   let open, receive;
   const sent = [];
   const settings = new Map();
+  const calls = [];
   const folders = ['/a', '/b'].map(root => ({ name: root.slice(1), uri: { fsPath: root } }));
   const api = {
     ConfigurationTarget: { WorkspaceFolder: 5 }, ViewColumn: { Beside: 2 },
@@ -25,12 +26,20 @@ test('routing settings are validated, saved per trusted project, and restored on
       },
     }) },
   };
-  createExtension(api, async () => ({ tasks: [] })).activate({ extensionUri: 'root', extensionPath: '/extension',
+  createExtension(api, async (_, args, options) => {
+    calls.push({ args, options });
+    return args.includes('route') ? { routing: { selected: null, considered: [], explanation: 'No eligible model' } } : { tasks: [] };
+  }).activate({ extensionUri: 'root', extensionPath: '/extension',
     globalStorageUri: { fsPath: '/data' }, subscriptions: [] });
   open(); await receive({ type: 'ready' });
   const policy = { mode: 'balanced', models: [model], allowUnknownAvailability: true };
   await receive({ type: 'routing-policy-save', policy });
   assert.deepEqual(settings.get('/a'), policy);
+  await receive({ type: 'routing-policy-preview', request: 'Explain the code' });
+  assert.equal(calls.find(call => call.args.includes('route')).options.env.CODOVYN_ROUTING_POLICY,
+    JSON.stringify(policy));
+  assert.equal(sent.at(-1).type, 'routing-policy-preview-result');
+  assert.equal(calls.filter(call => call.args.includes('routed')).length, 0);
   await receive({ type: 'routing-policy-save', policy: { ...policy, secret: 'injected' } });
   assert.deepEqual(settings.get('/a'), policy);
   assert.equal(sent.at(-1).type, 'routing-policy-error');

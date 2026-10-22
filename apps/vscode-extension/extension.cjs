@@ -232,6 +232,29 @@ function createExtension(api, runner = runCli) {
             }
             return;
           }
+          if (message.type === 'routing-policy-preview') {
+            const folder = folderForTask();
+            if (!folder || !api.workspace.isTrusted || active || starting || draftBusy || disposed ||
+              typeof message.request !== 'string' || !message.request.trim() || message.request.length > 10000) {
+              panel.webview.postMessage({ type: 'routing-policy-error', text: 'Open and trust a project, enter a task, then wait for the current operation before previewing routing.' });
+              return;
+            }
+            try {
+              const { validateRouting } = await routingModule;
+              const policy = validateRouting(api.workspace.getConfiguration('codovyn', folder.uri).get('routingPolicy', {}));
+              const result = await runner(runtimePath(api, context), [join(context.extensionPath, 'apps', 'cli', 'src', 'index.js'),
+                'route', folder.uri.fsPath, message.request.trim()], {
+                cwd: folder.uri.fsPath,
+                env: { ...providerEnvironment(api), CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_SESSION_ID: routingSession,
+                  CODOVYN_EVENT_STREAM: '1', CODOVYN_ROUTING_POLICY: JSON.stringify(policy) },
+                onChild: () => {}, onEvent: () => {},
+              });
+              if (!disposed && folderForTask() === folder) panel.webview.postMessage({ type: 'routing-policy-preview-result', routing: result.routing });
+            } catch {
+              panel.webview.postMessage({ type: 'routing-policy-error', text: 'Could not preview the saved policy. Check its entries and local budget settings.' });
+            }
+            return;
+          }
           if (message.type === 'tasks') { await refreshTasks(); return; }
           if (message.type === 'project-select' && !active && !starting && !draftBusy && typeof message.root === 'string') {
             if (!api.workspace.workspaceFolders?.some((folder) => folder.uri.fsPath === message.root)) return;
