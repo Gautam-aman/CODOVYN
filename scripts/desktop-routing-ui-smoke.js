@@ -127,6 +127,12 @@ try {
   const savedSettings = JSON.parse(await readFile(join(workspace, '.vscode/settings.json'), 'utf8'));
   assert.equal(savedSettings['codovyn.routingPolicy'].models[0].id, 'phase6-fixture', 'Valid catalogue persists in the opened workspace.');
 
+  await click('Remove model');
+  assert.equal(await evaluate("document.querySelectorAll('.routing-model').length"), 0, 'Removing a model removes the unsaved row.');
+  await click('Discard unsaved edits');
+  assert.equal(await evaluate("document.querySelector('[aria-label=\"Catalogue ID\"]').value"), 'phase6-fixture', 'Discard restores a removed saved model.');
+  assert.equal(JSON.parse(await readFile(join(workspace, '.vscode/settings.json'), 'utf8'))['codovyn.routingPolicy'].models[0].id,
+    'phase6-fixture', 'Discard does not alter the persisted project setting.');
   await evaluate("document.querySelector('[aria-label=\"Catalogue ID\"]').value = 'unsaved-change'; document.querySelector('[aria-label=\"Catalogue ID\"]').dispatchEvent(new Event('input', { bubbles: true }));");
   await click('Discard unsaved edits');
   assert.equal(await evaluate("document.querySelector('[aria-label=\"Catalogue ID\"]').value"), 'phase6-fixture', 'Discard restores the last saved catalogue.');
