@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
@@ -108,6 +108,19 @@ try {
       socket.send(JSON.stringify({ id, method, params }));
     });
   };
+  const captureApplication = () => new Promise((resolve, reject) => {
+    const id = 2;
+    const timer = setTimeout(() => { frontSocket.removeEventListener('message', receive); reject(new Error('Application screenshot timed out.')); }, 3000);
+    const receive = event => {
+      const message = JSON.parse(event.data);
+      if (message.id !== id) return;
+      clearTimeout(timer);
+      frontSocket.removeEventListener('message', receive);
+      message.error ? reject(new Error(message.error.message)) : resolve(message.result);
+    };
+    frontSocket.addEventListener('message', receive);
+    frontSocket.send(JSON.stringify({ id, method: 'Page.captureScreenshot', params: { format: 'png', captureBeyondViewport: false } }));
+  });
   await send('Runtime.enable');
   const evaluate = async expression => {
     const run = async selectedContext => {
@@ -130,7 +143,7 @@ try {
       if (await evaluate(expression)) return;
       await new Promise(resolve => setTimeout(resolve, 100));
     }
-    throw new Error(`${message} target=${target.url}; document=${JSON.stringify(await evaluate("({ title: document.title, ready: document.readyState, body: document.body?.innerText?.slice(0, 2000), html: document.documentElement?.innerHTML?.slice(0, 1000) })"))}`);
+    throw new Error(`${message} target=${target.url}; contexts=${JSON.stringify(contexts.map(({ id, name, origin, auxData }) => ({ id, name, origin, frameId: auxData?.frameId })))}; document=${JSON.stringify(await evaluate("({ title: document.title, ready: document.readyState, body: document.body?.innerText?.slice(0, 2000), html: document.documentElement?.innerHTML?.slice(0, 1000) })"))}`);
   };
   const click = label => evaluate(`(() => { const button = [...document.querySelectorAll('button')].find(item => item.textContent.trim() === ${JSON.stringify(label)}); if (!button) return false; button.click(); return true; })()`);
   await waitFor("!!document.querySelector('.routing-settings')", 'Routing catalogue did not render.');
@@ -204,6 +217,9 @@ try {
   await evaluate("window.dispatchEvent(new MessageEvent('message', { data: { type: 'tasks', tasks: [ { id: 'fixture-complete-1', request: 'Refactor Java parser', status: 'completed' }, { id: 'fixture-complete-2', request: 'Document routing policy', status: 'completed' }, { id: 'fixture-interrupted', request: 'Recover parser task', status: 'interrupted' } ] } }))");
   const allTasks = await evaluate("document.querySelectorAll('#tasks button.task').length");
   assert.equal(allTasks, 3, 'Task history renders the supplied recent journal entries.');
+  const interruptedRow = await evaluate("(() => { const row = document.querySelectorAll('#tasks > li')[2]; const task = row.querySelector('.task').getBoundingClientRect(); const resume = [...row.querySelectorAll('button')].find(button => button.textContent.includes('Resume safe read task')).getBoundingClientRect(); return { row: row.getBoundingClientRect().width, task: task.width, resume: resume.width }; })()");
+  assert.ok(interruptedRow.task > interruptedRow.row * 0.75 && interruptedRow.resume < interruptedRow.row * 0.6,
+    `Long recovery controls must not crush task titles: ${JSON.stringify(interruptedRow)}`);
   await evaluate("document.querySelector('#task-search').value = 'PARSER'; document.querySelector('#task-search').dispatchEvent(new Event('input', { bubbles: true }))");
   assert.equal(await evaluate("document.querySelectorAll('#tasks button.task').length"), 2, 'Task search is case-insensitive and filters prompt text.');
   await evaluate("document.querySelector('#task-status-filter').value = 'interrupted'; document.querySelector('#task-status-filter').dispatchEvent(new Event('change', { bubbles: true }))");
@@ -211,6 +227,13 @@ try {
   await evaluate("document.querySelector('#task-search').value = 'no-match'; document.querySelector('#task-search').dispatchEvent(new Event('input', { bubbles: true }))");
   assert.equal(await evaluate("document.querySelector('#tasks').textContent"), 'No recent tasks match this search and status filter.', 'Empty filtered results explain the current state.');
   await evaluate("document.querySelector('#task-search').value = ''; document.querySelector('#task-search').dispatchEvent(new Event('input', { bubbles: true })); document.querySelector('#task-status-filter').value = 'all'; document.querySelector('#task-status-filter').dispatchEvent(new Event('change', { bubbles: true }))");
+  if (process.env.CODOVYN_CAPTURE_DIR) {
+    await evaluate("document.querySelector('.recent').scrollIntoView({ block: 'start', behavior: 'instant' })");
+    const capture = await captureApplication();
+    const captureDirectory = resolve(process.env.CODOVYN_CAPTURE_DIR);
+    await mkdir(captureDirectory, { recursive: true });
+    await writeFile(join(captureDirectory, 'desktop-phase7-task-history.png'), Buffer.from(capture.data, 'base64'));
+  }
   console.log('Verified native routing form: valid workspace save, discard restoration, and associated validation error.',
     `DOM focus observability: ${focusVerifiedByNativeHarness ? 'yes' : 'unavailable in the isolated webview harness'}. Task timeline follow and local recent-task filters also passed.`);
   let exitTimer;
