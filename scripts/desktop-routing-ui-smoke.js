@@ -28,7 +28,9 @@ let contextId;
 const contexts = [];
 const pending = new Map();
 try {
-  const deadline = Date.now() + 100_000;
+  // Let the native harness reach its own 120s deadline first so a host stall
+  // retains a timeout phase instead of being mislabeled as external cancel.
+  const deadline = Date.now() + 130_000;
   let target, mainTarget;
   while (Date.now() < deadline && (!target || !mainTarget)) {
     if (child.exitCode !== null) throw new Error(`Native host exited before inspection (${child.exitCode}).`);
@@ -126,6 +128,13 @@ try {
   const workspace = (await readFile(workspaceFile, 'utf8')).trim();
   const savedSettings = JSON.parse(await readFile(join(workspace, '.vscode/settings.json'), 'utf8'));
   assert.equal(savedSettings['codovyn.routingPolicy'].models[0].id, 'phase6-fixture', 'Valid catalogue persists in the opened workspace.');
+
+  await evaluate("document.querySelector('[aria-label=\"Catalogue ID\"]').value = 'unsaved-before-project-change'; document.querySelector('[aria-label=\"Catalogue ID\"]').dispatchEvent(new Event('input', { bubbles: true }));");
+  const projectSwitch = await evaluate(`(() => { const select = document.querySelector('#project'); const option = document.createElement('option'); option.value = '/codovyn-unavailable-project-fixture'; option.textContent = 'Unavailable project fixture'; select.append(option); select.value = option.value; select.dispatchEvent(new Event('change', { bubbles: true })); return { selected: select.value, status: document.querySelector('.routing-settings [role=status]').textContent, id: document.querySelector('[aria-label="Catalogue ID"]').value }; })()`);
+  assert.deepEqual(projectSwitch, { selected: workspace, status: 'Save or discard unsaved routing edits before switching projects.', id: 'unsaved-before-project-change' },
+    'An attempted project switch preserves unsaved catalogue edits.');
+  await click('Discard unsaved edits');
+  assert.equal(await evaluate("document.querySelector('[aria-label=\"Catalogue ID\"]').value"), 'phase6-fixture');
 
   await click('Remove model');
   assert.equal(await evaluate("document.querySelectorAll('.routing-model').length"), 0, 'Removing a model removes the unsaved row.');

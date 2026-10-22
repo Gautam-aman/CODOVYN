@@ -178,6 +178,10 @@ const routingPreview = document.createElement('div'); routingPreview.className =
 routingPreview.setAttribute('role', 'region'); routingPreview.setAttribute('aria-label', 'Routing decision preview');
 const routingStatus = document.createElement('p'); routingStatus.setAttribute('role', 'status'); routingStatus.setAttribute('aria-live', 'polite');
 let savedRoutingPolicy = {};
+let routingDirty = false;
+let selectedProjectRoot = null;
+routingSettings.addEventListener('input', () => { routingDirty = true; });
+routingSettings.addEventListener('change', () => { routingDirty = true; });
 function modelField(card, title, value, type = 'text') {
   const label = document.createElement('label'); label.textContent = title;
   const input = document.createElement('input'); input.type = type; input.value = value ?? '';
@@ -245,6 +249,7 @@ function addModelCard(model = {}) {
   const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Remove model';
   remove.setAttribute('aria-label', `Remove ${model.id || 'new model'}`);
   remove.addEventListener('click', () => {
+    routingDirty = true;
     const cards = [...modelList.children], index = cards.indexOf(card);
     const focusCard = cards[index + 1] || cards[index - 1];
     card.remove();
@@ -272,6 +277,7 @@ function addModelCard(model = {}) {
   modelList.append(card); return card;
 }
 function loadRoutingPolicy(policy) {
+  routingDirty = false;
   savedRoutingPolicy = policy && typeof policy === 'object' && !Array.isArray(policy) ? policy : {};
   routingMode.value = savedRoutingPolicy.mode || 'auto';
   routingCustom.value = savedRoutingPolicy.customModel || '';
@@ -287,7 +293,10 @@ function loadRoutingPolicy(policy) {
     if (model && typeof model === 'object' && !Array.isArray(model)) addModelCard(model);
   }
 }
-addModel.addEventListener('click', () => addModelCard().querySelector('[aria-label="Catalogue ID"]').focus());
+addModel.addEventListener('click', () => {
+  routingDirty = true;
+  addModelCard().querySelector('[aria-label="Catalogue ID"]').focus();
+});
 cancelRouting.addEventListener('click', () => {
   loadRoutingPolicy(savedRoutingPolicy);
   routingStatus.textContent = 'Unsaved routing edits were discarded.';
@@ -450,7 +459,15 @@ run.addEventListener('click', () => {
   if (!value) { request.focus(); return; }
   vscode.postMessage({ type: 'run', mode: agent.value, request: value });
 });
-project.addEventListener('change', () => vscode.postMessage({ type: 'project-select', root: project.value }));
+project.addEventListener('change', () => {
+  if (routingDirty) {
+    if (selectedProjectRoot) project.value = selectedProjectRoot;
+    routingStatus.textContent = 'Save or discard unsaved routing edits before switching projects.';
+    return;
+  }
+  selectedProjectRoot = project.value;
+  vscode.postMessage({ type: 'project-select', root: project.value });
+});
 cancel.addEventListener('click', () => vscode.postMessage({ type: 'cancel' }));
 refresh.addEventListener('click', () => vscode.postMessage({ type: 'tasks' }));
 document.getElementById('working-diff').addEventListener('click', () => vscode.postMessage({ type: 'diff', staged: false }));
@@ -480,9 +497,10 @@ window.addEventListener('message', ({ data }) => {
       option.textContent = entry.name;
       project.append(option);
     }
-    if (data.selectedRoot) project.value = data.selectedRoot;
+    if (data.selectedRoot) { project.value = data.selectedRoot; selectedProjectRoot = data.selectedRoot; }
     project.disabled = !data.projects?.length;
   } else if (data.type === 'project-selected') {
+    selectedProjectRoot = project.value;
     currentTaskId = null;
     draftAvailable = false;
     reviewedHash = null;
