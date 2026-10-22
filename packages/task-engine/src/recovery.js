@@ -10,6 +10,7 @@ export function processAbsent(pid) {
 export function executionRecovery(store, id, { host = hostname(), absent = processAbsent, platform = process.platform } = {}) {
   const lease = store.executionLease(id);
   if (!lease) return { safe: false, reason: 'legacy-process-ownership-unknown' };
+  if (lease.releasedAt && platform==='win32' && lease.owner.kind!=='recovery')return {safe:false,reason:'windows-process-tree-verification-unsupported'};
   if (lease.releasedAt) return { safe: true, reason: 'cleanup-recorded' };
   if (lease.owner.host !== host) return { safe: false, reason: 'different-host' };
   if (!absent(lease.owner.pid)) return { safe: false, reason: 'owner-alive-or-unverifiable' };

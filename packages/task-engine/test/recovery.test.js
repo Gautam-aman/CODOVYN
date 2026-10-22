@@ -55,3 +55,10 @@ test('a crashed reconciliation owner can be recovered without inventing a provid
  assert.equal(executionRecovery(store,'task',{host:'fixture',absent:()=>true}).reason,'recovery-owner-absent-no-provider-launch');
  assert.equal(store.events('task').length,0);store.close();
 });
+
+test('released provider leases are not orphan-tree evidence on unsupported Windows recovery',()=>{
+ const store=fixture();store.releaseExecution('task','owner-token-123456');
+ assert.equal(executionRecovery(store,'task',{platform:'win32'}).safe,false);
+ assert.equal(executionRecovery(store,'task',{platform:'win32'}).reason,'windows-process-tree-verification-unsupported');
+ assert.equal(executionRecovery(store,'task',{platform:'darwin'}).safe,true);store.close();
+});
