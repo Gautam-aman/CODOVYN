@@ -5,6 +5,7 @@ const { join, resolve } = require('node:path');
 const { StringDecoder } = require('node:string_decoder');
 const { defaultPolicy, validateAgentPolicy } = require('../../packages/agent-core/src/policy.cjs');
 const { themes, validTheme, themeStyles } = require('./themes.cjs');
+const routingModule = import('../../packages/agent-router/src/index.js');
 
 function runtimePath(api, context) {
   const configured = api.workspace.getConfiguration('codovyn').get('nodePath', 'node');
@@ -132,6 +133,11 @@ function createExtension(api, runner = runCli) {
           catch { return validateAgentPolicy(defaultPolicy); }
         };
         const sendAgentPolicy = (text = '') => panel.webview.postMessage({ type: 'agent-policy', policy: loadAgentPolicy(), text });
+        const sendRoutingPolicy = (text = '') => {
+          const folder = folderForTask();
+          const policy = folder ? api.workspace.getConfiguration('codovyn', folder.uri).get('routingPolicy', {}) : {};
+          panel.webview.postMessage({ type: 'routing-policy', policy, text });
+        };
         const inspectAgents = async () => {
           const folder = folderForTask();
           if (!folder || !api.workspace.isTrusted || active || starting || draftBusy) { panel.webview.postMessage({ type: 'agent-diagnostics-error', text: 'Open and trust a project, then wait for the current operation before inspecting agents.' }); return; }
@@ -156,6 +162,7 @@ function createExtension(api, runner = runCli) {
           }
           sendProjects();
           sendAgentPolicy();
+          sendRoutingPolicy();
           refreshTasks();
         });
         panel.onDidDispose?.(() => { if (currentPanel === panel) currentPanel = null; disposed = true; active?.kill('SIGTERM'); folderListener?.dispose(); });
@@ -177,7 +184,7 @@ function createExtension(api, runner = runCli) {
         panel.webview.onDidReceiveMessage(async (message) => {
           if (!message || typeof message !== 'object') return;
           if (message.type === 'cancel') { active?.kill('SIGTERM'); return; }
-          if (message.type === 'ready') { sendProjects(); sendAppearance(); sendAgentPolicy(); await refreshTasks(); return; }
+          if (message.type === 'ready') { sendProjects(); sendAppearance(); sendAgentPolicy(); sendRoutingPolicy(); await refreshTasks(); return; }
           if (message.type === 'theme-select' && validTheme(message.id) && !disposed) {
             try {
               await context.globalState?.update('codovyn.panelTheme', message.id);
@@ -199,11 +206,29 @@ function createExtension(api, runner = runCli) {
             } catch { sendAgentPolicy('Invalid preferences or storage error. Previous settings retained.'); }
             return;
           }
+          if (message.type === 'routing-policy-save') {
+            const folder = folderForTask();
+            if (!folder || !api.workspace.isTrusted || active || starting || draftBusy || disposed) {
+              panel.webview.postMessage({ type: 'routing-policy-error', text: 'Open and trust a project, then wait for the current operation before saving routing settings.' });
+              return;
+            }
+            try {
+              const { validateRouting } = await routingModule;
+              const policy = validateRouting(message.policy);
+              await api.workspace.getConfiguration('codovyn', folder.uri).update('routingPolicy', policy,
+                api.ConfigurationTarget.WorkspaceFolder, folder.uri);
+              if (!disposed && folderForTask() === folder) sendRoutingPolicy('Routing policy saved for this project. Costs and availability remain user-supplied estimates.');
+            } catch {
+              panel.webview.postMessage({ type: 'routing-policy-error', text: 'Invalid routing policy or settings write failed. Previous settings retained.' });
+            }
+            return;
+          }
           if (message.type === 'tasks') { await refreshTasks(); return; }
           if (message.type === 'project-select' && !active && !starting && !draftBusy && typeof message.root === 'string') {
             if (!api.workspace.workspaceFolders?.some((folder) => folder.uri.fsPath === message.root)) return;
             selectedRoot = message.root;
             sendAgentPolicy();
+            sendRoutingPolicy();
             reviewedDraft = null;
             sendProjects();
             panel.webview.postMessage({ type: 'project-selected' });
