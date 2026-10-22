@@ -19,7 +19,8 @@ test('routing settings are validated, saved per trusted project, and restored on
     window: { createWebviewPanel: () => ({ webview: { cspSource: 'x', asWebviewUri: x => x,
       onDidReceiveMessage: handler => { receive = handler; }, postMessage: value => sent.push(value) } }) },
     workspace: { isTrusted: true, workspaceFolders: folders, getConfiguration: (_, uri) => ({
-      get: (key, fallback) => key === 'routingPolicy' ? settings.get(uri?.fsPath) ?? fallback : 'node',
+      get: (key, fallback) => key === 'routingPolicy'
+        ? new Proxy(settings.get(uri?.fsPath) ?? fallback, {}) : 'node',
       update: async (key, value, target, resource) => {
         assert.equal(key, 'routingPolicy'); assert.equal(target, 5); assert.equal(resource, uri);
         settings.set(uri.fsPath, value);

@@ -7,6 +7,12 @@ const { defaultPolicy, validateAgentPolicy } = require('../../packages/agent-cor
 const { themes, validTheme, themeStyles } = require('./themes.cjs');
 const routingModule = import('../../packages/agent-router/src/index.js');
 
+function routingSnapshot(value) {
+  const serialized = JSON.stringify(value);
+  if (!serialized || serialized.length > 65536) throw new TypeError('Routing settings exceed the local size limit');
+  return JSON.parse(serialized);
+}
+
 function runtimePath(api, context) {
   const configured = api.workspace.getConfiguration('codovyn').get('nodePath', 'node');
   const bundled = context.extension?.packageJSON?.codovynBundledRuntime;
@@ -140,8 +146,12 @@ function createExtension(api, runner = runCli) {
         const sendAgentPolicy = (text = '') => panel.webview.postMessage({ type: 'agent-policy', policy: loadAgentPolicy(), text });
         const sendRoutingPolicy = (text = '') => {
           const folder = folderForTask();
-          const policy = folder ? api.workspace.getConfiguration('codovyn', folder.uri).get('routingPolicy', {}) : {};
-          panel.webview.postMessage({ type: 'routing-policy', policy, text });
+          try {
+            const policy = folder ? routingSnapshot(api.workspace.getConfiguration('codovyn', folder.uri).get('routingPolicy', {})) : {};
+            panel.webview.postMessage({ type: 'routing-policy', policy, text });
+          } catch {
+            panel.webview.postMessage({ type: 'routing-policy-error', text: 'Saved routing settings could not be read. Check their JSON value and size.' });
+          }
         };
         const inspectAgents = async () => {
           const folder = folderForTask();
@@ -241,7 +251,7 @@ function createExtension(api, runner = runCli) {
             }
             try {
               const { validateRouting } = await routingModule;
-              const policy = validateRouting(api.workspace.getConfiguration('codovyn', folder.uri).get('routingPolicy', {}));
+              const policy = validateRouting(routingSnapshot(api.workspace.getConfiguration('codovyn', folder.uri).get('routingPolicy', {})));
               const result = await runner(runtimePath(api, context), [join(context.extensionPath, 'apps', 'cli', 'src', 'index.js'),
                 'route', folder.uri.fsPath, message.request.trim()], {
                 cwd: folder.uri.fsPath,
@@ -431,8 +441,8 @@ function createExtension(api, runner = runCli) {
           let routeSummary='';
           if (['routed','routed-edit'].includes(message.mode)) {
             try {
-              taskRouting=structuredClone(api.workspace.getConfiguration('codovyn',folder.uri).get('routingPolicy',{}));
-              if (!taskRouting || typeof taskRouting!=='object' || Array.isArray(taskRouting)) throw new Error('Configure codovyn.routingPolicy in Settings JSON first.');
+              taskRouting=routingSnapshot(api.workspace.getConfiguration('codovyn',folder.uri).get('routingPolicy',{}));
+              if (!taskRouting || typeof taskRouting!=='object' || Array.isArray(taskRouting)) throw new Error('Configure a routing policy first.');
               if (editMode) taskRouting.requiredCapabilities=[...new Set([...(taskRouting.requiredCapabilities||[]),'writes'])];
               const serialized=JSON.stringify(taskRouting);
               if(serialized.length>65536)throw new Error('Routing settings exceed the local size limit.');
