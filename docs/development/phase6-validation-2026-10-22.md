@@ -187,3 +187,35 @@ parallel-suite run before that adjustment intermittently classified the quota
 attempt as fatal; five isolated repeats and the full 184-test suite pass after
 the fixture change. No production adapter behavior or safety assertion was
 weakened; the test still requires a confirmed quota handoff and reviewed patch.
+
+## Final clean-artifact validation at `76ff4ff`
+
+The final packaged build was produced from clean source at
+`76ff4ffea8cda4c12673d4c698afde0c91389a58` (`sourceDirty: false`). The
+development DMG SHA-256 is
+`6300a2ad343a2e9f131d888b23de4a0fb4c7ea0cb5b1f2673febb65e6c698b9f`. It was
+mounted read-only, its app signature was checked, and the application was
+copied to a disposable install path. The copied application passed the native
+host (25.951 seconds) and two-launch restoration (write 4.365 seconds, read
+2.139 seconds). The routing UI smoke passed against that copy, covering save,
+validation, discard, saved-row removal, and rejection of a project switch with
+an unsaved draft. Each lifecycle report recorded zero surviving owned
+processes. This remains an ad-hoc signed, unnotarized development artifact;
+it was not released and this is not clean-machine notarization evidence.
+
+On the clean-source app, native-host, two-launch restoration, and routing UI
+smoke passed; restoration again reported zero surviving processes. The full
+local suite passed 184 tests with zero failures or skips, and the extension
+host passed under VS Code 1.143.0. A bounded earlier native UI smoke run took
+101.8 seconds at `workspace-search` before its outer deadline canceled it; the
+later copied-artifact smoke completed. This does not explain the historical
+intermittent stall, so issue #16 remains open.
+
+The newest hosted CI run for this commit is
+[run 39771298827](https://github.com/Gautam-aman/CODOVYN/actions/runs/39771298827).
+The Ubuntu, macOS, and Windows jobs failed before executing any steps, and the
+run logs were unavailable to this environment. Hosted CI is therefore blocked,
+not green; local validation passed. No account billing settings were changed.
+Live Gemini requests and real Codex-to-Gemini continuation remain blocked by
+the previously observed Gemini CLI authentication exit code 41. Deterministic
+handoff tests are not evidence of live provider continuation.
