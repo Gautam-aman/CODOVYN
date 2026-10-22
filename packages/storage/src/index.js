@@ -1,3 +1,4 @@
+import { microUsd, budgetScope } from './budget.js';
 import { chmodSync, mkdirSync, statSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -44,6 +45,15 @@ export class TaskStore {
         data TEXT NOT NULL,
         created_at TEXT NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS routing_reservations (
+        task_id TEXT PRIMARY KEY,
+        session TEXT NOT NULL,
+        month TEXT NOT NULL,
+        amount_microusd INTEGER,
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS reservations_by_session ON routing_reservations(session);
+      CREATE INDEX IF NOT EXISTS reservations_by_month ON routing_reservations(month);
       CREATE TABLE IF NOT EXISTS execution_leases (
         task_id TEXT PRIMARY KEY REFERENCES tasks(id),
         token TEXT NOT NULL,
@@ -137,6 +147,42 @@ export class TaskStore {
       WHERE task_id = ? AND token = ? AND released_at IS NULL`)
       .run(new Date().toISOString(), validId(id), token);
     if (result.changes !== 1) throw new Error('Execution ownership changed');
+  }
+
+  routeBudgetTotals(session, now = new Date()) {
+    const scope=budgetScope(session,now);
+    const totals=column=>{
+      const row=this.#db.prepare(`SELECT COALESCE(SUM(amount_microusd),0) AS amount,
+        COUNT(*)-COUNT(amount_microusd) AS unknown FROM routing_reservations WHERE ${column}=?`).get(scope[column]);
+      if(!Number.isSafeInteger(row.amount)||!Number.isSafeInteger(row.unknown))throw new Error('Budget ledger exceeds safe accounting bounds');
+      return {estimatedUsd:row.amount/1000000,unknownRequests:row.unknown};
+    };
+    return {session:totals('session'),month:totals('month'),monthUtc:scope.month};
+  }
+
+  /** Serialize admission across connections. Never automatically refund a cancelled/crashed request. */
+  reserveRouteBudget(id, {session, estimatedUsd, budget = {}, now = new Date()}) {
+    validId(id);const scope=budgetScope(session,now);
+    const amount=estimatedUsd===null?null:microUsd(estimatedUsd);
+    const keys=['taskUsd','sessionUsd','monthUsd','sessionSpentUsd','monthSpentUsd'];
+    if(!budget||typeof budget!=='object'||Array.isArray(budget)||Object.keys(budget).some(key=>!keys.includes(key)))throw new TypeError('Invalid reservation budget');
+    for(const value of Object.values(budget))if(value!==null&&value!==undefined)microUsd(value);
+    this.#db.exec('BEGIN IMMEDIATE');
+    try {
+      if(this.get(id)?.status!=='pending')throw new Error('Budget reservation requires a pending task');
+      if(this.#db.prepare('SELECT 1 FROM routing_reservations WHERE task_id=?').get(id))throw new Error('Task budget already reserved');
+      const totals=this.routeBudgetTotals(session,now);
+      for(const [limitKey,spentKey,window] of [['taskUsd',null,null],['sessionUsd','sessionSpentUsd','session'],['monthUsd','monthSpentUsd','month']]) {
+        const limit=budget[limitKey];if(limit===undefined||limit===null)continue;
+        const spent=spentKey?budget[spentKey]:0;
+        if(amount===null||spent===undefined||spent===null||(window&&totals[window].unknownRequests))throw new Error(`Budget unobservable: ${limitKey}`);
+        const used=window?microUsd(totals[window].estimatedUsd):0;
+        if(amount+used+microUsd(spent)>microUsd(limit,Math.floor))throw new Error(`Budget reservation exceeded: ${limitKey}`);
+      }
+      this.#db.prepare('INSERT INTO routing_reservations VALUES (?,?,?,?,?)')
+        .run(id,scope.session,scope.month,amount,now.toISOString());
+      this.#db.exec('COMMIT');return this.routeBudgetTotals(session,now);
+    } catch(error){this.#db.exec('ROLLBACK');throw error;}
   }
 
   providerStatus(agent, repositoryRoot) {
