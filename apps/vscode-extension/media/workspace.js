@@ -8,6 +8,10 @@ const timeline = document.getElementById('timeline');
 let activeWorkspaceView = 'chat';
 let activityFollowsLatest = true;
 let unseenActivityCount = 0;
+let pendingChatRequest = '';
+let chatFollowsLatest = true;
+let streamedAssistantText = false;
+let assistantTextLength = 0;
 const empty = document.getElementById('empty');
 const jumpToLatest = document.createElement('button');
 jumpToLatest.type = 'button';
@@ -499,6 +503,7 @@ function updateDraftActions() {
 updateDraftActions();
 
 function appendActivity(items) {
+  items = (items || []).filter(item => item && item.type !== 'message');
   const followLatest = activeWorkspaceView === 'activity' ? isNearLatestActivity() : activityFollowsLatest;
   const fragment = document.createDocumentFragment();
   for (const item of items || []) {
@@ -524,8 +529,9 @@ function updateActivityUnreadBadge() {
 }
 
 function markActivityUnread(items) {
-  if (activeWorkspaceView === 'activity' || !Array.isArray(items) || !items.length) return;
-  unseenActivityCount = Math.min(100, unseenActivityCount + items.length);
+  const activityItems = Array.isArray(items) ? items.filter(item => item && item.type !== 'message') : [];
+  if (activeWorkspaceView === 'activity' || !activityItems.length) return;
+  unseenActivityCount = Math.min(100, unseenActivityCount + activityItems.length);
   updateActivityUnreadBadge();
 }
 
@@ -582,6 +588,7 @@ taskStatusFilter.addEventListener('change', renderTasks);
 run.addEventListener('click', () => {
   const value = request.value.trim();
   if (!value) { request.focus(); return; }
+  pendingChatRequest = value;
   vscode.postMessage({ type: 'run', mode: agent.value, request: value });
 });
 project.addEventListener('change', () => {
@@ -651,10 +658,106 @@ chatHeading.className = 'workspace-panel-heading';
 const chatTitle = document.createElement('h2'); chatTitle.textContent = 'Chat';
 const chatDescription = document.createElement('p'); chatDescription.textContent = 'Describe a task for the selected agent and project.';
 chatHeading.append(chatTitle, chatDescription);
+const chatLog = document.createElement('div');
+chatLog.id = 'chat-transcript';
+chatLog.className = 'chat-transcript';
+chatLog.setAttribute('role', 'log');
+chatLog.setAttribute('aria-label', 'Task conversation');
+chatLog.setAttribute('aria-live', 'polite');
+chatLog.setAttribute('aria-relevant', 'additions');
+chatLog.tabIndex = 0;
+const chatEmpty = document.createElement('p');
+chatEmpty.className = 'chat-empty';
+chatEmpty.textContent = 'Your task conversation will appear here. Agent tool activity is available in Activity.';
+chatLog.append(chatEmpty);
+const jumpToLatestChat = document.createElement('button');
+jumpToLatestChat.type = 'button';
+jumpToLatestChat.className = 'jump-to-latest-chat';
+jumpToLatestChat.textContent = 'Jump to latest response';
+jumpToLatestChat.setAttribute('aria-label', 'Jump to the latest chat response');
+jumpToLatestChat.hidden = true;
+const isNearLatestChat = () => chatLog.scrollHeight - chatLog.scrollTop - chatLog.clientHeight <= 60;
+const updateLatestChatControl = () => {
+  chatFollowsLatest = isNearLatestChat();
+  jumpToLatestChat.hidden = chatFollowsLatest;
+};
+chatLog.addEventListener('scroll', updateLatestChatControl, { passive: true });
+jumpToLatestChat.addEventListener('click', () => chatLog.scrollTo({ top: chatLog.scrollHeight,
+  behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }));
+function appendChatBubble(kind, text) {
+  if (typeof text !== 'string' || !text) return null;
+  const followLatest = chatFollowsLatest || isNearLatestChat();
+  if (chatEmpty.isConnected) chatEmpty.remove();
+  let bubble = kind === 'assistant' ? chatLog.lastElementChild : null;
+  if (!bubble || !bubble.classList.contains('chat-message') || bubble.dataset.kind !== kind || kind === 'user') {
+    bubble = document.createElement('article');
+    bubble.className = `chat-message chat-message-${kind}`;
+    bubble.dataset.kind = kind;
+    bubble.setAttribute('aria-label', kind === 'user' ? 'You' : 'Agent response');
+    const speaker = document.createElement('strong');
+    speaker.className = 'chat-speaker';
+    speaker.textContent = kind === 'user' ? 'You' : 'Agent';
+    const body = document.createElement('div');
+    body.className = 'chat-message-body';
+    bubble.append(speaker, body);
+    chatLog.append(bubble);
+  }
+  const body = bubble.querySelector('.chat-message-body');
+  const maxLength = 100000;
+  const current = body.textContent || '';
+  const remaining = Math.max(0, maxLength - current.length);
+  if (remaining) body.append(document.createTextNode(text.slice(0, remaining)));
+  if (text.length > remaining && !bubble.querySelector('.chat-truncated')) {
+    const note = document.createElement('p');
+    note.className = 'chat-truncated';
+    note.textContent = 'Further response text is omitted from this view.';
+    bubble.append(note);
+  }
+  if (followLatest) {
+    chatLog.scrollTop = chatLog.scrollHeight;
+    chatFollowsLatest = true;
+    jumpToLatestChat.hidden = true;
+  } else {
+    chatFollowsLatest = false;
+    jumpToLatestChat.hidden = false;
+  }
+  return bubble;
+}
+function resetChat(requestText = '') {
+  chatLog.replaceChildren();
+  chatLog.append(chatEmpty);
+  streamedAssistantText = false;
+  assistantTextLength = 0;
+  chatFollowsLatest = true;
+  jumpToLatestChat.hidden = true;
+  appendChatBubble('user', requestText);
+}
+function appendAssistantText(text) {
+  if (typeof text !== 'string' || !text) return;
+  if (assistantTextLength >= 100000) {
+    const previous = chatLog.lastElementChild;
+    if (previous?.dataset.kind === 'assistant' && !previous.querySelector('.chat-truncated')) {
+      const note = document.createElement('p'); note.className = 'chat-truncated';
+      note.textContent = 'Further response text is omitted from this view.'; previous.append(note);
+    }
+    return;
+  }
+  streamedAssistantText = true;
+  const accepted = text.slice(0, 100000 - assistantTextLength);
+  assistantTextLength += accepted.length;
+  appendChatBubble('assistant', accepted || text);
+  if (accepted.length < text.length) {
+    const bubble = chatLog.lastElementChild;
+    if (bubble?.dataset.kind === 'assistant' && !bubble.querySelector('.chat-truncated')) {
+      const note = document.createElement('p'); note.className = 'chat-truncated';
+      note.textContent = 'Further response text is omitted from this view.'; bubble.append(note);
+    }
+  }
+}
 const activeActivityHeading = document.querySelector('.activity .section-head h2');
 activeActivityHeading.textContent = 'Task activity';
 timeline.tabIndex = 0;
-workspacePanels.get('chat').append(chatHeading, document.querySelector('.composer'));
+workspacePanels.get('chat').append(chatHeading, chatLog, jumpToLatestChat, document.querySelector('.composer'));
 workspacePanels.get('activity').append(document.querySelector('.activity'));
 workspacePanels.get('history').append(document.querySelector('.recent'));
 workspacePanels.get('changes').append(document.querySelector('.diff'));
@@ -745,6 +848,7 @@ window.addEventListener('message', ({ data }) => {
     run.disabled = true;
     project.disabled = true;
   } else if (data.type === 'approval-dismissed') {
+    pendingChatRequest = '';
     status.textContent = 'Ready';
     run.disabled = false;
     project.disabled = false;
@@ -763,8 +867,12 @@ window.addEventListener('message', ({ data }) => {
     activityFollowsLatest = true;
     jumpToLatest.hidden = true;
     empty.textContent = 'Waiting for agent activity…';
+    if (pendingChatRequest) resetChat(pendingChatRequest);
+    pendingChatRequest = '';
+    activateWorkspaceView('chat');
   } else if (data.type === 'progress') {
     markActivityUnread(data.entries);
+    for (const entry of data.entries || []) if (entry?.type === 'message') appendAssistantText(entry.text);
     appendActivity(data.entries);
     if (data.entries?.length) empty.textContent = '';
   } else if (data.type === 'result' || data.type === 'history') {
@@ -779,9 +887,16 @@ window.addEventListener('message', ({ data }) => {
     timeline.replaceChildren();
     activityFollowsLatest = true;
     jumpToLatest.hidden = true;
+    if (data.type === 'history') {
+      request.value = data.request || '';
+      resetChat(data.request || '');
+      for (const entry of data.timeline || []) if (entry?.type === 'message') appendAssistantText(entry.text);
+      activateWorkspaceView('chat');
+    } else if (!streamedAssistantText) {
+      for (const entry of data.timeline || []) if (entry?.type === 'message') appendAssistantText(entry.text);
+    }
     appendActivity(data.timeline);
-    if (data.type === 'history') { request.value = data.request || ''; activateWorkspaceView('activity'); }
-    empty.textContent = data.timeline?.length ? '' : 'No activity was recorded.';
+    empty.textContent = (data.timeline || []).some(entry => entry?.type !== 'message') ? '' : 'No activity was recorded.';
   } else if (data.type === 'tasks') {
     recentTasks = Array.isArray(data.tasks) ? data.tasks.filter(task => task &&
       typeof task.id === 'string' && typeof task.request === 'string' &&
@@ -838,6 +953,7 @@ window.addEventListener('message', ({ data }) => {
   } else if (data.type === 'diff-error') {
     diffOutput.textContent = data.text;
   } else if (data.type === 'error') {
+    pendingChatRequest = '';
     status.textContent = 'Error';
     run.disabled = false;
     project.disabled = false;

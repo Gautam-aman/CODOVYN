@@ -254,6 +254,23 @@ try {
     'Opening Activity clears its unread indicator.');
   assert.equal(await evaluate("getComputedStyle(document.querySelector('[data-workspace-view=activity]'), '::after').content"), 'none',
     'The visual update badge clears when Activity is opened.');
+  await evaluate("window.dispatchEvent(new MessageEvent('message', { data: { type: 'history', request: 'Explain <img src=x onerror=alert(1)> safely', status: 'completed', taskId: 'fixture-history', timeline: [{ type: 'message', text: 'Stored answer <img src=x onerror=alert(1)>' }, { type: 'tool', text: 'Read package.json' }] } }))");
+  const restoredChat = await evaluate("({ selected: document.querySelector('[data-workspace-view=chat]').getAttribute('aria-selected'), messages: [...document.querySelectorAll('#chat-transcript .chat-message')].map(item => item.textContent), imageCount: document.querySelectorAll('#chat-transcript img').length, activity: [...document.querySelectorAll('#timeline > li')].map(item => item.textContent) })");
+  assert.equal(restoredChat.selected, 'true', 'Opening saved task history returns to the task conversation.');
+  assert.deepEqual(restoredChat.messages, ['YouExplain <img src=x onerror=alert(1)> safely', 'AgentStored answer <img src=x onerror=alert(1)>'],
+    'Saved user and agent messages are reconstructed from the local journal as text.');
+  assert.equal(restoredChat.imageCount, 0, 'Untrusted agent text is never interpreted as HTML.');
+  assert.deepEqual(restoredChat.activity, ['Read package.json'], 'Saved tool events remain in Activity rather than cluttering Chat.');
+  await evaluate("document.querySelector('#request').value = 'Review streamed output'; document.querySelector('#run').click(); window.dispatchEvent(new MessageEvent('message', { data: { type: 'running' } })); window.dispatchEvent(new MessageEvent('message', { data: { type: 'progress', entries: [{ type: 'message', text: 'Safe streamed response' }, { type: 'tool', text: 'Checked tests' }] } }))");
+  const streamedChat = await evaluate("({ messages: [...document.querySelectorAll('#chat-transcript .chat-message')].map(item => item.textContent), activity: [...document.querySelectorAll('#timeline > li')].map(item => item.textContent), unread: document.querySelector('[data-workspace-view=activity]').getAttribute('aria-label') })");
+  assert.deepEqual(streamedChat.messages, ['YouReview streamed output', 'AgentSafe streamed response'], 'Live provider text appears in the conversation as it arrives.');
+  assert.deepEqual(streamedChat.activity, ['Checked tests'], 'Tool progress remains available in Activity.');
+  assert.equal(streamedChat.unread, 'Activity, 1 new updates', 'Only non-conversation task activity increments the Activity badge.');
+  if (process.env.CODOVYN_CAPTURE_DIR) {
+    const capture = await captureApplication();
+    await mkdir(resolve(process.env.CODOVYN_CAPTURE_DIR), { recursive: true });
+    await writeFile(join(resolve(process.env.CODOVYN_CAPTURE_DIR), 'desktop-phase8-chat-transcript.png'), Buffer.from(capture.data, 'base64'));
+  }
   await evaluate("window.dispatchEvent(new MessageEvent('message', { data: { type: 'running' } }))");
   await evaluate("document.querySelector('#timeline').scrollTop = document.querySelector('#timeline').scrollHeight");
   await evaluate("window.dispatchEvent(new MessageEvent('message', { data: { type: 'progress', entries: Array.from({ length: 48 }, (_, index) => ({ type: 'tool', text: `Fixture activity ${index}` })) } }))");
