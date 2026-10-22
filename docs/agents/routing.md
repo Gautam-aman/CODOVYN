@@ -38,6 +38,12 @@ provider/model and estimated cost before execution. Edit mode also retains
 worktree permission and patch approval. The policy is frozen before confirmation;
 the renderer cannot replace it.
 
+![Local routing controls in the standalone macOS CODOVYN development app](../assets/desktop-phase5-routing.png)
+
+This is a capture from the copied, ad-hoc-signed macOS arm64 development DMG
+built from `e6e5538`. It shows the empty local catalogue form in a disposable
+repository; no model access, provider authentication or paid request is implied.
+
 Example configuration (replace the placeholder with an actually authorized model):
 
 ```json
