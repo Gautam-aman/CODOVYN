@@ -539,6 +539,8 @@ function createExtension(api, runner = runCli) {
         else pendingPanelSection = section;
       };
       const sectionCommands = [
+        ['codovyn.openChat', 'chat'],
+        ['codovyn.openActivity', 'activity'],
         ['codovyn.openRecentTasks', 'tasks'],
         ['codovyn.openAgentSettings', 'agents'],
         ['codovyn.openRoutingSettings', 'routing'],

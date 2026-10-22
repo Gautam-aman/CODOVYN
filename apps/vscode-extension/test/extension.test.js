@@ -72,7 +72,7 @@ test('extension starts a repository task and exposes a safe handoff timeline', a
     ] };
   };
   createExtension(api, runner).activate(context);
-  assert.equal(context.subscriptions.length, 5);
+  assert.equal(context.subscriptions.length, 7);
   command();
   assert.match(panel.webview.html, /Content-Security-Policy/);
   assert.match(panel.webview.html, /Claude Code/);
@@ -318,7 +318,8 @@ test('command palette shortcuts open the agent workspace at the requested sectio
   createExtension(api, async () => ({ tasks: [] })).activate({
     extensionUri: 'root', extensionPath: '/extension', globalStorageUri: { fsPath: '/data' }, subscriptions: [],
   });
-  for (const id of ['codovyn.openRecentTasks', 'codovyn.openAgentSettings', 'codovyn.openRoutingSettings', 'codovyn.openRepositoryDiff']) {
+  for (const id of ['codovyn.openChat', 'codovyn.openActivity', 'codovyn.openRecentTasks',
+    'codovyn.openAgentSettings', 'codovyn.openRoutingSettings', 'codovyn.openRepositoryDiff']) {
     assert.equal(typeof commands.get(id), 'function', `${id} is registered for the palette.`);
   }
   commands.get('codovyn.openRecentTasks')();
@@ -329,4 +330,8 @@ test('command palette shortcuts open the agent workspace at the requested sectio
   assert.equal(reveals, 1, 'Commands reveal the existing CODOVYN panel.');
   assert.equal(sent.at(-1).type, 'focus-section');
   assert.equal(sent.at(-1).section, 'routing');
+  commands.get('codovyn.openActivity')();
+  assert.equal(sent.at(-1).section, 'activity');
+  commands.get('codovyn.openChat')();
+  assert.equal(sent.at(-1).section, 'chat');
 });

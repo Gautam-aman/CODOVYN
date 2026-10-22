@@ -5,6 +5,8 @@ const run = document.getElementById('run');
 const cancel = document.getElementById('cancel');
 const status = document.getElementById('status');
 const timeline = document.getElementById('timeline');
+let activeWorkspaceView = 'chat';
+let activityFollowsLatest = true;
 const empty = document.getElementById('empty');
 const jumpToLatest = document.createElement('button');
 jumpToLatest.type = 'button';
@@ -14,7 +16,10 @@ jumpToLatest.setAttribute('aria-label', 'Jump to the latest task activity');
 jumpToLatest.hidden = true;
 status.after(jumpToLatest);
 const isNearLatestActivity = () => timeline.scrollHeight - timeline.scrollTop - timeline.clientHeight <= 80;
-const updateLatestActivityControl = () => { jumpToLatest.hidden = isNearLatestActivity(); };
+const updateLatestActivityControl = () => {
+  if (activeWorkspaceView === 'activity') activityFollowsLatest = isNearLatestActivity();
+  jumpToLatest.hidden = activityFollowsLatest;
+};
 timeline.addEventListener('scroll', updateLatestActivityControl, { passive: true });
 jumpToLatest.addEventListener('click', () => {
   timeline.scrollTo({ top: timeline.scrollHeight,
@@ -493,7 +498,7 @@ function updateDraftActions() {
 updateDraftActions();
 
 function appendActivity(items) {
-  const followLatest = isNearLatestActivity();
+  const followLatest = activeWorkspaceView === 'activity' ? isNearLatestActivity() : activityFollowsLatest;
   const fragment = document.createDocumentFragment();
   for (const item of items || []) {
     const row = document.createElement('li');
@@ -502,10 +507,11 @@ function appendActivity(items) {
     fragment.append(row);
   }
   timeline.append(fragment);
-  if (followLatest) {
+  activityFollowsLatest = followLatest;
+  if (followLatest && activeWorkspaceView === 'activity') {
     timeline.scrollTop = timeline.scrollHeight;
     jumpToLatest.hidden = true;
-  } else jumpToLatest.hidden = false;
+  } else jumpToLatest.hidden = activityFollowsLatest;
 }
 
 function renderTasks() {
@@ -589,18 +595,109 @@ request.addEventListener('keydown', (event) => {
   if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); run.click(); }
 });
 
+const workspaceTabs = [
+  ['chat', 'Chat'], ['activity', 'Activity'], ['history', 'History'], ['changes', 'Changes'], ['settings', 'Settings'],
+];
+const tabList = document.createElement('div');
+tabList.className = 'workspace-tabs';
+tabList.setAttribute('role', 'tablist');
+tabList.setAttribute('aria-label', 'CODOVYN workspace');
+tabList.setAttribute('aria-orientation', 'horizontal');
+const workspaceTabButtons = new Map();
+const workspacePanels = new Map();
+for (const [id, label] of workspaceTabs) {
+  const tab = document.createElement('button');
+  tab.type = 'button'; tab.id = `codovyn-tab-${id}`; tab.className = 'workspace-tab';
+  tab.setAttribute('role', 'tab'); tab.setAttribute('aria-controls', `codovyn-panel-${id}`);
+  tab.dataset.workspaceView = id; tab.textContent = label;
+  workspaceTabButtons.set(id, tab); tabList.append(tab);
+
+  const panel = document.createElement('section');
+  panel.id = `codovyn-panel-${id}`; panel.className = 'workspace-panel';
+  panel.setAttribute('role', 'tabpanel'); panel.setAttribute('aria-labelledby', tab.id);
+  panel.tabIndex = 0; panel.hidden = true;
+  workspacePanels.set(id, panel);
+}
+const contextBar = document.createElement('div');
+contextBar.className = 'workspace-context';
+contextBar.setAttribute('role', 'group');
+contextBar.setAttribute('aria-label', 'Current project and agent');
+const agentLabel = document.querySelector('label[for="agent"]');
+const projectContext = document.createElement('div'); projectContext.className = 'workspace-context-field';
+projectContext.append(projectLabel, project);
+const agentContext = document.createElement('div'); agentContext.className = 'workspace-context-field';
+agentContext.append(agentLabel, agent);
+contextBar.append(projectContext, agentContext, status);
+const main = document.querySelector('main');
+const header = main.querySelector('header');
+header.after(tabList, contextBar);
+const chatHeading = document.createElement('div');
+chatHeading.className = 'workspace-panel-heading';
+const chatTitle = document.createElement('h2'); chatTitle.textContent = 'Chat';
+const chatDescription = document.createElement('p'); chatDescription.textContent = 'Describe a task for the selected agent and project.';
+chatHeading.append(chatTitle, chatDescription);
+const activeActivityHeading = document.querySelector('.activity .section-head h2');
+activeActivityHeading.textContent = 'Task activity';
+timeline.tabIndex = 0;
+workspacePanels.get('chat').append(chatHeading, document.querySelector('.composer'));
+workspacePanels.get('activity').append(document.querySelector('.activity'));
+workspacePanels.get('history').append(document.querySelector('.recent'));
+workspacePanels.get('changes').append(document.querySelector('.diff'));
+workspacePanels.get('settings').append(agentSettings, routingSettings, appearance);
+for (const [, panel] of workspacePanels) main.insertBefore(panel, main.querySelector('footer'));
+
+function activateWorkspaceView(id, { focusTab = false } = {}) {
+  if (!workspacePanels.has(id)) return false;
+  activeWorkspaceView = id;
+  for (const [view, tab] of workspaceTabButtons) {
+    const selected = view === id;
+    tab.setAttribute('aria-selected', String(selected));
+    tab.tabIndex = selected ? 0 : -1;
+  }
+  for (const [view, panel] of workspacePanels) panel.hidden = view !== id;
+  if (id === 'activity') {
+    if (activityFollowsLatest) timeline.scrollTop = timeline.scrollHeight;
+    jumpToLatest.hidden = activityFollowsLatest;
+  }
+  try {
+    const previous = vscode.getState?.();
+    vscode.setState?.({ ...(previous && typeof previous === 'object' ? previous : {}), activeWorkspaceView: id });
+  } catch { /* View selection still works when a host does not support persisted webview state. */ }
+  if (focusTab) workspaceTabButtons.get(id).focus();
+  return true;
+}
+for (const [id, tab] of workspaceTabButtons) {
+  tab.addEventListener('click', () => activateWorkspaceView(id));
+  tab.addEventListener('keydown', event => {
+    const index = workspaceTabs.findIndex(([view]) => view === id);
+    let next = null;
+    if (event.key === 'ArrowRight') next = (index + 1) % workspaceTabs.length;
+    else if (event.key === 'ArrowLeft') next = (index + workspaceTabs.length - 1) % workspaceTabs.length;
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = workspaceTabs.length - 1;
+    if (next === null) return;
+    event.preventDefault();
+    activateWorkspaceView(workspaceTabs[next][0], { focusTab: true });
+  });
+}
+const savedWorkspaceView = vscode.getState?.()?.activeWorkspaceView;
+activateWorkspaceView(workspacePanels.has(savedWorkspaceView) ? savedWorkspaceView : 'chat');
+
 window.addEventListener('message', ({ data }) => {
   if (!data || typeof data !== 'object') return;
   if (data.type === 'focus-section') {
     const destinations = {
-      tasks: { section: document.querySelector('.recent'), target: taskSearch },
-      agents: { section: agentSettings, target: primaryProvider },
-      routing: { section: routingSettings, target: routingMode },
-      diff: { section: document.querySelector('.diff'), target: document.getElementById('working-diff') },
+      chat: { view: 'chat', section: document.querySelector('.composer'), target: request },
+      activity: { view: 'activity', section: document.querySelector('.activity'), target: timeline },
+      tasks: { view: 'history', section: document.querySelector('.recent'), target: taskSearch },
+      agents: { view: 'settings', section: agentSettings, target: primaryProvider },
+      routing: { view: 'settings', section: routingSettings, target: routingMode },
+      diff: { view: 'changes', section: document.querySelector('.diff'), target: document.getElementById('working-diff') },
     };
     const destination = destinations[data.section];
     if (!destination) return;
     if (destination.section instanceof HTMLDetailsElement) destination.section.open = true;
+    activateWorkspaceView(destination.view);
     destination.section.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
     destination.target.focus({ preventScroll: true });
   } else if (data.type === 'appearance') {
@@ -643,6 +740,8 @@ window.addEventListener('message', ({ data }) => {
     project.disabled = true;
     cancel.disabled = false;
     timeline.replaceChildren();
+    activityFollowsLatest = true;
+    jumpToLatest.hidden = true;
     empty.textContent = 'Waiting for agent activity…';
   } else if (data.type === 'progress') {
     appendActivity(data.entries);
@@ -657,8 +756,10 @@ window.addEventListener('message', ({ data }) => {
     project.disabled = false;
     cancel.disabled = true;
     timeline.replaceChildren();
+    activityFollowsLatest = true;
+    jumpToLatest.hidden = true;
     appendActivity(data.timeline);
-    if (data.type === 'history') request.value = data.request || '';
+    if (data.type === 'history') { request.value = data.request || ''; activateWorkspaceView('activity'); }
     empty.textContent = data.timeline?.length ? '' : 'No activity was recorded.';
   } else if (data.type === 'tasks') {
     recentTasks = Array.isArray(data.tasks) ? data.tasks.filter(task => task &&

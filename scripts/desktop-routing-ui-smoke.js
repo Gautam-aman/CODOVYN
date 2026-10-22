@@ -146,7 +146,29 @@ try {
     throw new Error(`${message} target=${target.url}; contexts=${JSON.stringify(contexts.map(({ id, name, origin, auxData }) => ({ id, name, origin, frameId: auxData?.frameId })))}; document=${JSON.stringify(await evaluate("({ title: document.title, ready: document.readyState, body: document.body?.innerText?.slice(0, 2000), html: document.documentElement?.innerHTML?.slice(0, 1000) })"))}`);
   };
   const click = label => evaluate(`(() => { const button = [...document.querySelectorAll('button')].find(item => item.textContent.trim() === ${JSON.stringify(label)}); if (!button) return false; button.click(); return true; })()`);
+  const selectTab = view => evaluate(`document.querySelector('[data-workspace-view=${JSON.stringify(view)}]').click()`);
   await waitFor("!!document.querySelector('.routing-settings')", 'Routing catalogue did not render.');
+  const tabs = await evaluate("[...document.querySelectorAll('[role=tab]')].map(tab => ({ label: tab.textContent, selected: tab.getAttribute('aria-selected'), tabIndex: tab.tabIndex, panel: tab.getAttribute('aria-controls') }))");
+  assert.deepEqual(tabs.map(tab => tab.label), ['Chat', 'Activity', 'History', 'Changes', 'Settings'],
+    'The workspace exposes five discoverable destinations.');
+  const tabBounds = await evaluate("(() => { const list = document.querySelector('[role=tablist]').getBoundingClientRect(); return { list: { left: list.left, right: list.right }, tabs: [...document.querySelectorAll('[role=tab]')].map(tab => { const rect = tab.getBoundingClientRect(); return { label: tab.textContent.trim(), left: rect.left, right: rect.right, width: rect.width, scrollWidth: tab.scrollWidth, clientWidth: tab.clientWidth }; }) }; })()");
+  assert.ok(tabBounds.tabs.every(tab => tab.width > 0 && tab.left >= tabBounds.list.left - 1 && tab.right <= tabBounds.list.right + 1 && tab.scrollWidth <= tab.clientWidth + 1),
+    `All five destinations fit without clipping in the native sidebar: ${JSON.stringify(tabBounds)}`);
+  assert.equal(tabs.filter(tab => tab.selected === 'true' && tab.tabIndex === 0).length, 1,
+    'Exactly one workspace destination is selected and in the tab order.');
+  await evaluate("document.querySelector('[data-workspace-view=activity]').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))");
+  assert.equal(await evaluate("document.querySelector('[data-workspace-view=history]').getAttribute('aria-selected')"), 'true',
+    'ArrowRight advances the roving workspace tabs.');
+  await evaluate("document.querySelector('[data-workspace-view=history]').dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }))");
+  assert.equal(await evaluate("document.querySelector('[data-workspace-view=chat]').getAttribute('aria-selected')"), 'true',
+    'Home returns focus navigation to Chat.');
+  await evaluate("document.querySelector('[data-workspace-view=chat]').dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }))");
+  assert.equal(await evaluate("document.querySelector('[data-workspace-view=settings]').getAttribute('aria-selected')"), 'true',
+    'End moves to Settings.');
+  const tabVisibility = await evaluate("[...document.querySelectorAll('[role=tabpanel]')].map(panel => ({ id: panel.id, hidden: panel.hidden, labelled: panel.getAttribute('aria-labelledby') }))");
+  assert.equal(tabVisibility.filter(panel => !panel.hidden).length, 1,
+    'Switching destinations leaves one visible panel and keeps every panel labelled.');
+  await selectTab('chat');
   for (const [section, selector] of [['agents', '.agent-settings'], ['routing', '.routing-settings']]) {
     await evaluate(`window.dispatchEvent(new MessageEvent('message', { data: { type: 'focus-section', section: ${JSON.stringify(section)} } }))`);
     assert.equal(await evaluate(`document.querySelector(${JSON.stringify(selector)}).open`), true,
@@ -162,6 +184,10 @@ try {
     await evaluate(`(() => { const input = document.querySelector('[aria-label=${JSON.stringify(label)}]'); input.value = ${JSON.stringify(value)}; input.dispatchEvent(new Event('input', { bubbles: true })); })()`);
   }
   await evaluate("document.querySelector('.routing-model select').value = 'codex'; document.querySelector('.routing-model select').dispatchEvent(new Event('change', { bubbles: true }));");
+  await selectTab('history');
+  await selectTab('settings');
+  assert.equal(await evaluate("document.querySelector('[aria-label=\"Catalogue ID\"]').value"), 'phase6-fixture',
+    'Navigating away from Settings and back preserves an in-progress catalogue form.');
   await click('Save routing policy');
   await waitFor("!!document.querySelector('.routing-settings [role=status]')?.textContent.trim() && !document.querySelector('.routing-settings [role=status]')?.textContent.includes('Validating routing settings')", 'Catalogue save did not resolve.');
   const saveStatus = await evaluate("document.querySelector('.routing-settings [role=status]')?.textContent");
@@ -198,6 +224,13 @@ try {
     error: 'Use 1–128 letters, numbers, dots, underscores, slashes or hyphens; start with a letter or number.' });
   await click('Discard unsaved edits');
   assert.equal(await evaluate("document.querySelector('[aria-label=\"Catalogue ID\"]').value"), 'phase6-fixture');
+  await evaluate("window.dispatchEvent(new MessageEvent('message', { data: { type: 'running' } }))");
+  const runningBeforeSwitch = await evaluate("({ status: document.querySelector('#status').textContent, cancelDisabled: document.querySelector('#cancel').disabled })");
+  await selectTab('history');
+  const runningAfterSwitch = await evaluate("({ status: document.querySelector('#status').textContent, cancelDisabled: document.querySelector('#cancel').disabled })");
+  assert.deepEqual(runningAfterSwitch, runningBeforeSwitch,
+    'Changing workspace views preserves the active task status and cancellation control.');
+  await selectTab('activity');
   await evaluate("document.querySelector('#timeline').scrollTop = document.querySelector('#timeline').scrollHeight");
   await evaluate("window.dispatchEvent(new MessageEvent('message', { data: { type: 'progress', entries: Array.from({ length: 48 }, (_, index) => ({ type: 'tool', text: `Fixture activity ${index}` })) } }))");
   await new Promise(resolve => setTimeout(resolve, 100));
@@ -214,6 +247,7 @@ try {
   await click('Jump to latest activity');
   await waitFor("document.querySelector('#timeline').scrollHeight - document.querySelector('#timeline').scrollTop - document.querySelector('#timeline').clientHeight <= 5",
     'Jump control did not scroll to the newest event.');
+  await selectTab('history');
   await evaluate("window.dispatchEvent(new MessageEvent('message', { data: { type: 'tasks', tasks: [ { id: 'fixture-complete-1', request: 'Refactor Java parser', status: 'completed' }, { id: 'fixture-complete-2', request: 'Document routing policy', status: 'completed' }, { id: 'fixture-interrupted', request: 'Recover parser task', status: 'interrupted' } ] } }))");
   const allTasks = await evaluate("document.querySelectorAll('#tasks button.task').length");
   assert.equal(allTasks, 3, 'Task history renders the supplied recent journal entries.');
@@ -228,11 +262,13 @@ try {
   assert.equal(await evaluate("document.querySelector('#tasks').textContent"), 'No recent tasks match this search and status filter.', 'Empty filtered results explain the current state.');
   await evaluate("document.querySelector('#task-search').value = ''; document.querySelector('#task-search').dispatchEvent(new Event('input', { bubbles: true })); document.querySelector('#task-status-filter').value = 'all'; document.querySelector('#task-status-filter').dispatchEvent(new Event('change', { bubbles: true }))");
   if (process.env.CODOVYN_CAPTURE_DIR) {
+    await evaluate("window.dispatchEvent(new MessageEvent('message', { data: { type: 'result', status: 'completed', taskId: 'fixture-task', timeline: [] } }))");
+    await selectTab('history');
     await evaluate("document.querySelector('.recent').scrollIntoView({ block: 'start', behavior: 'instant' })");
     const capture = await captureApplication();
     const captureDirectory = resolve(process.env.CODOVYN_CAPTURE_DIR);
     await mkdir(captureDirectory, { recursive: true });
-    await writeFile(join(captureDirectory, 'desktop-phase7-task-history.png'), Buffer.from(capture.data, 'base64'));
+    await writeFile(join(captureDirectory, 'desktop-phase8-workspace-navigation.png'), Buffer.from(capture.data, 'base64'));
   }
   console.log('Verified native routing form: valid workspace save, discard restoration, and associated validation error.',
     `DOM focus observability: ${focusVerifiedByNativeHarness ? 'yes' : 'unavailable in the isolated webview harness'}. Task timeline follow and local recent-task filters also passed.`);

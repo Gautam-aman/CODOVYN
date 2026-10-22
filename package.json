@@ -25,6 +25,14 @@
         "title": "CODOVYN: Open Agent Workspace"
       },
       {
+        "command": "codovyn.openChat",
+        "title": "CODOVYN: Open Chat"
+      },
+      {
+        "command": "codovyn.openActivity",
+        "title": "CODOVYN: View Task Activity"
+      },
+      {
         "command": "codovyn.openRecentTasks",
         "title": "CODOVYN: Open Recent Tasks"
       },
