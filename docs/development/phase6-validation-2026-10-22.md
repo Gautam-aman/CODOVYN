@@ -122,6 +122,11 @@ it does not count as keyboard-focus verification. Narrow/zoom layout, high
 contrast, broader keyboard navigation, and screen-reader behavior remain open
 under issue #15.
 
+An additional native run after `3931d2c` removed a previously saved catalogue
+row, discarded that edit, and confirmed both the row and unchanged workspace
+setting were restored. The same run completed the invalid-ID association and
+correction path successfully.
+
 Follow-up checks: `npm run check` passes 184 tests with 0 failures or skips and
 syntax-checks 92 JavaScript files; the native routing UI smoke test passes; and
 `npm run test:extension-host` passes against VS Code 1.143.0. The extension host
