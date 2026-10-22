@@ -19,12 +19,13 @@ test('native test deadline reaps a TERM-resistant owned tree without touching an
       setInterval(()=>{},1000);`;
     const started = Date.now();
     await assert.rejects(runDesktopProcess({ executable: process.execPath, args: ['-e', program], env: process.env,
-      directory, phase: 'stalled', timeoutMs: 700, graceMs: 100, killGraceMs: 1500 }), /deadline exceeded/);
+      directory, phase: 'stalled', timeoutMs: 2000, graceMs: 100, killGraceMs: 1500 }), /deadline exceeded/);
     assert.ok(Date.now() - started < 5000, 'total deadline is bounded');
     const report = JSON.parse(await readFile(join(directory, 'stalled-lifecycle.json')));
     assert.equal(report.result.timeout, true);
     assert.deepEqual(report.survivors, []);
     assert.equal(report.cleanupError, undefined);
+    assert.ok(report.lastProgress, 'The fixture started and recorded progress before its execution deadline.');
     assert.equal(JSON.parse(report.lastProgress).phase, 'fixture-pending');
     assert.doesNotThrow(() => process.kill(unrelated.pid, 0));
   } finally {
