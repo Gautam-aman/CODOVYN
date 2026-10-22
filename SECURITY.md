@@ -76,3 +76,16 @@ malicious tools or repository build scripts.
 Remote-debugging flags used during local verification expose application control.
 They are not part of normal launch instructions and must not be enabled on a
 shared or untrusted network.
+
+
+## Routing budget records
+
+Routing reservations are local estimates, not exact provider billing or quotas.
+They retain task IDs, session/month scopes and amounts after task-history deletion;
+otherwise deleting a task could silently restore already used allowance. Unknown
+amounts remain unknown and may block later finite budgets. Only provably unstarted
+preparation is refunded automatically. No cancellation/crash refund is inferred.
+The ledger stores no prompts or source code. Explicit ledger retention/usage
+settlement controls are not implemented; back up the private database before
+maintenance. Deleting the database resets all local accounting and is not secure
+erasure or a way to change provider charges.

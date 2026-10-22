@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added atomic local estimated-budget reservations, concurrent admission checks, unknown-charge tracking and proven-unstarted reservation voiding.
+
 - Added durable execution leases, recorded provider groups and confirmed fingerprint-bound draft preservation/abandonment.
 - Added explicit one-use file-only continuation, read-task resume, hard-owner crash tests and evidence-gated preferred restoration.
 - Added five routing modes, actual model selectors, decision previews and estimated budget admission; hard spending enforcement remains unfinished.

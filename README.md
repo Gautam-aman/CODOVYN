@@ -45,7 +45,8 @@ two-provider restoration remains unverified. See the [recovery guide](docs/agent
 
 Local [model routing](docs/agents/routing.md) now provides five modes, capability
 and reasoning filters, persisted decisions and estimated budget admission. It
-does not enforce hard spending caps or atomically coordinate concurrent budgets.
+uses atomic local estimate reservations across concurrent requests; this does not
+guarantee hard provider spending caps or measure exact charges.
 
 ![Project-specific agent preferences in CODOVYN Desktop](docs/assets/desktop-agent-settings.png)
 

@@ -102,11 +102,35 @@ Known costs exceeding the supplied remaining budget are rejected before requests
 The runtime adds required tool/write capabilities, which cannot be removed by settings.
 
 **This is admission against estimates, not a hard spending cap.** CLI generation
-may exceed estimated tokens and may not expose exact cost. Supplied consumed
-amounts are user-maintained snapshots, not an atomic multi-task reservation ledger
-or account-wide billing monitor. Concurrent requests and external provider usage
-are not coordinated. Routing reports `hardSpendingGuarantee: false` and unknown
-usage; it does not silently promise session/month enforcement. Full local budget
-reservations and usage settlement remain unfinished under
-[#5](https://github.com/Gautam-aman/CODOVYN/issues/5). Recovery continuation of routed
-tasks is blocked until a new admission is available.
+may exceed estimated tokens and may not expose exact cost. The local SQLite ledger
+atomically reserves each routed request before any provider or draft preparation.
+Two concurrent requests cannot reserve the same remaining estimated allowance.
+Amounts are conservatively rounded to integer micro-USD, with individual accounting
+values limited to USD 1,000,000. Bounds or unknown values fail closed.
+
+`sessionSpentUsd` and `monthSpentUsd` are additional, user-maintained consumption
+outside this ledger, not totals that already include these local reservations.
+The router adds local reservations to those baselines. A missing baseline remains
+unknown; set it to zero only when that is the policy you intend. This is not an
+account-wide billing monitor and cannot discover external provider usage.
+
+Monthly reservations cover all projects sharing the task database and use UTC
+calendar months. Desktop session reservations share a host-generated ID for the
+lifetime of the agent panel; closing/reopening it starts another session, while
+monthly reservations persist. CLI uses `CODOVYN_SESSION_ID` or `cli-default`, so
+multiple processes can intentionally share a session. Preview and dispatch use the
+same database/session; dispatch rechecks atomically after preview/approval.
+
+Unknown-cost requests are recorded as unknown reservations. They block later
+finite limits for the affected window instead of being treated as zero. Cancelling,
+crashing, deleting history or reopening the app never refunds a possibly charged
+request. Only preparation failures proven to precede any execution owner/provider
+launch automatically void their reservation. Reservations retain task IDs, scopes
+and amounts after history deletion to prevent accidental allowance reuse; they do
+not retain prompts or source code. Usage settlement/explicit ledger retention
+controls remain unfinished under [#5](https://github.com/Gautam-aman/CODOVYN/issues/5).
+
+Routing still reports `hardSpendingGuarantee: false`; the ledger reserves estimates,
+not exact provider-reported charges. Actual spend can exceed them, and unsupported
+costs remain unknown. Recovery continuation of routed tasks is blocked until a new
+admission is available. No hidden fallback spending is authorized.
