@@ -108,9 +108,27 @@ did not recur. Its root cause remains unknown, so #16 remains open.
 
 ## Next verified gates
 
-The catalogue editor still needs field-specific errors, deterministic
-keyboard/cancellation tests, and high-contrast/narrow/zoom checks before #15
-can close. Gemini needs an official authenticated local session, then bounded
-read/edit/cancellation tests and a reviewed real safe-boundary Codex-to-Gemini
-continuation. Hosted CI needs owner-side billing remediation. The intermittent
-native stall needs a reproducible trace or defensible external explanation.
+## Follow-up: accessible catalogue validation
+
+Commit `0f961ae3a268f57b0063e05ce837250d0cba62bb` adds field-specific catalogue
+validation, inline accessible error messages, invalid-control states, duplicate
+ID feedback, and tests for malformed identifiers, capabilities, reasoning and
+price evidence. Invalid values remain in the form for correction. The webview
+loads the validator under its existing nonce-based content security policy.
+
+At this follow-up checkpoint, `npm run check` passes **184 tests** (zero failed
+or skipped), syntax checks cover 91 JavaScript files, and
+`npm run test:extension-host` passes on VS Code 1.143.0. A fresh desktop build
+also passes `npm run test:desktop-host`: native file search, edit/save, Git,
+agent panel activation/reuse, terminal and bundled Node were exercised. This
+native test does not exercise the catalogue form's visual error states or
+keyboard interaction. The earlier screenshots show the actual settings form
+and saved-policy preview, but do not show the new validation state.
+
+Issue [#15](https://github.com/Gautam-aman/CODOVYN/issues/15) remains open for
+keyboard-flow, cancellation, persistence, high-contrast, narrow-window and
+zoom verification. The new hosted CI runs for this commit failed before any
+workflow step started; job logs were unavailable. They do not indicate a code
+test failure, and local validation does not substitute for hosted cross-platform
+results. The Gemini authorization, real cross-provider continuation, hosted CI
+remediation and unresolved historical native stall remain outstanding.
