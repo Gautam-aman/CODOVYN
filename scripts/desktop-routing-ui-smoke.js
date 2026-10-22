@@ -241,6 +241,14 @@ try {
     'Real streamed activity received in another view is visibly and accessibly counted.');
   assert.equal(await evaluate("getComputedStyle(document.querySelector('[data-workspace-view=activity]'), '::after').content"), '"2"',
     'The new-activity count is visibly styled on the Activity destination.');
+  if (process.env.CODOVYN_CAPTURE_DIR) {
+    await evaluate("window.dispatchEvent(new MessageEvent('message', { data: { type: 'result', status: 'completed', taskId: 'fixture-task', timeline: [] } }))");
+    await evaluate("window.dispatchEvent(new MessageEvent('message', { data: { type: 'tasks', tasks: [{ id: 'fixture-complete-1', request: 'Refactor Java parser', status: 'completed' }, { id: 'fixture-interrupted', request: 'Recover parser task', status: 'interrupted' }] } }))");
+    const capture = await captureApplication();
+    const captureDirectory = resolve(process.env.CODOVYN_CAPTURE_DIR);
+    await mkdir(captureDirectory, { recursive: true });
+    await writeFile(join(captureDirectory, 'desktop-phase8-activity-indicator.png'), Buffer.from(capture.data, 'base64'));
+  }
   await selectTab('activity');
   assert.equal(await evaluate("document.querySelector('[data-workspace-view=activity]').getAttribute('aria-label')"), 'Activity',
     'Opening Activity clears its unread indicator.');
