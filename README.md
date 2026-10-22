@@ -22,6 +22,8 @@ npm run package:desktop
 
 Output: `dist/desktop/CODOVYN.app` and `dist/desktop/CODOVYN-darwin-arm64-development.dmg`. The development package is ad-hoc signed, not notarized. Windows and Linux desktop packaging is not implemented or tested. No public installer release is available.
 
+**Current validation limitation (22 October):** the latest rebuilt desktop host and restoration checks stalled after startup; the new package is not runtime-verified despite earlier successful native checks. Follow [#16](https://github.com/Gautam-aman/CODOVYN/issues/16) and the [Phase 3 verification report](docs/development/phase3-validation-2026-10-22.md). The local 170-test suite and companion extension-host check pass; hosted CI is blocked by account billing.
+
 ![Live Codex patch accepted in the standalone CODOVYN application](docs/assets/desktop-live-reviewed-patch.png)
 
 This native-window capture shows a real authenticated Codex task in CODOVYN Desktop. It edited a greeting and its test in an isolated worktree; the displayed patch was explicitly reviewed and applied, and the resulting test passed. See the [desktop build guide](apps/desktop/README.md) and [architecture decision](docs/architecture/0003-standalone-foundation.md). Hard spending enforcement, live cross-provider failover and bots remain unfinished.
