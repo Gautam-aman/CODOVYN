@@ -3,10 +3,11 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import assert from 'node:assert/strict';
-import { runDesktopProcess, nativeProfileArgs } from './lib/desktop-process.js';
+import { runDesktopProcess, nativeProfileArgs, nativeTestCancellation } from './lib/desktop-process.js';
 const root = resolve(import.meta.dirname, '..');
 const app = process.env.CODOVYN_DESKTOP_APP ? resolve(process.env.CODOVYN_DESKTOP_APP) : join(root, 'dist/desktop/CODOVYN.app');
 const directory = await mkdtemp(join(tmpdir(), 'codovyn-restore-'));
+const cancellation = nativeTestCancellation();
 let passed = false;
 try {
   const fixture = join(directory, 'project');
@@ -21,7 +22,7 @@ try {
   for (const phase of ['write', 'read']) {
     const reportPath = join(directory, `${phase}.json`);
     const args = [...(phase === 'write' ? [fixture] : []), ...nativeProfileArgs(directory), '--disable-workspace-trust', '--skip-welcome', '--skip-release-notes'];
-    await runDesktopProcess({ executable: join(app, 'Contents/MacOS/CODOVYN'), args,
+    await runDesktopProcess({ signal: cancellation.signal, executable: join(app, 'Contents/MacOS/CODOVYN'), args,
       directory, phase,
       env: { ...process.env, PATH: '/usr/bin:/bin:/usr/sbin:/sbin', CODOVYN_RESTORE_PHASE: phase, CODOVYN_RESTORE_REPORT: reportPath } });
     const report = JSON.parse(await readFile(reportPath));
@@ -38,6 +39,7 @@ try {
   }
   passed = true;
 } finally {
+  cancellation.dispose();
   if (passed) await rm(directory, { recursive: true, force: true });
   else console.error(`Preserved restoration diagnostics: ${directory}`);
 }

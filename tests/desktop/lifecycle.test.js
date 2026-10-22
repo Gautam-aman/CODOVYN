@@ -62,3 +62,20 @@ test('native profiles isolate shared storage as well as settings and extensions'
   assert.deepEqual(args, ['--user-data-dir', '/tmp/owned-profile/profile', '--extensions-dir', '/tmp/owned-profile/extensions',
     '--shared-data-dir', '/tmp/owned-profile/shared-data']);
 });
+
+test('native test cancellation follows verified group cleanup and pre-cancel never spawns', { skip: !posix }, async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'codovyn-cancel-'));
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 250);
+    try {
+      await assert.rejects(runDesktopProcess({ executable: process.execPath,
+        args: ['-e', "process.on('SIGTERM',()=>{});setInterval(()=>{},1000)"], env: process.env,
+        directory, phase: 'cancelled', signal: controller.signal, timeoutMs: 3000, graceMs: 100, killGraceMs: 1500 }), /cancelled/);
+    } finally { clearTimeout(timer); }
+    const report = JSON.parse(await readFile(join(directory, 'cancelled-lifecycle.json')));
+    assert.deepEqual(report.survivors, []); assert.equal(report.result.cancelled, true);
+    await assert.rejects(runDesktopProcess({ executable: 'must-not-spawn', args: [], env: process.env,
+      directory, phase: 'pre-cancel', signal: controller.signal }), /cancelled before launch/);
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});

@@ -24,13 +24,24 @@ export function nativeProfileArgs(directory) {
     '--shared-data-dir', join(directory, 'shared-data')];
 }
 
+/** Keep Ctrl-C/termination inside the same owned cleanup path. */
+export function nativeTestCancellation() {
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  process.on('SIGINT', abort); process.on('SIGTERM', abort);
+  return { signal: controller.signal, dispose() {
+    process.removeListener('SIGINT', abort); process.removeListener('SIGTERM', abort);
+  } };
+}
+
 /** POSIX native-test ownership only. Never discover targets by executable name. */
 export async function runDesktopProcess({ executable, args, env, directory, phase,
-  timeoutMs = 120000, graceMs = 1500, killGraceMs = 2500 }) {
+  timeoutMs = 120000, graceMs = 1500, killGraceMs = 2500, signal }) {
   if (process.platform === 'win32') throw new Error('Native desktop group cleanup is not implemented for Windows');
   for (const duration of [timeoutMs, graceMs, killGraceMs]) {
     if (!Number.isSafeInteger(duration) || duration < 1) throw new Error('Invalid native test deadline');
   }
+  if (signal?.aborted) throw new Error(`${phase}: cancelled before launch`);
   const tracePath = join(directory, `${phase}-trace.jsonl`);
   const logPath = join(directory, `${phase}-output.log`);
   const child = spawn(executable, args, { detached: true, stdio: ['ignore', 'pipe', 'pipe'],
@@ -53,14 +64,21 @@ export async function runDesktopProcess({ executable, args, env, directory, phas
   const startedAt = Date.now();
   let timer;
   let result;
+  let aborted;
+  const cancellation = new Promise(resolve => {
+    aborted = () => resolve({ cancelled: true });
+    signal?.addEventListener('abort', aborted, { once: true });
+    if (signal?.aborted) aborted();
+  });
   let cleanupError;
   let survivors = [];
   try {
-    result = await Promise.race([outcome, new Promise(resolve => {
+    result = await Promise.race([outcome, cancellation, new Promise(resolve => {
       timer = setTimeout(() => resolve({ timeout: true }), timeoutMs);
     })]);
   } finally {
     clearTimeout(timer);
+    signal?.removeEventListener('abort', aborted);
     if (child.pid) {
       try {
         signalGroup(child.pid, 'SIGTERM');
@@ -78,8 +96,8 @@ export async function runDesktopProcess({ executable, args, env, directory, phas
       pid: child.pid ?? null, result, cleanupError, survivors, elapsedMs: Date.now() - startedAt,
       timeoutMs, graceMs, killGraceMs, lastProgress: trace.trim().split('\n').at(-1) || null }, null, 2));
   }
-  if (cleanupError || result?.timeout || result?.error || result?.code !== 0) {
-    throw new Error(`${phase}: ${cleanupError || (result?.timeout ? 'startup/execution deadline exceeded' : result?.error || `exit ${result?.code} (${result?.signal})`)}. Diagnostics: ${directory}`);
+  if (cleanupError || result?.timeout || result?.cancelled || result?.error || result?.code !== 0) {
+    throw new Error(`${phase}: ${cleanupError || (result?.timeout ? 'startup/execution deadline exceeded' : (result?.cancelled ? 'cancelled' : result?.error) || `exit ${result?.code} (${result?.signal})`)}. Diagnostics: ${directory}`);
   }
   return { pid: child.pid, cleanupVerified: true, elapsedMs: Date.now() - startedAt };
 }

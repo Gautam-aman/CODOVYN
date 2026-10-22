@@ -3,18 +3,19 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import assert from 'node:assert/strict';
-import { runDesktopProcess, nativeProfileArgs } from './lib/desktop-process.js';
+import { runDesktopProcess, nativeProfileArgs, nativeTestCancellation } from './lib/desktop-process.js';
 const root = resolve(import.meta.dirname, '..');
 const app = process.env.CODOVYN_DESKTOP_APP
   ? resolve(process.env.CODOVYN_DESKTOP_APP, 'Contents') : join(root, 'dist/desktop/CODOVYN.app/Contents');
 const temporary = await mkdtemp(join(tmpdir(), 'codovyn-desktop-host-'));
+const cancellation = nativeTestCancellation();
 let passed = false;
 try {
   const fixture = join(temporary, 'project');
   await mkdir(fixture);
   await writeFile(join(fixture, 'desktop-smoke.txt'), '');
   execFileSync('git', ['init', '-q', fixture]);
-  await runDesktopProcess({ executable: join(app, 'MacOS/CODOVYN'), directory: temporary, phase: 'host',
+  await runDesktopProcess({ signal: cancellation.signal, executable: join(app, 'MacOS/CODOVYN'), directory: temporary, phase: 'host',
     args: [fixture, ...nativeProfileArgs(temporary),
       '--extensionDevelopmentPath', join(app, 'Resources/app/extensions/codovyn-desktop'),
       '--extensionTestsPath', join(root, 'apps/desktop/host/runner.cjs'),
@@ -30,6 +31,7 @@ try {
   await copyFile(join(temporary, 'host-lifecycle.json'), join(root, 'dist/desktop/host-lifecycle.json'));
   passed = true;
 } finally {
+  cancellation.dispose();
   if (passed) await rm(temporary, { recursive: true, force: true });
   else console.error(`Preserved native host diagnostics: ${temporary}`);
 }
