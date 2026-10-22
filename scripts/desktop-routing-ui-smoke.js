@@ -61,12 +61,34 @@ try {
     });
     frontSocket.send(JSON.stringify({ id, method: 'Page.bringToFront' }));
   });
-  socket = new WebSocket(target.webSocketDebuggerUrl);
-  await new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Timed out connecting to the CODOVYN webview.')), 3000);
-    socket.addEventListener('open', () => { clearTimeout(timer); resolve(); }, { once: true });
-    socket.addEventListener('error', () => { clearTimeout(timer); reject(new Error('Could not connect to the CODOVYN webview.')); }, { once: true });
-  });
+  const connectWebview = async () => {
+    const attachDeadline = Date.now() + 15_000;
+    let lastError = 'No matching CODOVYN webview target.';
+    while (Date.now() < attachDeadline) {
+      let candidate;
+      try {
+        const response = await fetch(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(500) });
+        const targets = await response.json();
+        target = targets.find(item => item.type === 'iframe' && item.url.startsWith('vscode-webview:') &&
+          item.url.includes('extensionId=codovyn-local.codovyn'));
+        if (!target) throw new Error('CODOVYN webview target is temporarily unavailable.');
+        candidate = new WebSocket(target.webSocketDebuggerUrl);
+        await new Promise((resolve, reject) => {
+          const timer = setTimeout(() => reject(new Error('Webview socket attach exceeded 1200 ms.')), 1200);
+          candidate.addEventListener('open', () => { clearTimeout(timer); resolve(); }, { once: true });
+          candidate.addEventListener('error', () => { clearTimeout(timer); reject(new Error('Webview target closed during attach.')); }, { once: true });
+          candidate.addEventListener('close', () => { clearTimeout(timer); reject(new Error('Webview target closed during attach.')); }, { once: true });
+        });
+        return candidate;
+      } catch (error) {
+        lastError = error.message;
+        candidate?.close();
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+    }
+    throw new Error(`Could not attach to the CODOVYN webview within 15 seconds: ${lastError}`);
+  };
+  socket = await connectWebview();
   socket.addEventListener('message', event => {
     const message = JSON.parse(event.data);
     if (message.method === 'Runtime.executionContextCreated') contexts.push(message.params.context);
@@ -157,6 +179,22 @@ try {
     error: 'Use 1–128 letters, numbers, dots, underscores, slashes or hyphens; start with a letter or number.' });
   await click('Discard unsaved edits');
   assert.equal(await evaluate("document.querySelector('[aria-label=\"Catalogue ID\"]').value"), 'phase6-fixture');
+  await evaluate("document.querySelector('#timeline').scrollTop = document.querySelector('#timeline').scrollHeight");
+  await evaluate("window.dispatchEvent(new MessageEvent('message', { data: { type: 'progress', entries: Array.from({ length: 48 }, (_, index) => ({ type: 'tool', text: `Fixture activity ${index}` })) } }))");
+  await new Promise(resolve => setTimeout(resolve, 100));
+  const followed = await evaluate("({ bottom: document.querySelector('#timeline').scrollHeight - document.querySelector('#timeline').scrollTop - document.querySelector('#timeline').clientHeight <= 5, hidden: document.querySelector('.jump-to-latest').hidden, count: document.querySelectorAll('#timeline > li').length, scrollTop: document.querySelector('#timeline').scrollTop, clientHeight: document.querySelector('#timeline').clientHeight, scrollHeight: document.querySelector('#timeline').scrollHeight })");
+  assert.equal(followed.bottom, true, `Streaming updates keep a user at the latest activity when already following: ${JSON.stringify(followed)}`);
+  assert.equal(followed.hidden, true, 'Jump control stays hidden while following the latest activity.');
+  assert.equal(followed.count, 48, 'Activity rows are appended as a single batch.');
+  await evaluate("document.querySelector('#timeline').scrollTop = 0");
+  await evaluate("window.dispatchEvent(new MessageEvent('message', { data: { type: 'progress', entries: [{ type: 'tool', text: 'New activity while reading older entries' }] } }))");
+  const paused = await evaluate("({ top: document.querySelector('#timeline').scrollTop < 5, visible: !document.querySelector('.jump-to-latest').hidden, label: document.querySelector('.jump-to-latest').getAttribute('aria-label') })");
+  assert.equal(paused.top, true, 'New events do not pull a reader away from older activity.');
+  assert.equal(paused.visible, true, 'New activity exposes the jump-to-latest action.');
+  assert.equal(paused.label, 'Jump to the latest task activity', 'Jump control has an accessible name.');
+  await click('Jump to latest activity');
+  await waitFor("document.querySelector('#timeline').scrollHeight - document.querySelector('#timeline').scrollTop - document.querySelector('#timeline').clientHeight <= 5",
+    'Jump control did not scroll to the newest event.');
   console.log('Verified native routing form: valid workspace save, discard restoration, and associated validation error.',
     `DOM focus observability: ${focusVerifiedByNativeHarness ? 'yes' : 'unavailable in the isolated webview harness'}.`);
   let exitTimer;

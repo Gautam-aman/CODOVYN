@@ -6,6 +6,20 @@ const cancel = document.getElementById('cancel');
 const status = document.getElementById('status');
 const timeline = document.getElementById('timeline');
 const empty = document.getElementById('empty');
+const jumpToLatest = document.createElement('button');
+jumpToLatest.type = 'button';
+jumpToLatest.className = 'jump-to-latest';
+jumpToLatest.textContent = 'Jump to latest activity';
+jumpToLatest.setAttribute('aria-label', 'Jump to the latest task activity');
+jumpToLatest.hidden = true;
+status.after(jumpToLatest);
+const isNearLatestActivity = () => timeline.scrollHeight - timeline.scrollTop - timeline.clientHeight <= 80;
+const updateLatestActivityControl = () => { jumpToLatest.hidden = isNearLatestActivity(); };
+timeline.addEventListener('scroll', updateLatestActivityControl, { passive: true });
+jumpToLatest.addEventListener('click', () => {
+  timeline.scrollTo({ top: timeline.scrollHeight,
+    behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+});
 const tasks = document.getElementById('tasks');
 const refresh = document.getElementById('refresh');
 const diffOutput = document.getElementById('diff-output');
@@ -446,12 +460,19 @@ function updateDraftActions() {
 updateDraftActions();
 
 function appendActivity(items) {
+  const followLatest = isNearLatestActivity();
+  const fragment = document.createDocumentFragment();
   for (const item of items || []) {
     const row = document.createElement('li');
     row.className = item.type;
     row.textContent = item.text;
-    timeline.append(row);
+    fragment.append(row);
   }
+  timeline.append(fragment);
+  if (followLatest) {
+    jumpToLatest.hidden = true;
+    requestAnimationFrame(() => { timeline.scrollTop = timeline.scrollHeight; });
+  } else jumpToLatest.hidden = false;
 }
 
 run.addEventListener('click', () => {

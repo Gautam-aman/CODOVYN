@@ -28,6 +28,9 @@ button:disabled { opacity: .5; cursor: default; }
 .section-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 h2 { margin: 0; font-size: 14px; }
 #status { color: var(--vscode-descriptionForeground); font-size: 12px; }
+#timeline { max-height: 320px; overflow-y: auto; overscroll-behavior: contain; scroll-behavior: auto; padding-right: 8px; }
+.jump-to-latest { padding: 5px 10px; background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); font-size: 12px; }
+.jump-to-latest[hidden] { display: none; }
 ol { margin: 20px 0 0; padding-left: 22px; }
 ul { list-style: none; padding: 0; margin: 16px 0 0; }
 ul li { padding: 0; }
