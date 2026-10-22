@@ -5,15 +5,26 @@ exports.activate = async function (context) {
   const phase = process.env.CODOVYN_RESTORE_PHASE;
   const reportPath = process.env.CODOVYN_RESTORE_REPORT;
   if (!['write', 'read'].includes(phase) || !reportPath) return;
+  const trace = (operation, state) => {
+    const entry = { phase, operation, state, pid: process.pid, at: new Date().toISOString() };
+    console.log('CODOVYN RESTORATION PHASE', JSON.stringify(entry));
+    if (process.env.CODOVYN_HOST_TRACE) fs.appendFileSync(process.env.CODOVYN_HOST_TRACE, `${JSON.stringify(entry)}\n`);
+  };
+  const step = async (operation, action) => {
+    trace(operation, 'pending');
+    try { const value = await action(); trace(operation, 'complete'); return value; }
+    catch (error) { trace(operation, 'failed'); throw error; }
+  };
+  trace('activation', 'complete');
   try {
     if (phase === 'write') {
       const folder = vscode.workspace.workspaceFolders?.[0];
       if (!folder) throw new Error('Write phase: no initial workspace');
       await new Promise(resolve => setTimeout(resolve, 1000));
       const uri = vscode.Uri.joinPath(folder.uri, 'restore.txt');
-      const document = await vscode.workspace.openTextDocument(uri);
-      await vscode.window.showTextDocument(document);
-      await vscode.commands.executeCommand('workbench.action.closeOtherEditors');
+      const document = await step('open-document', () => vscode.workspace.openTextDocument(uri));
+      await step('show-editor', () => vscode.window.showTextDocument(document));
+      await step('close-other-editors', () => vscode.commands.executeCommand('workbench.action.closeOtherEditors'));
       await vscode.workspace.getConfiguration('workbench').update('colorTheme', 'CODOVYN Warm Paper', vscode.ConfigurationTarget.Global);
       await vscode.workspace.getConfiguration('window').update('restoreWindows', 'all', vscode.ConfigurationTarget.Global);
       await context.globalState.update('checkpoint', { root: folder.uri.fsPath, file: uri.fsPath });
@@ -34,6 +45,6 @@ exports.activate = async function (context) {
   } catch (error) { fs.writeFileSync(reportPath, JSON.stringify({ phase, error: error.message })); }
   finally {
     // Exercise the normal native shutdown path rather than killing the process.
-    await vscode.commands.executeCommand('workbench.action.quit');
+    await step('native-quit', () => vscode.commands.executeCommand('workbench.action.quit'));
   }
 };
