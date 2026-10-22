@@ -42,7 +42,7 @@ test('theme selection persists between panels and rejects unrecognized theme dat
   const state = new Map();
   const panels = [];
   const api = {
-    commands: { registerCommand: (_id, callback) => { open = callback; return { dispose() {} }; } },
+    commands: { registerCommand: (id, callback) => { if (id === 'codovyn.open') open = callback; return { dispose() {} }; } },
     window: { createWebviewPanel: () => {
       const panel = { webview: { cspSource: 'x', asWebviewUri: (uri) => uri,
         onDidReceiveMessage: (callback) => { handler = callback; }, postMessage: (message) => sent.push(message) } };

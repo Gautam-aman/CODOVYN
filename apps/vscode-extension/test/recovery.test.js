@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 const {createExtension}=createRequire(import.meta.url)('../extension.cjs');
 test('recovery controls require trusted host inspection and native confirmation, ignoring renderer fingerprints',async()=>{
  let open,handler,approve=false;const calls=[],sent=[];
- const api={commands:{registerCommand:(_,cb)=>{open=cb;return {dispose(){}};}},ViewColumn:{Beside:2},Uri:{joinPath:(_, ...p)=>p.join('/')},
+ const api={commands:{registerCommand: (id, cb) => { if (id === 'codovyn.open') open = cb;return {dispose(){}};}},ViewColumn:{Beside:2},Uri:{joinPath:(_, ...p)=>p.join('/')},
  workspace:{isTrusted:true,workspaceFolders:[{name:'repo',uri:{fsPath:'/repo'}}],getConfiguration:()=>({get:()=> 'node'})},
  window:{showWarningMessage:async(_,__,label)=>approve?label:undefined,createWebviewPanel:()=>({webview:{cspSource:'x',asWebviewUri:x=>x,onDidReceiveMessage:cb=>handler=cb,postMessage:x=>sent.push(x)}})}};
  const runner=async(_,args)=>{calls.push(args);return args.includes('draft-inspect')?{inspection:{taskId:'task',continuationReady:true,recoverySafe:true,fingerprint:'host-verified'}}:{tasks:[]};};
@@ -23,7 +23,7 @@ test('recovery controls require trusted host inspection and native confirmation,
 
 test('history resume requires trust and native approval before any provider command',async()=>{
  let open,handler,approval=false;const calls=[];
- const api={commands:{registerCommand:(_,cb)=>{open=cb;return {dispose(){}};}},ViewColumn:{Beside:2},Uri:{joinPath:(_, ...p)=>p.join('/')},
+ const api={commands:{registerCommand: (id, cb) => { if (id === 'codovyn.open') open = cb;return {dispose(){}};}},ViewColumn:{Beside:2},Uri:{joinPath:(_, ...p)=>p.join('/')},
  workspace:{isTrusted:true,workspaceFolders:[{name:'repo',uri:{fsPath:'/repo'}}],getConfiguration:()=>({get:()=> 'node'})},
  window:{showWarningMessage:async(_,__,label)=>approval?label:undefined,createWebviewPanel:()=>({webview:{cspSource:'x',asWebviewUri:x=>x,onDidReceiveMessage:cb=>handler=cb,postMessage(){}}})}};
  const runner=async(_,args)=>{calls.push(args);return args.includes('history')?{task:{status:'interrupted',primaryAgent:'codex',fallbackAgents:[]},events:[]}:{tasks:[],status:'completed',taskId:'task'};};

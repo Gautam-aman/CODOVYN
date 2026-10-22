@@ -134,6 +134,12 @@ try {
   };
   const click = label => evaluate(`(() => { const button = [...document.querySelectorAll('button')].find(item => item.textContent.trim() === ${JSON.stringify(label)}); if (!button) return false; button.click(); return true; })()`);
   await waitFor("!!document.querySelector('.routing-settings')", 'Routing catalogue did not render.');
+  for (const [section, selector] of [['agents', '.agent-settings'], ['routing', '.routing-settings']]) {
+    await evaluate(`window.dispatchEvent(new MessageEvent('message', { data: { type: 'focus-section', section: ${JSON.stringify(section)} } }))`);
+    assert.equal(await evaluate(`document.querySelector(${JSON.stringify(selector)}).open`), true,
+      `The ${section} command expands its destination in the real webview.`);
+    await evaluate(`document.querySelector(${JSON.stringify(selector)}).open = false`);
+  }
   const added = await evaluate(`(() => { const button = [...document.querySelectorAll('button')].find(item => item.textContent.trim() === 'Add model'); button.click(); return { count: document.querySelectorAll('.routing-model').length, active: document.activeElement?.outerHTML?.slice(0, 160) }; })()`);
   assert.equal(added.count, 1);
   const fields = { 'Catalogue ID': 'phase6-fixture', 'Provider model identifier': 'fixture-model',

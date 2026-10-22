@@ -23,6 +23,22 @@
       {
         "command": "codovyn.open",
         "title": "CODOVYN: Open Agent Workspace"
+      },
+      {
+        "command": "codovyn.openRecentTasks",
+        "title": "CODOVYN: Open Recent Tasks"
+      },
+      {
+        "command": "codovyn.openAgentSettings",
+        "title": "CODOVYN: Open Agent Settings"
+      },
+      {
+        "command": "codovyn.openRoutingSettings",
+        "title": "CODOVYN: Open Model Routing Settings"
+      },
+      {
+        "command": "codovyn.openRepositoryDiff",
+        "title": "CODOVYN: Open Repository Diff"
       }
     ],
     "configuration": {

@@ -115,7 +115,9 @@ function createExtension(api, runner = runCli) {
   return {
     activate(context) {
       let currentPanel = null;
-      const command = api.commands.registerCommand('codovyn.open', () => {
+      let panelReady = false;
+      let pendingPanelSection = null;
+      const openWorkspace = () => {
         if (currentPanel) { currentPanel.reveal?.(); return currentPanel; }
         const panel = api.window.createWebviewPanel('codovyn.task', 'CODOVYN', api.ViewColumn.Beside, {
           enableScripts: true,
@@ -180,7 +182,7 @@ function createExtension(api, runner = runCli) {
           sendRoutingPolicy();
           refreshTasks();
         });
-        panel.onDidDispose?.(() => { if (currentPanel === panel) currentPanel = null; disposed = true; active?.kill('SIGTERM'); folderListener?.dispose(); });
+        panel.onDidDispose?.(() => { if (currentPanel === panel) { currentPanel = null; panelReady = false; } disposed = true; active?.kill('SIGTERM'); folderListener?.dispose(); });
         const taskDataDirectory = dataDirectory(context.globalStorageUri.fsPath);
         const refreshTasks = async () => {
           const folder = folderForTask();
@@ -199,7 +201,17 @@ function createExtension(api, runner = runCli) {
         panel.webview.onDidReceiveMessage(async (message) => {
           if (!message || typeof message !== 'object') return;
           if (message.type === 'cancel') { active?.kill('SIGTERM'); return; }
-          if (message.type === 'ready') { sendProjects(); sendAppearance(); sendAgentPolicy(); sendRoutingPolicy(); await refreshTasks(); return; }
+          if (message.type === 'ready') {
+            sendProjects(); sendAppearance(); sendAgentPolicy(); sendRoutingPolicy(); await refreshTasks();
+            if (!disposed && currentPanel === panel) {
+              panelReady = true;
+              if (pendingPanelSection) {
+                panel.webview.postMessage({ type: 'focus-section', section: pendingPanelSection });
+                pendingPanelSection = null;
+              }
+            }
+            return;
+          }
           if (message.type === 'theme-select' && validTheme(message.id) && !disposed) {
             try {
               await context.globalState?.update('codovyn.panelTheme', message.id);
@@ -514,8 +526,25 @@ function createExtension(api, runner = runCli) {
           finally { active = null; starting = false; }
         });
         return panel;
-      });
-      context.subscriptions.push(command);
+      };
+      const command = api.commands.registerCommand('codovyn.open', openWorkspace);
+      const openSection = section => {
+        if (!currentPanel) {
+          pendingPanelSection = section;
+          openWorkspace();
+          return;
+        }
+        currentPanel.reveal?.();
+        if (panelReady) currentPanel.webview.postMessage({ type: 'focus-section', section });
+        else pendingPanelSection = section;
+      };
+      const sectionCommands = [
+        ['codovyn.openRecentTasks', 'tasks'],
+        ['codovyn.openAgentSettings', 'agents'],
+        ['codovyn.openRoutingSettings', 'routing'],
+        ['codovyn.openRepositoryDiff', 'diff'],
+      ].map(([id, section]) => api.commands.registerCommand(id, () => openSection(section)));
+      context.subscriptions.push(command, ...sectionCommands);
     },
   };
 }

@@ -34,7 +34,7 @@ test('extension starts a repository task and exposes a safe handoff timeline', a
     postMessage: (message) => { sent.push(message); },
   } };
   const api = {
-    commands: { registerCommand: (_id, handler) => { command = handler; return { dispose() {} }; } },
+    commands: { registerCommand: (id, handler) => { if (id === 'codovyn.open') command = handler; return { dispose() {} }; } },
     window: { createWebviewPanel: () => panel,
       showWarningMessage: async () => approveDeletion ? 'Delete task' : undefined },
     ViewColumn: { Beside: 2 },
@@ -72,7 +72,7 @@ test('extension starts a repository task and exposes a safe handoff timeline', a
     ] };
   };
   createExtension(api, runner).activate(context);
-  assert.equal(context.subscriptions.length, 1);
+  assert.equal(context.subscriptions.length, 5);
   command();
   assert.match(panel.webview.html, /Content-Security-Policy/);
   assert.match(panel.webview.html, /Claude Code/);
@@ -104,7 +104,7 @@ test('extension blocks provider execution in an untrusted workspace', async () =
   let handler;
   const sent = [];
   const api = {
-    commands: { registerCommand: (_id, callback) => { command = callback; return { dispose() {} }; } },
+    commands: { registerCommand: (id, callback) => { if (id === 'codovyn.open') command = callback; return { dispose() {} }; } },
     window: { createWebviewPanel: () => ({ webview: { cspSource: 'x', asWebviewUri: (x) => x,
       onDidReceiveMessage: (callback) => { handler = callback; }, postMessage: (message) => sent.push(message) } }) },
     ViewColumn: { Beside: 2 }, Uri: { joinPath: (_root, ...parts) => parts.join('/') },
@@ -126,7 +126,7 @@ test('extension scopes tasks and runs to the selected workspace folder', async (
   const sent = [];
   const calls = [];
   const api = {
-    commands: { registerCommand: (_id, callback) => { open = callback; return { dispose() {} }; } },
+    commands: { registerCommand: (id, callback) => { if (id === 'codovyn.open') open = callback; return { dispose() {} }; } },
     window: { createWebviewPanel: () => ({ webview: { cspSource: 'x', asWebviewUri: (uri) => uri,
       onDidReceiveMessage: (callback) => { handler = callback; }, postMessage: (message) => sent.push(message) } }) },
     ViewColumn: { Beside: 2 }, Uri: { joinPath: (_root, ...parts) => parts.join('/') },
@@ -182,7 +182,7 @@ test('extension requires edit approval and applies only the last reviewed draft 
   const panel = { webview: { cspSource: 'x', asWebviewUri: (uri) => uri,
     onDidReceiveMessage: (callback) => { handler = callback; }, postMessage: (message) => sent.push(message) } };
   const api = {
-    commands: { registerCommand: (_id, callback) => { open = callback; return { dispose() {} }; } },
+    commands: { registerCommand: (id, callback) => { if (id === 'codovyn.open') open = callback; return { dispose() {} }; } },
     window: { createWebviewPanel: () => panel,
       showWarningMessage: async (_text, _options, action) => approve ? action : undefined },
     ViewColumn: { Beside: 2 }, Uri: { joinPath: (_root, ...parts) => parts.join('/') },
@@ -235,7 +235,7 @@ test('concurrent edit requests cannot start twice while permission is pending', 
   const panel = { webview: { cspSource: 'x', asWebviewUri: (uri) => uri,
     onDidReceiveMessage: (callback) => { handler = callback; }, postMessage: (message) => sent.push(message) } };
   const api = {
-    commands: { registerCommand: (_id, callback) => { open = callback; return { dispose() {} }; } },
+    commands: { registerCommand: (id, callback) => { if (id === 'codovyn.open') open = callback; return { dispose() {} }; } },
     window: { createWebviewPanel: () => panel,
       showWarningMessage: () => new Promise((resolve) => { resolveApproval = resolve; }) },
     ViewColumn: { Beside: 2 }, Uri: { joinPath: (_root, ...parts) => parts.join('/') },
@@ -267,7 +267,7 @@ test('draft confirmation keeps its reviewed hash and rejects competing operation
   const calls = [];
   const sent = [];
   const api = {
-    commands: { registerCommand: (_id, callback) => { open = callback; return { dispose() {} }; } },
+    commands: { registerCommand: (id, callback) => { if (id === 'codovyn.open') open = callback; return { dispose() {} }; } },
     window: { createWebviewPanel: () => ({ webview: { cspSource: 'x', asWebviewUri: (uri) => uri,
       onDidReceiveMessage: (callback) => { handler = callback; }, postMessage: (message) => sent.push(message) } }),
       showWarningMessage: () => new Promise((resolve) => { resolveApproval = resolve; }) },
@@ -296,4 +296,37 @@ test('draft confirmation keeps its reviewed hash and rejects competing operation
   await apply;
   assert.deepEqual(calls.find((args) => args[1] === 'draft-accept').slice(2), ['edit-1', '/project', hash, '--yes']);
   assert.equal(sent.at(-1).type, 'draft-idle');
+});
+
+test('command palette shortcuts open the agent workspace at the requested section', async () => {
+  const commands = new Map();
+  const sent = [];
+  let receiveMessage;
+  let reveals = 0;
+  const panel = { reveal: () => { reveals++; }, webview: {
+    cspSource: 'x', asWebviewUri: uri => uri,
+    onDidReceiveMessage: callback => { receiveMessage = callback; },
+    postMessage: message => sent.push(message),
+  } };
+  const api = {
+    commands: { registerCommand: (id, callback) => { commands.set(id, callback); return { dispose() {} }; } },
+    window: { createWebviewPanel: () => panel },
+    ViewColumn: { Beside: 2 },
+    Uri: { joinPath: (_root, ...parts) => parts.join('/') },
+    workspace: { workspaceFolders: [], isTrusted: false },
+  };
+  createExtension(api, async () => ({ tasks: [] })).activate({
+    extensionUri: 'root', extensionPath: '/extension', globalStorageUri: { fsPath: '/data' }, subscriptions: [],
+  });
+  for (const id of ['codovyn.openRecentTasks', 'codovyn.openAgentSettings', 'codovyn.openRoutingSettings', 'codovyn.openRepositoryDiff']) {
+    assert.equal(typeof commands.get(id), 'function', `${id} is registered for the palette.`);
+  }
+  commands.get('codovyn.openRecentTasks')();
+  await receiveMessage({ type: 'ready' });
+  assert.ok(sent.some(message => message.type === 'focus-section' && message.section === 'tasks'),
+    'A section request made during panel creation is delivered after webview readiness.');
+  commands.get('codovyn.openRoutingSettings')();
+  assert.equal(reveals, 1, 'Commands reveal the existing CODOVYN panel.');
+  assert.equal(sent.at(-1).type, 'focus-section');
+  assert.equal(sent.at(-1).section, 'routing');
 });

@@ -591,7 +591,19 @@ request.addEventListener('keydown', (event) => {
 
 window.addEventListener('message', ({ data }) => {
   if (!data || typeof data !== 'object') return;
-  if (data.type === 'appearance') {
+  if (data.type === 'focus-section') {
+    const destinations = {
+      tasks: { section: document.querySelector('.recent'), target: taskSearch },
+      agents: { section: agentSettings, target: primaryProvider },
+      routing: { section: routingSettings, target: routingMode },
+      diff: { section: document.querySelector('.diff'), target: document.getElementById('working-diff') },
+    };
+    const destination = destinations[data.section];
+    if (!destination) return;
+    if (destination.section instanceof HTMLDetailsElement) destination.section.open = true;
+    destination.section.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    destination.target.focus({ preventScroll: true });
+  } else if (data.type === 'appearance') {
     renderThemes(data);
   } else if (data.type === 'projects') {
     project.replaceChildren();

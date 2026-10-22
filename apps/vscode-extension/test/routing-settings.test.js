@@ -15,7 +15,7 @@ test('routing settings are validated, saved per trusted project, and restored on
   const api = {
     ConfigurationTarget: { WorkspaceFolder: 5 }, ViewColumn: { Beside: 2 },
     Uri: { joinPath: (_, ...parts) => parts.join('/') },
-    commands: { registerCommand: (_, handler) => { open = handler; return { dispose() {} }; } },
+    commands: { registerCommand: (id, handler) => { if (id === 'codovyn.open') open = handler; return { dispose() {} }; } },
     window: { createWebviewPanel: () => ({ webview: { cspSource: 'x', asWebviewUri: x => x,
       onDidReceiveMessage: handler => { receive = handler; }, postMessage: value => sent.push(value) } }) },
     workspace: { isTrusted: true, workspaceFolders: folders, getConfiguration: (_, uri) => ({

@@ -6,7 +6,7 @@ test('project provider preferences persist with validation and reach only config
   let open, handler;
   const state=new Map(); const sent=[]; const calls=[]; const links=[]; const commands=[];
   const folders=[{name:'A',uri:{fsPath:'/a'}},{name:'B',uri:{fsPath:'/b'}}];
-  const api={commands:{registerCommand:(_,cb)=>{open=cb;return {dispose(){}};},executeCommand:async(...args)=>commands.push(args)},window:{
+  const api={commands:{registerCommand: (id, cb) => { if (id === 'codovyn.open') open = cb;return {dispose(){}};},executeCommand:async(...args)=>commands.push(args)},window:{
     createWebviewPanel:()=>({webview:{cspSource:'x',asWebviewUri:x=>x,onDidReceiveMessage:cb=>{handler=cb;},postMessage:x=>sent.push(x)}})},
     env:{openExternal:async uri=>links.push(uri)},ViewColumn:{Beside:2},Uri:{parse:x=>x,joinPath:(_, ...p)=>p.join('/')},workspace:{workspaceFolders:folders,isTrusted:true,getConfiguration:()=>({get:key=>key==='geminiCliPath'?'/opt/gemini':'node'})}};
   const runner=async(command,args,options)=>{calls.push({args,options});return args.includes('tasks')?{tasks:[]}:args.includes('agents')?{agents:[{id:'codex',authentication:'unknown'}]}:{status:'completed',taskId:'test',events:[]};};
@@ -37,7 +37,7 @@ test('project provider preferences persist with validation and reach only config
 
 test('opening the agent workspace reveals its existing panel and recreates it only after disposal', () => {
   let open;const panels=[];let reveals=0;
-  const api={commands:{registerCommand:(_,callback)=>{open=callback;return {dispose(){}};}},window:{createWebviewPanel:()=>{
+  const api={commands:{registerCommand: (id, callback) => { if (id === 'codovyn.open') open = callback;return {dispose(){}};}},window:{createWebviewPanel:()=>{
     let close;const panel={reveal:()=>{reveals++;},onDidDispose:callback=>{close=callback;},dispose:()=>close?.(),
       webview:{cspSource:'x',asWebviewUri:x=>x,onDidReceiveMessage(){},postMessage(){}}};panels.push(panel);return panel;
   }},ViewColumn:{Beside:2},Uri:{joinPath:(_, ...parts)=>parts.join('/')},workspace:{workspaceFolders:[]}};
