@@ -9,7 +9,7 @@ Validation date: 2026-10-22 (local time, macOS ARM64)
 - Current `main` revision at report preparation: `5e10d59ed0dfaf48148266f5b74d84f5e260ddf8` (report commit will follow).
 - `origin/main` was verified after each push. Worktree is clean before the report change.
 - No branch, pull request, release, or repository visibility change was made.
-- Two meaningful commits were added during this continuation: native screenshot evidence and its refreshed final-artifact capture. The preceding turn added the native Chat test and workspace-search instrumentation commits.
+- Before this report, two meaningful documentation commits captured and refreshed the native screenshot. This report is a separate documentation commit. The preceding turn added the native Chat test and workspace-search instrumentation commits.
 
 ## Native workspace-search stall (#16)
 
