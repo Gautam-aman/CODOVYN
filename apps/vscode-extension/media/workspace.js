@@ -503,8 +503,8 @@ function appendActivity(items) {
   }
   timeline.append(fragment);
   if (followLatest) {
+    timeline.scrollTop = timeline.scrollHeight;
     jumpToLatest.hidden = true;
-    requestAnimationFrame(() => { timeline.scrollTop = timeline.scrollHeight; });
   } else jumpToLatest.hidden = false;
 }
 
