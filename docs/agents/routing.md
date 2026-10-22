@@ -44,6 +44,13 @@ This is a capture from the copied, ad-hoc-signed macOS arm64 development DMG
 built from `e6e5538`. It shows the empty local catalogue form in a disposable
 repository; no model access, provider authentication or paid request is implied.
 
+![Saved routing policy preview with a fixture candidate](../assets/desktop-phase5-routing-preview.png)
+
+This second capture is from the native development app built from `d2c9ca2`.
+The fixture catalogue was saved through the panel and previewed without a
+provider request. “Eligible” refers only to local policy admission; its model
+name, access and availability were not verified against Codex.
+
 Example configuration (replace the placeholder with an actually authorized model):
 
 ```json
