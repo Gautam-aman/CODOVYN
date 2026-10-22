@@ -59,9 +59,11 @@ for that broader accessibility and restart-persistence acceptance.
 
 ## Remaining UX work
 
-- The current workspace now has clear destinations, but Chat message styling,
-  compact tool-result presentation, Changes navigation, and a richer task
-  inspector remain future product work.
+- The Chat source now implements a local transcript for the submitted request
+  and streamed/persisted agent text. Tool and checkpoint events stay in
+  Activity. Content is inserted as text nodes; rich Markdown rendering and
+  compact tool summaries remain future work. This follow-up could not be
+  exercised in the native host because issue #16 stalled before webview attach.
 - High-zoom and systematic narrow-window behavior were not fully audited; only
   tab geometry at the native host's current sidebar width was asserted.
 - Focus announcements and screen-reader behavior require an accessibility
@@ -72,3 +74,21 @@ for that broader accessibility and restart-persistence acceptance.
 - Live Gemini authentication and real Codex-to-Gemini continuation remain
   blocked on official Gemini authentication. GitHub Actions remain blocked
   before job steps by the account billing/spending restriction.
+
+## Chat transcript follow-up
+
+The follow-up implementation adds user and agent message bubbles to Chat,
+reconstructs them from saved task requests and journal text events, and keeps
+tool/checkpoint rows in Activity. Streaming output follows the latest response
+until the reader scrolls upward; a jump-to-latest control appears when needed.
+Messages use bounded text rendering and are never interpreted as HTML.
+
+The source syntax/unit checks, desktop build, and VS Code 1.143.0 extension-host
+test passed after this change. Native verification is currently blocked by the
+intermittent host stall: two normal native runs stopped at `workspace-search`
+for the full 120-second deadline; an isolated UI-host experiment reached panel
+activation, but its DevTools endpoint stopped responding before the webview
+smoke could attach. Owned test processes were reaped with no survivors. The
+new transcript assertions therefore remain present but not native-verified.
+No updated screenshot or DMG is claimed for this follow-up. Issue #16 remains
+open and its cause is still unknown.

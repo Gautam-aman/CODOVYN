@@ -107,3 +107,33 @@ native UI test evidence. At report preparation, 102 commits followed campaign
 baseline `e2664564f6dad2aff45bca45328264ea2ea3aab7`. The documentation commit
 containing this final evidence follows separately. The repository remains
 private. No branch, PR, or release was created.
+
+## Subsequent Chat transcript implementation
+
+After the checkpoint above, CODOVYN's Chat destination source gained a
+conversation transcript. It appends the local user request after execution is
+authorized, displays real streamed provider text, restores user/agent messages
+from the selected task journal entry, and leaves tool events in Activity. This
+implementation has not yet passed a native webview run on this revision.
+Provider text is rendered through DOM text nodes, capped at 100,000 characters
+per response, and never interpreted as HTML. Chat scrolling follows new output
+only while the user remains near the bottom.
+
+Validation after this source change:
+
+| Check | Result |
+|---|---|
+| `npm run check` | Passed: 185 passed, 0 failed, 0 skipped; syntax checked 92 JavaScript files. |
+| `npm run build:desktop` | Passed; `dist/desktop/CODOVYN.app` rebuilt with the transcript source. |
+| `npm run test:extension-host` | Passed on VS Code 1.143.0 for macOS ARM64. |
+| `npm run test:desktop-host` | Blocked by the reproduced native `workspace-search` stall. Trace shows agent and desktop activation completed, then `workspace.findFiles` remained pending through the 120-second deadline. Cleanup record reports `survivors: []`. |
+| `npm run test:desktop-routing-ui` | Did not reach the webview assertions because the same native startup/search path stalled. An isolated UI-host diagnostic reached panel activation but its DevTools endpoint stopped responding; that test-owned host was canceled and cleaned with `survivors: []`. |
+
+The native regression remains unresolved and the new Chat transcript has not
+been native-verified. The existing development DMG and checksum above predate
+this change; no rebuilt DMG, copied-artifact test, or new screenshot is claimed.
+The macOS sample captured an idle extension-host event loop, which does not
+establish the underlying cause. Issue #16 remains open. Gemini authentication,
+live Gemini tasks, real cross-provider continuation, and hosted Actions remain
+blocked as previously recorded. The reproduced native stall and cleanup evidence
+were added to [issue #16](https://github.com/Gautam-aman/CODOVYN/issues/16#issuecomment-6344308190).
