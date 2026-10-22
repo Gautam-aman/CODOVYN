@@ -126,3 +126,31 @@ Follow-up checks: `npm run check` passes 184 tests with 0 failures or skips and
 syntax-checks 92 JavaScript files; the native routing UI smoke test passes; and
 `npm run test:extension-host` passes against VS Code 1.143.0. The extension host
 logs the existing upstream `agentsWindowActivation` proposal warning.
+
+## Final artifact verification after `1bc8699`
+
+Rebuilt the standalone app from the pushed commit. Embedded build metadata
+reports `sourceCommit: 1bc8699b2cbefe05f74b85820dd8cbf383a2fb32` and
+`sourceDirty: false`. The native host passed editor save, search, Git, agent
+panel, bundled CLI routing, and bundled-Node terminal checks in 12.2 seconds;
+its lifecycle report recorded zero surviving owned processes. Two-launch
+restoration passed on the rebuilt app (write 6.1 seconds, read 2.7 seconds),
+including workspace/editor, content, theme, local state and project routing
+preferences, with zero surviving owned processes in either launch.
+
+Rebuilt the development DMG, verified its disk-image checksum and app signature,
+mounted it read-only, copied the app to a disposable `/tmp` install location,
+and repeated native-host and two-launch restoration tests against that copy.
+The copied app passed both; macOS emitted its sandbox-extension
+`Operation not permitted` warning while launching from `/tmp`. This is a
+development environment artifact, not a clean-machine or notarization test.
+DMG SHA-256: `8723c9fabb96efcf2f1586be1f251a4cf3194718c2d6fc8f2fbd32ed49ed8252`.
+It remains ad-hoc signed and unnotarized, and was not published.
+
+The historical intermittent native-host stall remains unexplained. The latest
+source and relocated-artifact lifecycle checks passed, but a successful run
+does not identify the cause of the earlier `workspace-search` stall. Issue #16
+remains open. Hosted Actions are still blocked before job steps by repository
+account configuration; no billing controls were changed. Gemini live access
+and real Codex-to-Gemini continuation also remain unverified due the recorded
+Gemini CLI authentication failure.
