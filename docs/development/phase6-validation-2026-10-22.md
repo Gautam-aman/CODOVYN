@@ -159,3 +159,31 @@ remains open. Hosted Actions are still blocked before job steps by repository
 account configuration; no billing controls were changed. Gemini live access
 and real Codex-to-Gemini continuation also remain unverified due the recorded
 Gemini CLI authentication failure.
+
+## Unsaved project-switch protection
+
+The routing form now tracks edits and blocks a project-selector change until
+the user saves or discards the current policy. The UI restores the active
+project selection and retains the unsaved form values with a live status
+message. The native smoke test injects a second selector value, attempts the
+switch while a catalogue ID is dirty, and verifies that the project and draft
+remain unchanged. It also removes an already-saved row, discards that change,
+and confirms the persisted workspace setting stays intact.
+
+`npm run check` passed 184 tests (0 failures, 0 skipped) after these changes.
+The rebuilt development app's native routing smoke then passed in 40.5 seconds
+with zero surviving owned processes; the extension-host test passed against
+VS Code 1.143.0. One earlier smoke run stayed at `workspace-search` for 101.8
+seconds before the smoke script's shorter deadline canceled it; its cleanup
+recorded zero survivors. The script's webview wait now exceeds the native host's
+120-second timeout so future stalls can retain the host timeout classification.
+This intermittent behavior still has no proven root cause, and #16 remains
+open. The fix and regression check are in `2a67d91`.
+
+The fault-injected Codex quota fixture now remains alive briefly after emitting
+its structured 429 event. This ensures the adapter's owned-process cleanup is
+what terminates it, rather than racing a naturally exiting fixture. One
+parallel-suite run before that adjustment intermittently classified the quota
+attempt as fatal; five isolated repeats and the full 184-test suite pass after
+the fixture change. No production adapter behavior or safety assertion was
+weakened; the test still requires a confirmed quota handoff and reviewed patch.
