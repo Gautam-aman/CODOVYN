@@ -14,6 +14,7 @@ test('native test deadline reaps a TERM-resistant owned tree without touching an
   await once(unrelated, 'spawn');
   try {
     const program = `const {spawn}=require('node:child_process'); process.on('SIGTERM',()=>{});
+      require('node:fs').appendFileSync(process.env.CODOVYN_HOST_TRACE, JSON.stringify({phase:'fixture-pending',state:'pending'})+'\\n');
       spawn(process.execPath,['-e',"process.on('SIGTERM',()=>{});setInterval(()=>{},1000)"],{stdio:'inherit'});
       setInterval(()=>{},1000);`;
     const started = Date.now();
@@ -24,6 +25,7 @@ test('native test deadline reaps a TERM-resistant owned tree without touching an
     assert.equal(report.result.timeout, true);
     assert.deepEqual(report.survivors, []);
     assert.equal(report.cleanupError, undefined);
+    assert.equal(JSON.parse(report.lastProgress).phase, 'fixture-pending');
     assert.doesNotThrow(() => process.kill(unrelated.pid, 0));
   } finally {
     unrelated.kill('SIGKILL'); await once(unrelated, 'exit');
@@ -37,6 +39,9 @@ test('native lifecycle records normal completion and spawn failures without hang
     const result = await runDesktopProcess({ executable: process.execPath, args: ['-e', 'process.exit(0)'], env: process.env,
       directory, phase: 'normal', timeoutMs: 1000 });
     assert.equal(result.cleanupVerified, true);
+    await assert.rejects(runDesktopProcess({ executable: process.execPath, args: ['-e', 'process.exit(7)'], env: process.env,
+      directory, phase: 'nonzero', timeoutMs: 1000 }), /exit 7/);
+    assert.equal(JSON.parse(await readFile(join(directory, 'nonzero-lifecycle.json'))).result.code, 7);
     await assert.rejects(runDesktopProcess({ executable: join(directory, 'missing'), args: [], env: process.env,
       directory, phase: 'missing', timeoutMs: 1000 }), /ENOENT/);
     assert.deepEqual(JSON.parse(await readFile(join(directory, 'missing-lifecycle.json'))).survivors, []);
@@ -58,9 +63,10 @@ test('native lifecycle cleans an owned descendant even after the leader exits no
 
 
 test('native profiles isolate shared storage as well as settings and extensions', () => {
-  const args = nativeProfileArgs('/tmp/owned-profile');
-  assert.deepEqual(args, ['--user-data-dir', '/tmp/owned-profile/profile', '--extensions-dir', '/tmp/owned-profile/extensions',
-    '--shared-data-dir', '/tmp/owned-profile/shared-data']);
+  const directory = join(tmpdir(), 'owned-profile');
+  const args = nativeProfileArgs(directory);
+  assert.deepEqual(args, ['--user-data-dir', join(directory, 'profile'), '--extensions-dir', join(directory, 'extensions'),
+    '--shared-data-dir', join(directory, 'shared-data')]);
 });
 
 test('native test cancellation follows verified group cleanup and pre-cancel never spawns', { skip: !posix }, async () => {
