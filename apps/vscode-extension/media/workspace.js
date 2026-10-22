@@ -182,23 +182,39 @@ function modelField(card, title, value, type = 'text') {
   const input = document.createElement('input'); input.type = type; input.value = value ?? '';
   input.setAttribute('aria-label', title); label.append(input); card.append(label); return input;
 }
+let routingModelCardSequence = 0;
 function addModelCard(model = {}) {
   const card = document.createElement('fieldset'); card.className = 'routing-model';
+  card.dataset.validationId = `routing-model-${++routingModelCardSequence}`;
   const errors = document.createElement('ul'); errors.className = 'routing-model-errors'; errors.setAttribute('aria-label', 'Model validation errors');
   const fieldInputs = new Map();
   function clearFieldError(field) {
     const controls = fieldInputs.get(field);
-    for (const control of Array.isArray(controls) ? controls : [controls]) control?.removeAttribute('aria-invalid');
-    const item = errors.querySelector(`[data-field="${field}"]`); if (item) item.remove();
+    const item = errors.querySelector(`[data-field="${field}"]`);
+    for (const control of Array.isArray(controls) ? controls : [controls]) {
+      control?.removeAttribute('aria-invalid');
+      if (item && control) {
+        const describedBy = (control.getAttribute('aria-describedby') || '').split(/\s+/).filter(id => id && id !== item.id);
+        if (describedBy.length) control.setAttribute('aria-describedby', describedBy.join(' '));
+        else control.removeAttribute('aria-describedby');
+      }
+    }
+    if (item) item.remove();
+  }
+  function addFieldError(field, message) {
+    clearFieldError(field);
+    const item = document.createElement('li'); item.id = `${card.dataset.validationId}-error-${field}`;
+    item.dataset.field = field; item.textContent = message; item.setAttribute('role', 'alert'); errors.append(item);
+    const controls = fieldInputs.get(field);
+    for (const input of Array.isArray(controls) ? controls : [controls]) if (input) {
+      input.setAttribute('aria-invalid', 'true');
+      const describedBy = new Set((input.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean));
+      describedBy.add(item.id); input.setAttribute('aria-describedby', [...describedBy].join(' '));
+    }
   }
   function showFieldErrors(messages) {
-    errors.replaceChildren();
-    for (const [field, message] of Object.entries(messages)) {
-      const item = document.createElement('li'); item.dataset.field = field; item.textContent = message;
-      item.setAttribute('role', 'alert'); errors.append(item);
-      const controls = fieldInputs.get(field);
-      for (const input of Array.isArray(controls) ? controls : [controls]) input?.setAttribute('aria-invalid', 'true');
-    }
+    for (const item of [...errors.children]) clearFieldError(item.dataset.field);
+    for (const [field, message] of Object.entries(messages)) addFieldError(field, message);
   }
   const legend = document.createElement('legend'); legend.textContent = model.id || 'New model'; card.append(legend);
   const id = modelField(card, 'Catalogue ID', model.id); fieldInputs.set('id', id);
@@ -231,6 +247,7 @@ function addModelCard(model = {}) {
   for (const [field, controls] of fieldInputs) for (const input of Array.isArray(controls) ? controls : [controls]) {
     input.addEventListener('input', () => clearFieldError(field)); input.addEventListener('change', () => clearFieldError(field));
   }
+  card.showFieldError = addFieldError;
   card.readModel = () => {
     const priceFields = [inputPrice.value.trim(), outputPrice.value.trim(), priceSource.value.trim()];
     const value = { id: id.value.trim(), provider: provider.value, model: name.value.trim(),
@@ -240,7 +257,10 @@ function addModelCard(model = {}) {
       reasoning: reasoning.value.split(',').map(value => value.trim()).filter(Boolean),
       priceFields, price: priceFields.every(Boolean) ? { inputPerMillionUsd: Number(inputPrice.value), outputPerMillionUsd: Number(outputPrice.value), source: priceSource.value.trim() } : null };
     const messages = window.CodovynRoutingForm.validateModel(value); showFieldErrors(messages);
-    if (Object.keys(messages).length) throw new Error('Fix the highlighted model catalogue fields.');
+    if (Object.keys(messages).length) {
+      card.querySelector('[aria-invalid="true"]')?.focus();
+      throw new Error('Fix the highlighted model catalogue fields.');
+    }
     delete value.priceFields; return value;
   };
   modelList.append(card);
@@ -293,10 +313,8 @@ saveRouting.addEventListener('click', () => {
     const seen = new Set();
     for (let index = 0; index < models.length; index++) {
       if (seen.has(models[index].id)) {
-        const idInput = cards[index].querySelector('input[aria-label="Catalogue ID"]');
-        idInput.setAttribute('aria-invalid', 'true');
-        const errors = cards[index].querySelector('.routing-model-errors');
-        const item = document.createElement('li'); item.dataset.field = 'id'; item.setAttribute('role', 'alert'); item.textContent = 'Catalogue IDs must be unique.'; errors.append(item);
+        cards[index].showFieldError('id', 'Catalogue IDs must be unique.');
+        cards[index].querySelector('[aria-invalid="true"]')?.focus();
         throw new Error('Catalogue IDs must be unique.');
       }
       seen.add(models[index].id);
