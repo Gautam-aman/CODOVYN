@@ -47,10 +47,10 @@ export function manageAgentProcess(child, signal) {
             try { process.kill(-child.pid, kind); return; }
             catch (error) {
               if (error.code === 'ESRCH') return;
-              // Darwin can briefly deny signals to an exited group being reaped.
-              // Never ignore the error: retry until the group disappears or stop fails.
-              if (error.code === 'EPERM' && attempt < 9 &&
-                (child.exitCode !== null || child.signalCode !== null)) {
+              // Darwin may report EPERM before Node delivers an owned child's exit.
+              // Retry for at most 450 ms; persistent denial still fails cleanup.
+              // No exit notification or permission error proves group disappearance.
+              if (error.code === 'EPERM' && attempt < 9) {
                 await new Promise((resolve) => setTimeout(resolve, 50));
                 continue;
               }

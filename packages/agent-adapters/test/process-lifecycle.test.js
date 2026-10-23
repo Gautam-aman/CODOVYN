@@ -31,3 +31,15 @@ test('a persistent POSIX signal denial never reports successful cleanup', { skip
   await assert.rejects(manageAgentProcess(exitedChild()).dispose(), (error) =>
     error.kind === 'fatal' && error.message.includes('EPERM'));
 });
+
+test('an exit notification racing with EPERM is bounded and still requires proven group disappearance', { skip: process.platform === 'win32' }, async (t) => {
+  const child = Object.assign(new EventEmitter(), { pid:123456, exitCode:null, signalCode:null, stdin:new EventEmitter() });
+  let attempts=0;
+  t.mock.method(process,'kill',pid=>{
+    assert.equal(pid,-123456); attempts++;
+    throw Object.assign(new Error('simulated exit race'),{code:attempts===1?'EPERM':'ESRCH'});
+  });
+  queueMicrotask(()=>{child.exitCode=0;child.emit('exit',0);child.emit('close',0);});
+  await manageAgentProcess(child).dispose();
+  assert.ok(attempts>=2,'Cleanup must verify disappearance after transient denial');
+});
