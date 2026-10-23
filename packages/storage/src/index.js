@@ -23,6 +23,9 @@ export class TaskStore {
     }
     this.#db = new DatabaseSync(filename);
     if (filename !== ':memory:' && process.platform !== 'win32') chmodSync(filename, 0o600);
+    // CLI helpers use independent connections. Wait only for a bounded local
+    // transaction lock; never retry provider execution or replay task actions.
+    this.#db.exec('PRAGMA busy_timeout = 3000');
     this.#db.exec('PRAGMA journal_mode = WAL');
     this.#db.exec('PRAGMA foreign_keys = ON');
     this.#db.exec(`
@@ -70,6 +73,7 @@ export class TaskStore {
         position INTEGER NOT NULL,
         status TEXT NOT NULL,
         schema_version INTEGER NOT NULL DEFAULT 1,
+        policy_snapshot TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
