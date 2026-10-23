@@ -16,6 +16,7 @@ import { TaskEngine } from '../../../packages/task-engine/src/index.js';
 import { commitStaged, createBranch, fetchRemote, pullFastForward, pushCurrentBranch, repositoryDiff, repositorySnapshot, stagePaths } from '../../../packages/git-engine/src/index.js';
 import { createClaudeAdapter, createCodexAdapter, createGeminiAdapter } from '../../../packages/agent-adapters/src/index.js';
 import { validateDraftWorkspace, createDraftWorkspace, reviewDraftWorkspace, acceptDraftWorkspace, rejectDraftWorkspace } from '../../../packages/git-engine/src/draft-workspace.js';
+import taskConfigurationSchema from '../../../apps/vscode-extension/task-config.cjs';
 import { createIssue, createPullRequest, issueDetails, listIssues, listPullRequests, listWorkflowRuns, previewPullRequest, pullRequestDetails, pullRequestDiff } from '../../../packages/github-integration/src/index.js';
 
 const usage = `Usage:
@@ -45,6 +46,14 @@ const usage = `Usage:
   codovyn draft-accept <task-id> <repository> <patch-hash> --yes
   codovyn draft-reject <task-id> <repository> --yes
   codovyn tasks [repository]
+  codovyn queue-add <repository> <request> <task-configuration-json>
+  codovyn queue-list <repository>
+  codovyn queue-cancel <queued-id> <repository>
+  codovyn queue-remove <queued-id> <repository>
+  codovyn queue-reorder <queued-id> <position> <repository>
+  codovyn queue-pause|queue-resume <repository>
+  codovyn queue-claim <queued-id> <repository>
+  codovyn queue-update <queued-id> <status> <repository>
   codovyn history <task-id> [repository]
   codovyn task-delete <task-id> [repository] [--yes]
   codovyn task-prune <repository> <before-ISO-time> [--yes]
@@ -97,7 +106,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
   github = { createIssue, createPullRequest, issueDetails, listIssues, listPullRequests, listWorkflowRuns, previewPullRequest, pullRequestDetails, pullRequestDiff },
   adapters = { createCodexAdapter, createClaudeAdapter, createGeminiAdapter }, confirm = confirmAction) {
   const [mode, value, ...rest] = args;
-  if (!['resume', 'route', 'routed', 'routed-edit', 'agents', 'configured', 'configured-edit', 'demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit', 'draft-continue', 'draft-reconcile', 'draft-abandon', 'draft-inspect', 'draft-review', 'draft-accept', 'draft-reject', 'tasks', 'history', 'task-delete', 'task-prune', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'pr-preview', 'pr-create', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
+  if (!['resume', 'route', 'routed', 'routed-edit', 'agents', 'configured', 'configured-edit', 'demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit', 'draft-continue', 'draft-reconcile', 'draft-abandon', 'draft-inspect', 'draft-review', 'draft-accept', 'draft-reject', 'tasks', 'history', 'task-delete', 'task-prune', 'queue-add', 'queue-list', 'queue-cancel', 'queue-remove', 'queue-reorder', 'queue-pause', 'queue-resume', 'queue-claim', 'queue-update', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'pr-preview', 'pr-create', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
   const stream = process.env.CODOVYN_EVENT_STREAM === '1';
   const geminiAdapter = options => {
     const command = configuredGeminiCommand();
@@ -247,6 +256,48 @@ export async function main(args = process.argv.slice(2), output = console, signa
   }
   const store = new TaskStore(join(dataDirectory, 'tasks.sqlite'));
   try {
+    if (mode.startsWith('queue-')) {
+      const emit = value => output.log(JSON.stringify(stream ? { type: 'result', ...value } : value, null, stream ? 0 : 2));
+      if (mode === 'queue-add') {
+        if (!value || rest.length !== 2 || rest[0].length > 10000 || rest[1].length > 32768) { output.error(usage); return 2; }
+        const configuration = taskConfigurationSchema.validateTaskConfiguration(JSON.parse(rest[1]));
+        const snapshot = await repositorySnapshot(value);
+        const task = store.enqueueTask({ id: randomUUID(), repositoryRoot: snapshot.root, request: rest[0], configuration,
+          baselineFingerprint: recoveryFingerprint(snapshot) });
+        emit({ task }); return 0;
+      }
+      if (mode === 'queue-list') {
+        if (!value || rest.length) { output.error(usage); return 2; }
+        const repositoryRoot = (await repositorySnapshot(value)).root;
+        emit({ ...store.listQueuedTasks(repositoryRoot), repositoryRoot }); return 0;
+      }
+      if (mode === 'queue-pause' || mode === 'queue-resume') {
+        if (!value || rest.length) { output.error(usage); return 2; }
+        const repositoryRoot = (await repositorySnapshot(value)).root;
+        emit({ ...store.setTaskQueuePaused(repositoryRoot, mode === 'queue-pause'), repositoryRoot }); return 0;
+      }
+      if (mode === 'queue-cancel' || mode === 'queue-remove' || mode === 'queue-claim' || mode === 'queue-update' || mode === 'queue-reorder') {
+        const expected = ['queue-reorder', 'queue-update'].includes(mode) ? 2 : 1;
+        if (!value || rest.length !== expected) { output.error(usage); return 2; }
+        const task = store.getQueuedTask(value);
+        if (!task) { output.error(`Unknown queued task: ${value}`); return 1; }
+        if (task.repositoryRoot !== (await repositorySnapshot(rest.at(-1))).root) {
+          output.error('Queued task belongs to a different repository'); return 1;
+        }
+        if (mode === 'queue-cancel') { emit({ task: store.cancelQueuedTask(value) }); return 0; }
+        if (mode === 'queue-remove') { emit({ removed: store.removeQueuedTask(value) }); return 0; }
+        if (mode === 'queue-reorder') {
+          if (!/^(?:0|[1-9]\d*)$/.test(rest[0])) { output.error(usage); return 2; }
+          emit({ task: store.reorderQueuedTask(value, Number(rest[0])) }); return 0;
+        }
+        if (mode === 'queue-update') {
+          if (!['running','completed','blocked','interrupted','failed','cancelled'].includes(rest[0])) { output.error(usage); return 2; }
+          emit({ task: store.updateQueuedTask(value, rest[0]) }); return 0;
+        }
+        const snapshot = await repositorySnapshot(rest[0]);
+        emit({ task: store.claimQueuedTask(value, recoveryFingerprint(snapshot)) }); return 0;
+      }
+    }
     if(mode==='resume') {
       if(!value||rest.length!==2||rest[1]!=='--yes'){output.error(usage);return 2;}
       const task=store.get(value);const repository=(await repositorySnapshot(rest[0])).root;
