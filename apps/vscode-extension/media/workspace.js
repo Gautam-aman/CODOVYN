@@ -1,6 +1,28 @@
 const vscode = acquireVsCodeApi();
 const request = document.getElementById('request');
 const agent = document.getElementById('agent');
+const taskProvider = document.getElementById('task-provider');
+const taskModel = document.getElementById('task-model');
+const taskPermission = document.getElementById('task-permission');
+const taskRouting = document.getElementById('task-routing');
+const taskReasoning = document.getElementById('task-reasoning');
+const taskControls = document.querySelector('.task-controls');
+const modelSearch = document.createElement('input');
+modelSearch.type = 'search'; modelSearch.maxLength = 256;
+modelSearch.placeholder = 'Search configured models'; modelSearch.setAttribute('aria-label', 'Search configured model IDs and names');
+const modelSearchLabel = document.createElement('label');
+modelSearchLabel.textContent = 'Find model'; modelSearchLabel.append(modelSearch);
+const modelSelectorField = document.createElement('div'); modelSelectorField.className = 'task-control-field task-model-field';
+const modelControlLabel = taskControls.querySelector('label[for="task-model"]');
+modelControlLabel.textContent = 'Model';
+modelControlLabel.before(modelSelectorField);
+modelSelectorField.append(modelControlLabel, modelSearchLabel, taskModel);
+for (const id of ['task-provider', 'task-permission', 'task-routing', 'task-reasoning']) {
+  const control = document.getElementById(id);
+  const label = taskControls.querySelector(`label[for="${id}"]`);
+  const field = document.createElement('div'); field.className = 'task-control-field';
+  label.before(field); field.append(label, control);
+}
 const run = document.getElementById('run');
 const cancel = document.getElementById('cancel');
 const status = document.getElementById('status');
@@ -9,6 +31,9 @@ let activeWorkspaceView = 'chat';
 let activityFollowsLatest = true;
 let unseenActivityCount = 0;
 let pendingChatRequest = '';
+let acceptedChatRequest = '';
+let taskModelCatalogue = [];
+let taskSubmissionId = null;
 let chatFollowsLatest = true;
 let streamedAssistantText = false;
 let assistantTextLength = 0;
@@ -237,6 +262,85 @@ const routingStatus = document.createElement('p'); routingStatus.setAttribute('r
 let savedRoutingPolicy = {};
 let routingDirty = false;
 let selectedProjectRoot = null;
+function updateTaskModelControls() {
+  const provider = taskProvider.value;
+  const selected = taskModel.value;
+  const query = modelSearch.value.trim().toLocaleLowerCase();
+  const matching = taskModelCatalogue.filter(model => (provider === 'auto' || model.provider === provider) &&
+    (!query || model.id === selected || `${model.id} ${model.model} ${model.provider}`.toLocaleLowerCase().includes(query)));
+  taskModel.replaceChildren();
+  const defaultOption = document.createElement('option');
+  defaultOption.value = '';
+  defaultOption.textContent = provider === 'auto' ? 'Use routing policy' : provider === 'configured' ? 'Use configured agent preferences' : 'Provider default';
+  taskModel.append(defaultOption);
+  const groups = new Map();
+  for (const model of matching) {
+    if (!model || typeof model.id !== 'string' || typeof model.model !== 'string' || !['codex','gemini','claude'].includes(model.provider)) continue;
+    let group = groups.get(model.provider);
+    if (!group) { group = document.createElement('optgroup'); group.label = model.provider.toUpperCase(); groups.set(model.provider, group); taskModel.append(group); }
+    const option = document.createElement('option'); option.value = model.id;
+    option.textContent = `${model.model}${model.availability === 'unavailable' ? ' · unavailable' : model.availability === 'unknown' ? ' · availability unknown' : ''}`;
+    option.disabled = model.availability === 'unavailable';
+    group.append(option);
+  }
+  if ([...taskModel.options].some(option => option.value === selected)) taskModel.value = selected;
+  taskModel.disabled = provider === 'configured';
+  taskRouting.disabled = provider !== 'auto';
+  if (provider !== 'auto') taskRouting.value = 'manual';
+  else if (taskRouting.value === 'manual') taskRouting.value = 'auto';
+  updateTaskReasoning();
+  updateLegacyMode();
+}
+function updateTaskReasoning() {
+  const selectedModel = taskModelCatalogue.find(model => model.id === taskModel.value);
+  const previous = taskReasoning.value;
+  taskReasoning.replaceChildren();
+  const defaultOption = document.createElement('option'); defaultOption.value = ''; defaultOption.textContent = 'Provider default'; taskReasoning.append(defaultOption);
+  const supported = Array.isArray(selectedModel?.reasoning) ? selectedModel.reasoning : [];
+  for (const effort of supported) { const option = document.createElement('option'); option.value = effort; option.textContent = effort; taskReasoning.append(option); }
+  taskReasoning.disabled = !supported.length;
+  if (supported.includes(previous)) taskReasoning.value = previous;
+  taskReasoning.title = supported.length ? 'Only reasoning options listed for this configured model are selectable.' : 'No reasoning options are configured for the selected model.';
+}
+function updateLegacyMode() {
+  const provider = taskProvider.value;
+  const editable = taskPermission.value === 'read-write';
+  if (provider === 'auto') agent.value = 'routed' + (editable ? '-edit' : '');
+  else if (provider === 'configured') agent.value = 'configured' + (editable ? '-edit' : '');
+  else if (taskModel.value) agent.value = 'routed' + (editable ? '-edit' : '');
+  else agent.value = provider + (editable ? '-edit' : '');
+}
+function storeTaskSelection() {
+  if (!selectedProjectRoot) return;
+  const previous = vscode.getState?.();
+  const state = previous && typeof previous === 'object' ? previous : {};
+  const selections = state.taskSelections && typeof state.taskSelections === 'object' ? state.taskSelections : {};
+  const rootKey = selectedProjectRoot.slice(0, 1024);
+  vscode.setState?.({ ...state, taskSelections: { ...selections, [rootKey]: {
+    provider: taskProvider.value, modelId: taskModel.value || '', permission: taskPermission.value,
+    routingMode: taskRouting.value, reasoning: taskReasoning.value,
+  } } });
+}
+function restoreTaskSelection() {
+  if (!selectedProjectRoot) return;
+  const saved = vscode.getState?.()?.taskSelections?.[selectedProjectRoot.slice(0, 1024)];
+  if (!saved || typeof saved !== 'object') { updateLegacyMode(); return; }
+  if (['auto','configured','codex','gemini','claude'].includes(saved.provider)) taskProvider.value = saved.provider;
+  updateTaskModelControls();
+  if (typeof saved.modelId === 'string' && [...taskModel.options].some(option => option.value === saved.modelId)) taskModel.value = saved.modelId;
+  if (['read','read-write'].includes(saved.permission)) taskPermission.value = saved.permission;
+  if (['manual','auto','economy','balanced','performance','custom'].includes(saved.routingMode)) taskRouting.value = saved.routingMode;
+  updateTaskReasoning();
+  if (typeof saved.reasoning === 'string' && [...taskReasoning.options].some(option => option.value === saved.reasoning)) taskReasoning.value = saved.reasoning;
+  updateLegacyMode();
+}
+taskProvider.addEventListener('change', updateTaskModelControls);
+modelSearch.addEventListener('input', updateTaskModelControls);
+taskProvider.addEventListener('change', storeTaskSelection);
+taskModel.addEventListener('change', () => { updateTaskReasoning(); if (taskProvider.value === 'auto' && taskModel.value) taskRouting.value = 'custom'; updateLegacyMode(); storeTaskSelection(); });
+taskPermission.addEventListener('change', () => { updateLegacyMode(); storeTaskSelection(); });
+taskRouting.addEventListener('change', () => { updateLegacyMode(); storeTaskSelection(); });
+taskReasoning.addEventListener('change', () => { updateLegacyMode(); storeTaskSelection(); });
 routingSettings.addEventListener('input', () => { routingDirty = true; });
 routingSettings.addEventListener('change', () => { routingDirty = true; });
 function modelField(card, title, value, type = 'text') {
@@ -336,6 +440,13 @@ function addModelCard(model = {}) {
 function loadRoutingPolicy(policy) {
   routingDirty = false;
   savedRoutingPolicy = policy && typeof policy === 'object' && !Array.isArray(policy) ? policy : {};
+  taskModelCatalogue = Array.isArray(savedRoutingPolicy.models) ? savedRoutingPolicy.models.slice(0, 64) : [];
+  taskRouting.value = ['auto','economy','balanced','performance','custom'].includes(savedRoutingPolicy.mode) ? savedRoutingPolicy.mode : 'auto';
+  updateTaskModelControls();
+  if (savedRoutingPolicy.mode === 'custom' && typeof savedRoutingPolicy.customModel === 'string' &&
+    [...taskModel.options].some(option => option.value === savedRoutingPolicy.customModel)) taskModel.value = savedRoutingPolicy.customModel;
+  updateTaskReasoning();
+  restoreTaskSelection();
   routingMode.value = savedRoutingPolicy.mode || 'auto';
   routingCustom.value = savedRoutingPolicy.customModel || '';
   routingReasoning.value = savedRoutingPolicy.reasoning || '';
@@ -586,10 +697,20 @@ taskSearch.addEventListener('input', renderTasks);
 taskStatusFilter.addEventListener('change', renderTasks);
 
 run.addEventListener('click', () => {
+  if (taskSubmissionId) return;
   const value = request.value.trim();
   if (!value) { request.focus(); return; }
   pendingChatRequest = value;
-  vscode.postMessage({ type: 'run', mode: agent.value, request: value });
+  const requestId = crypto.randomUUID();
+  taskSubmissionId = requestId;
+  run.disabled = true;
+  status.textContent = 'Checking task configuration…';
+  const provider = taskProvider.value;
+  const modelId = taskModel.value || null;
+  const routingMode = provider === 'auto' ? (modelId ? 'custom' : taskRouting.value) : 'manual';
+  vscode.postMessage({ type: 'run', requestId, mode: agent.value, request: value,
+    taskConfiguration: { provider, modelId, permission: taskPermission.value, routingMode,
+      reasoning: taskReasoning.value || null } });
 });
 project.addEventListener('change', () => {
   if (routingDirty) {
@@ -614,7 +735,10 @@ rejectDraft.addEventListener('click', () => {
   if (currentTaskId) vscode.postMessage({ type: 'draft-reject', id: currentTaskId });
 });
 request.addEventListener('keydown', (event) => {
-  if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); run.click(); }
+  if (event.key !== 'Enter' || event.isComposing || event.keyCode === 229) return;
+  if (event.shiftKey && !event.metaKey && !event.ctrlKey) return;
+  event.preventDefault();
+  run.click();
 });
 
 const workspaceTabs = [
@@ -843,17 +967,29 @@ window.addEventListener('message', ({ data }) => {
     status.textContent = 'Ready';
     empty.textContent = 'Task steps and agent handoffs will appear here.';
     diffOutput.textContent = 'Choose a diff to review.';
+  } else if (data.type === 'starting') {
+    status.textContent = 'Validating task and permissions…';
+    run.disabled = true;
+  } else if (data.type === 'accepted') {
+    if (data.requestId === taskSubmissionId) {
+      acceptedChatRequest = pendingChatRequest;
+      if (request.value.trim() === pendingChatRequest) request.value = '';
+      taskSubmissionId = null;
+      pendingChatRequest = '';
+      request.focus({ preventScroll: true });
+    }
   } else if (data.type === 'approval-pending') {
     status.textContent = 'Awaiting edit permission';
     run.disabled = true;
     project.disabled = true;
   } else if (data.type === 'approval-dismissed') {
+    taskSubmissionId = null;
     pendingChatRequest = '';
     status.textContent = 'Ready';
     run.disabled = false;
     project.disabled = false;
   } else if (data.type === 'running') {
-    currentTaskId = null;
+    currentTaskId = typeof data.taskId === 'string' ? data.taskId : null;
     draftAvailable = false;
     reviewedHash = null;
     updateDraftActions();
@@ -867,7 +1003,8 @@ window.addEventListener('message', ({ data }) => {
     activityFollowsLatest = true;
     jumpToLatest.hidden = true;
     empty.textContent = 'Waiting for agent activity…';
-    if (pendingChatRequest) resetChat(pendingChatRequest);
+    if (acceptedChatRequest) resetChat(acceptedChatRequest);
+    acceptedChatRequest = '';
     pendingChatRequest = '';
     activateWorkspaceView('chat');
   } else if (data.type === 'progress') {
@@ -953,6 +1090,7 @@ window.addEventListener('message', ({ data }) => {
   } else if (data.type === 'diff-error') {
     diffOutput.textContent = data.text;
   } else if (data.type === 'error') {
+    taskSubmissionId = null;
     pendingChatRequest = '';
     status.textContent = 'Error';
     run.disabled = false;

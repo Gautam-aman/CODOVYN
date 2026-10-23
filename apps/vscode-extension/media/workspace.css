@@ -49,6 +49,14 @@ header p { margin: 1px 0 0; color: var(--vscode-descriptionForeground); font-siz
 .jump-to-latest-chat { justify-self: center; padding: 5px 10px; background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); font-size: 12px; }
 .jump-to-latest-chat[hidden] { display: none; }
 .composer { display: grid; gap: 9px; margin-top: var(--codovyn-space-3); }
+.legacy-agent-label, .legacy-agent-select { display: none !important; }
+.task-controls { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; padding-top: 3px; }
+.task-control-field { display: grid; min-width: 0; align-content: start; gap: 4px; }
+.task-control-field label { min-width: 0; color: var(--vscode-descriptionForeground); font-size: 10px; font-weight: 600; }
+.task-controls select, .task-controls input { display: block; width: 100%; min-width: 0; margin-top: 2px; padding: 7px 6px; border-radius: var(--codovyn-radius-control); font-size: 11px; text-overflow: ellipsis; }
+.task-model-field { grid-column: span 2; }
+.task-controls select:disabled { opacity: .72; }
+.control-help { margin: 0; color: var(--vscode-descriptionForeground); font-size: 11px; }
 label { font-weight: 600; }
 select, textarea, .agent-settings input[type="text"], .agent-settings input[type="number"] { width: 100%; border: 1px solid var(--vscode-input-border, var(--vscode-panel-border)); border-radius: 8px; background: var(--vscode-input-background); color: var(--vscode-input-foreground); font: inherit; padding: 11px 13px; }
 textarea { resize: vertical; min-height: 118px; }
@@ -141,9 +149,11 @@ summary:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-of
   .workspace-tab { padding-inline: 0; font-size: 10px; }
   .task-filters { grid-template-columns: minmax(0, 1fr); }
   .task-filters label, #task-history-note, .task-history-count { grid-column: 1; }
+  .task-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   #tasks li { grid-template-columns: minmax(0, 1fr); }
   #tasks li > .task-delete { grid-column: 1; justify-self: start; }
 }
+@media (min-width: 361px) and (max-width: 560px) { .task-controls { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (prefers-reduced-motion: no-preference) {
   .workspace-tab, button { transition: background-color var(--codovyn-motion-fast) ease, color var(--codovyn-motion-fast) ease, border-color var(--codovyn-motion-fast) ease; }
 }

@@ -4,6 +4,7 @@ const { lstatSync, statSync } = require('node:fs');
 const { join, resolve } = require('node:path');
 const { StringDecoder } = require('node:string_decoder');
 const { defaultPolicy, validateAgentPolicy } = require('../../packages/agent-core/src/policy.cjs');
+const { validateTaskConfiguration, resolveTaskMode } = require('./task-config.cjs');
 const { themes, validTheme, themeStyles } = require('./themes.cjs');
 const routingModule = import('../../packages/agent-router/src/index.js');
 
@@ -82,7 +83,7 @@ function runCli(command, args, options) {
     const consume = (line) => {
       if (!line) return;
       const message = JSON.parse(line);
-      if (message.type === 'event') options.onEvent(message.event);
+      if (message.type === 'event') options.onEvent(message.event, message.taskId);
       if (message.type === 'result') result = message;
       if (message.type === 'error' && typeof message.message === 'string') publicError = message.message.slice(0, 500);
     };
@@ -131,9 +132,10 @@ function createExtension(api, runner = runCli) {
         const media = (...segments) => panel.webview.asWebviewUri(api.Uri.joinPath(context.extensionUri, 'apps', 'vscode-extension', 'media', ...segments));
         const nativeChatTestScript = process.env.CODOVYN_NATIVE_CHAT_TEST === '1'
           ? `<script nonce="${nonce}" src="${media('native-chat-harness.js')}"></script>` : '';
-        panel.webview.html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${panel.webview.cspSource} 'nonce-${nonce}'; script-src 'nonce-${nonce}';"><link rel="stylesheet" href="${media('workspace.css')}"><style nonce="${nonce}">${themeStyles()}</style><title>CODOVYN</title></head><body data-codovyn-theme="${selectedTheme}"><main><header><div class="mark">C</div><div><h1>CODOVYN</h1><p>One IDE. Every Agent. Endless Flow.</p></div></header><section class="composer"><label for="agent">Agent</label><select id="agent"><option value="demo">Demo handoff</option><option value="codex">Codex CLI · read only</option><option value="claude">Claude Code · read only</option><option value="auto">Codex → Claude · automatic</option></select><label for="request">What would you like to work on?</label><textarea id="request" rows="5" maxlength="10000" placeholder="Describe a task in this repository"></textarea><div class="actions"><button id="run" type="button">Start task</button><button id="cancel" type="button" disabled>Cancel</button></div></section><section class="activity"><div class="section-head"><h2>Task activity</h2><span id="status" role="status" aria-live="polite">Ready</span></div><ol id="timeline" aria-label="Agent activity"></ol><p id="empty">Task steps and agent handoffs will appear here.</p></section><section class="recent"><div class="section-head"><h2>Recent tasks</h2><button id="refresh" type="button">Refresh</button></div><ul id="tasks" aria-label="Recent repository tasks"></ul></section><section class="diff"><div class="section-head"><h2>Repository diff</h2><div class="diff-actions"><button id="working-diff" type="button">Working tree</button><button id="staged-diff" type="button">Staged</button></div></div><pre id="diff-output" tabindex="0" aria-label="Git diff">Choose a diff to review.</pre></section><footer>Local task history stays on this device.</footer></main><script nonce="${nonce}" src="${media('routing-form.cjs')}"></script><script nonce="${nonce}" src="${media('workspace.js')}"></script>${nativeChatTestScript}</body></html>`;
+        panel.webview.html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${panel.webview.cspSource} 'nonce-${nonce}'; script-src 'nonce-${nonce}';"><link rel="stylesheet" href="${media('workspace.css')}"><style nonce="${nonce}">${themeStyles()}</style><title>CODOVYN</title></head><body data-codovyn-theme="${selectedTheme}"><main><header><div class="mark">C</div><div><h1>CODOVYN</h1><p>One IDE. Every Agent. Endless Flow.</p></div></header><section class="composer"><label class="legacy-agent-label" for="agent">Legacy agent mode</label><select class="legacy-agent-select" id="agent" aria-hidden="true" tabindex="-1"><option value="demo">Demo handoff</option><option value="codex">Codex CLI · read only</option><option value="claude">Claude Code · read only</option><option value="auto">Codex → Claude · automatic</option></select><label for="request">What would you like to work on?</label><textarea id="request" rows="5" maxlength="10000" placeholder="Describe a task in this repository"></textarea><div class="task-controls" aria-label="Task configuration"><label for="task-provider">Provider</label><select id="task-provider" aria-label="Provider"><option value="auto">Auto</option><option value="configured">Configured agents</option><option value="codex">Codex CLI</option><option value="gemini">Gemini CLI</option><option value="claude">Claude Code</option></select><label for="task-model">Model</label><select id="task-model" aria-label="Model"><option value="">Provider default / routing policy</option></select><label for="task-permission">Permissions</label><select id="task-permission" aria-label="Task permissions"><option value="read">Read only</option><option value="write" disabled>Write only — unsupported safely</option><option value="read-write">Read + Write draft</option></select><label for="task-routing">Routing</label><select id="task-routing" aria-label="Routing strategy"><option value="manual">Provider default</option><option value="auto">Auto</option><option value="economy">Economy</option><option value="balanced">Balanced</option><option value="performance">Performance</option><option value="custom">Custom model</option></select><label for="task-reasoning">Reasoning</label><select id="task-reasoning" aria-label="Reasoning effort"><option value="">Provider default</option></select></div><p id="permission-help" class="control-help">Read + Write uses an isolated draft. Changes require review before application.</p><div class="actions"><button id="run" type="button">Start task</button><button id="cancel" type="button" disabled>Cancel</button></div></section><section class="activity"><div class="section-head"><h2>Task activity</h2><span id="status" role="status" aria-live="polite">Ready</span></div><ol id="timeline" aria-label="Agent activity"></ol><p id="empty">Task steps and agent handoffs will appear here.</p></section><section class="recent"><div class="section-head"><h2>Recent tasks</h2><button id="refresh" type="button">Refresh</button></div><ul id="tasks" aria-label="Recent repository tasks"></ul></section><section class="diff"><div class="section-head"><h2>Repository diff</h2><div class="diff-actions"><button id="working-diff" type="button">Working tree</button><button id="staged-diff" type="button">Staged</button></div></div><pre id="diff-output" tabindex="0" aria-label="Git diff">Choose a diff to review.</pre></section><footer>Local task history stays on this device.</footer></main><script nonce="${nonce}" src="${media('routing-form.cjs')}"></script><script nonce="${nonce}" src="${media('workspace.js')}"></script>${nativeChatTestScript}</body></html>`;
         let active = null;
         let starting = false;
+        const seenRequestIds = new Set();
         let draftBusy = false;
         let disposed = false;
         let reviewedDraft = null;
@@ -440,24 +442,66 @@ function createExtension(api, runner = runCli) {
             return;
           }
           if (message.type !== 'run' || active || starting || draftBusy || disposed) return;
-          if (!['routed','routed-edit','configured', 'configured-edit', 'demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit'].includes(message.mode) || typeof message.request !== 'string') return;
+          if (message.requestId !== undefined && (typeof message.requestId !== 'string' || !/^[a-zA-Z0-9-]{16,80}$/.test(message.requestId))) {
+            panel.webview.postMessage({ type: 'error', text: 'Invalid task submission identifier. Your prompt was retained.' });
+            return;
+          }
+          if (message.requestId && seenRequestIds.has(message.requestId)) return;
+          let runMode = message.mode;
+          let taskConfiguration = null;
+          if (message.taskConfiguration !== undefined) {
+            try {
+              taskConfiguration = validateTaskConfiguration(message.taskConfiguration);
+              runMode = resolveTaskMode(taskConfiguration);
+            } catch {
+              panel.webview.postMessage({ type: 'error', text: 'The selected provider, model, permission or routing configuration is invalid. Your prompt was retained.' });
+              return;
+            }
+          }
+          if (!['routed','routed-edit','configured', 'configured-edit', 'demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit'].includes(runMode) || typeof message.request !== 'string') return;
           const request = message.request.trim();
           if (!request || request.length > 10000) return;
           const folder = folderForTask();
           if (!folder) { panel.webview.postMessage({ type: 'error', text: 'Open a Git repository folder first.' }); return; }
-          if (message.mode !== 'demo' && !api.workspace.isTrusted) {
+          if (runMode !== 'demo' && !api.workspace.isTrusted) {
             panel.webview.postMessage({ type: 'error', text: 'Trust this workspace before using an AI agent.' }); return;
           }
           const taskPolicy = loadAgentPolicy();
           starting = true;
-          const editMode = ['routed-edit','configured-edit', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit'].includes(message.mode);
+          if (message.requestId) {
+            seenRequestIds.add(message.requestId);
+            if (seenRequestIds.size > 256) seenRequestIds.delete(seenRequestIds.values().next().value);
+          }
+          panel.webview.postMessage({ type: 'starting' });
+          const editMode = ['routed-edit','configured-edit', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit'].includes(runMode);
           let taskRouting;
           let routeSummary='';
-          if (['routed','routed-edit'].includes(message.mode)) {
+          if (['routed','routed-edit'].includes(runMode)) {
             try {
               taskRouting=routingSnapshot(api.workspace.getConfiguration('codovyn',folder.uri).get('routingPolicy',{}));
               if (!taskRouting || typeof taskRouting!=='object' || Array.isArray(taskRouting)) throw new Error('Configure a routing policy first.');
+              if (taskConfiguration) {
+                if (taskConfiguration.provider === 'configured') throw new Error('Configured agent selection cannot be routed as a catalogue model.');
+                if (taskConfiguration.provider !== 'auto' && !taskConfiguration.modelId) throw new Error('A direct provider without a model must use its documented CLI default.');
+                const selectedModel = taskConfiguration.modelId && taskRouting.models.find((entry) => entry.id === taskConfiguration.modelId);
+                if (taskConfiguration.modelId && (!selectedModel ||
+                  (taskConfiguration.provider !== 'auto' && selectedModel.provider !== taskConfiguration.provider))) {
+                  throw new Error('The selected model is not in the project catalogue for this provider.');
+                }
+                if (taskConfiguration.modelId) {
+                  taskRouting.mode = 'custom';
+                  taskRouting.customModel = taskConfiguration.modelId;
+                  if (taskConfiguration.reasoning && !selectedModel.reasoning.includes(taskConfiguration.reasoning)) {
+                    throw new Error('The selected model does not support this reasoning setting.');
+                  }
+                  taskRouting.reasoning = taskConfiguration.reasoning || undefined;
+                } else {
+                  taskRouting.mode = taskConfiguration.routingMode;
+                  delete taskRouting.customModel;
+                }
+              }
               if (editMode) taskRouting.requiredCapabilities=[...new Set([...(taskRouting.requiredCapabilities||[]),'writes'])];
+              if (taskConfiguration?.reasoning && !taskConfiguration.modelId) throw new Error('Choose a catalogue model before selecting a reasoning setting.');
               const serialized=JSON.stringify(taskRouting);
               if(serialized.length>65536)throw new Error('Routing settings exceed the local size limit.');
               const preview=await runner(runtimePath(api,context),[join(context.extensionPath,'apps','cli','src','index.js'),'route',folder.uri.fsPath,request],{
@@ -474,16 +518,16 @@ function createExtension(api, runner = runCli) {
           }
           if (editMode) {
             panel.webview.postMessage({ type: 'approval-pending' });
-            const agentName = message.mode==='routed-edit'?'the selected model':message.mode === 'configured-edit' ? [taskPolicy.primary, ...(taskPolicy.automatic ? taskPolicy.fallbacks : [])].join(' and ') : message.mode === 'gemini-edit' ? 'Gemini CLI' : message.mode === 'auto-gemini-edit' ? 'Codex and Gemini CLI' : message.mode === 'claude-edit' ? 'Claude Code' : message.mode === 'auto-edit' ? 'Codex and Claude Code' : 'Codex';
-            const detail = message.mode==='routed-edit'?`${routeSummary} Only this provider receives the task. Codex may execute local draft commands; Gemini uses restricted file tools. Review is required before applying edits.`:message.mode === 'configured-edit'
+            const agentName = runMode==='routed-edit'?'the selected model':runMode === 'configured-edit' ? [taskPolicy.primary, ...(taskPolicy.automatic ? taskPolicy.fallbacks : [])].join(' and ') : runMode === 'gemini-edit' ? 'Gemini CLI' : runMode === 'auto-gemini-edit' ? 'Codex and Gemini CLI' : runMode === 'claude-edit' ? 'Claude Code' : runMode === 'auto-edit' ? 'Codex and Claude Code' : 'Codex';
+            const detail = runMode==='routed-edit'?`${routeSummary} Only this provider receives the task. Codex may execute local draft commands; Gemini uses restricted file tools. Review is required before applying edits.`:runMode === 'configured-edit'
               ? 'The configured providers may receive this task and repository context. Codex may run local draft commands; Gemini and Claude use restricted file tools. Automatic handoff stops after write-capable actions. You will review the patch before applying it.'
-              : message.mode === 'gemini-edit'
+              : runMode === 'gemini-edit'
               ? 'Gemini may edit files inside a separate Git worktree using restricted file tools. Shell commands are unavailable. You will review a patch before changes reach the open repository.'
-              : message.mode === 'auto-gemini-edit'
+              : runMode === 'auto-gemini-edit'
                 ? 'This task may send its request and context to Codex and Gemini. Codex may run draft commands; Gemini uses restricted file tools. Automatic handoff stops after write-capable actions. Review is required before applying changes.'
-              : message.mode === 'claude-edit'
+              : runMode === 'claude-edit'
               ? 'Claude Code may edit files inside a separate Git worktree. Shell commands are unavailable in this mode. You will review a patch before changes reach the open repository.'
-              : message.mode === 'auto-edit'
+              : runMode === 'auto-edit'
                 ? 'Codex may edit files and run local commands inside a separate Git worktree. Claude Code may continue an automatic handoff before a tool action. You will review a patch before changes reach the open repository.'
                 : 'Codex may edit files and run local commands inside a separate Git worktree. You will review a patch before changes reach the open repository.';
             let approval;
@@ -503,22 +547,32 @@ function createExtension(api, runner = runCli) {
             }
           }
           reviewedDraft = null;
-          panel.webview.postMessage({ type: 'running' });
           const nodePath = runtimePath(api, context);
           const script = join(context.extensionPath, 'apps', 'cli', 'src', 'index.js');
           const activity = [];
+          let taskAccepted = false;
           try {
-            const result = await runner(nodePath, [script, message.mode, folder.uri.fsPath, request,
+            const result = await runner(nodePath, [script, runMode, folder.uri.fsPath, request,
               ...(editMode ? ['--allow-writes'] : [])], {
               cwd: folder.uri.fsPath,
               env: { ...providerEnvironment(api), CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM: '1', CODOVYN_AGENT_POLICY: JSON.stringify(taskPolicy), ...(taskRouting?{CODOVYN_ROUTING_POLICY:JSON.stringify(taskRouting),CODOVYN_SESSION_ID:routingSession}:{}) },
               onChild: (child) => { active = child; },
-              onEvent: (event) => {
+              onEvent: (event, taskId) => {
+                if (!taskAccepted && event.kind === 'execution-owned') {
+                  taskAccepted = true;
+                  panel.webview.postMessage({ type: 'accepted', requestId: message.requestId, taskId });
+                  panel.webview.postMessage({ type: 'running', taskId });
+                }
                 const entries = timeline([event]);
                 activity.push(...entries);
                 if (entries.length) panel.webview.postMessage({ type: 'progress', entries });
               },
             });
+            if (!taskAccepted) {
+              taskAccepted = true;
+              panel.webview.postMessage({ type: 'accepted', requestId: message.requestId, taskId: result.taskId });
+              panel.webview.postMessage({ type: 'running', taskId: result.taskId });
+            }
             panel.webview.postMessage({ type: 'result', status: result.status, taskId: result.taskId,
               activeAgent: result.activeAgent, draftReviewAvailable: !!result.draftReviewAvailable,
               timeline: result.budgetRejected ? [{type:'error',text:'Local budget reservation was refused. Another task may have reserved the remaining estimate, or earlier charges are unknown. No provider started.'}] : result.routing&&!result.routing.selected ? [{type:'error',text:'No eligible routing candidate. Review the decision and budget rejection reasons.'}] : result.events ? timeline(result.events) : activity });

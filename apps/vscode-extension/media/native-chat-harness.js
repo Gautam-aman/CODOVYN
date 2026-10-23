@@ -15,9 +15,33 @@
     requireValue(request && chat && tabs('chat') && tabs('activity'), 'The actual CODOVYN Chat workspace did not initialize.');
     stage('webview-dom-ready');
 
+    const legacyMode = document.querySelector('#agent');
+    const provider = document.querySelector('#task-provider');
+    const model = document.querySelector('#task-model');
+    const permission = document.querySelector('#task-permission');
+    const routing = document.querySelector('#task-routing');
+    const reasoning = document.querySelector('#task-reasoning');
+    requireValue(provider && model && permission && routing && reasoning && getComputedStyle(legacyMode).display === 'none',
+      'The combined legacy selector must be replaced by separate provider, model, permission and routing controls.');
+    const catalogueModel = { id: 'native-fixture-codex', provider: 'codex', model: 'Configured CODOVYN fixture model',
+      capabilities: ['streaming'], reasoning: ['low'], quality: 50, reliability: 0.5, availability: 'unknown', price: null };
+    send({ type: 'routing-policy', policy: { mode: 'auto', models: [catalogueModel], requiredCapabilities: [], tokens: { input: 0, output: 0 } } });
+    provider.value = 'codex'; provider.dispatchEvent(new Event('change'));
+    model.value = catalogueModel.id; model.dispatchEvent(new Event('change'));
+    requireValue([...model.options].some(option => option.value === catalogueModel.id) && reasoning.disabled === false &&
+      [...reasoning.options].some(option => option.value === 'low') && permission.querySelector('option[value="write"]')?.disabled === true,
+      'The native picker must show only configured models and reasoning while keeping unsupported write-only permission disabled.');
+    report.composerControls = true;
+    stage('separate-composer-controls-verified');
+
     request.value = prompt;
     pendingChatRequest = prompt;
-    send({ type: 'running' });
+    taskSubmissionId = 'native-chat-request-001';
+    send({ type: 'accepted', requestId: taskSubmissionId, taskId: 'native-chat-task' });
+    requireValue(request.value === '' && acceptedChatRequest === prompt,
+      'The composer must clear only after host acknowledgement and retain the accepted prompt for the transcript.');
+    report.submissionAcknowledgement = true;
+    send({ type: 'running', taskId: 'native-chat-task' });
     requireValue(chat.textContent.includes(prompt), 'Authorized task prompt was not rendered in Chat.');
     report.submittedPrompt = true;
     stage('prompt-rendered');

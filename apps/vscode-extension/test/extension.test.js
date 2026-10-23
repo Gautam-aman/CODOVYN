@@ -99,6 +99,42 @@ test('extension starts a repository task and exposes a safe handoff timeline', a
   assert.equal(sent.at(-1).type, 'draft-idle');
 });
 
+test('new task configuration is host-validated and acknowledged only after durable task ownership', async () => {
+  let open, handler, panel; const sent = []; const calls = [];
+  const api = {
+    commands: { registerCommand: (id, callback) => { if (id === 'codovyn.open') open = callback; return { dispose() {} }; } },
+    window: { createWebviewPanel: () => { panel = { webview: { cspSource: 'x', asWebviewUri: x => x,
+      onDidReceiveMessage: callback => { handler = callback; }, postMessage: message => sent.push(message) } }; return panel; } },
+    ViewColumn: { Beside: 2 }, Uri: { joinPath: (_root, ...parts) => parts.join('/') },
+    workspace: { workspaceFolders: [{ uri: { fsPath: '/project' } }], isTrusted: true,
+      getConfiguration: () => ({ get: () => 'node' }) },
+  };
+  const runner = async (_node, args, options) => {
+    calls.push(args);
+    options.onEvent({ kind: 'execution-owned', seq: 1, data: {} }, 'task-native-id');
+    return { status: 'completed', taskId: 'task-native-id', events: [] };
+  };
+  createExtension(api, runner).activate({ extensionUri: 'root', extensionPath: '/extension', globalStorageUri: { fsPath: '/data' }, subscriptions: [] });
+  open();
+  assert.match(panel.webview.html, /id="task-provider"/);
+  assert.match(panel.webview.html, /id="task-model"/);
+  assert.match(panel.webview.html, /id="task-permission"/);
+  assert.match(panel.webview.html, /class="legacy-agent-select"[^>]*aria-hidden="true"/);
+  await handler({ type: 'run', requestId: '12345678-1234-1234-1234-123456789abc', request: 'Inspect', mode: 'demo',
+    taskConfiguration: { provider: 'codex', modelId: null, permission: 'read', routingMode: 'manual', reasoning: null } });
+  assert.equal(calls[0][1], 'codex');
+  assert.ok(sent.some(message => message.type === 'accepted' && message.taskId === 'task-native-id'));
+  assert.ok(sent.some(message => message.type === 'running' && message.taskId === 'task-native-id'));
+  const count = calls.length;
+  await handler({ type: 'run', requestId: '12345678-1234-1234-1234-123456789abc', request: 'Inspect again',
+    taskConfiguration: { provider: 'codex', modelId: null, permission: 'read', routingMode: 'manual', reasoning: null } });
+  assert.equal(calls.length, count, 'the same idempotency key cannot launch a second task');
+  await handler({ type: 'run', requestId: '22345678-1234-1234-1234-123456789abc', request: 'Inspect',
+    taskConfiguration: { provider: 'openrouter', modelId: null, permission: 'read', routingMode: 'manual', reasoning: null } });
+  assert.equal(calls.length, count, 'unsupported providers are rejected before invoking the runtime');
+  assert.ok(sent.some(message => message.type === 'error' && /configuration is invalid/.test(message.text)));
+});
+
 test('extension blocks provider execution in an untrusted workspace', async () => {
   let command;
   let handler;

@@ -262,7 +262,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
         registry.register(factories[provider]({cwd:repository,write:false,...(provider==='gemini'&&policy?.geminiModel?{model:policy.geminiModel}:{})}));
       }
       const engine=new TaskEngine({store,registry,snapshot:()=>repositorySnapshot(repository),restoration:{enabled:policy?.restorePrimary===true},
-        onEvent:stream?event=>output.log(JSON.stringify({type:'event',event})):undefined});
+        onEvent:stream?event=>output.log(JSON.stringify({type:'event',taskId:task.id,event})):undefined});
       const resumed=await engine.run(task.id,{signal});const result={taskId:task.id,status:resumed.status,activeAgent:resumed.activeAgent,...(stream?{}:{events:store.events(task.id)})};
       output.log(JSON.stringify(stream?{type:'result',...result}:result));return resumed.status==='completed'?0:1;
     }
@@ -443,7 +443,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
     if (policy) store.append(id, 'agent-policy', policy);
     if (draft&&!routing) store.append(id, 'draft-created', { baseCommit: draft.baseCommit, branch: draft.branch });
     const engine = new TaskEngine({ store, registry, restoration:{enabled:policy?.restorePrimary===true}, snapshot: () => repositorySnapshot(draft?.path || repository),
-      onEvent: stream ? (event) => output.log(JSON.stringify({ type: 'event', event })) : undefined });
+      onEvent: stream ? (event) => output.log(JSON.stringify({ type: 'event', taskId: id, event })) : undefined });
     const task = await engine.run(id, { signal });
     const result = { taskId: id, status: task.status, activeAgent: task.activeAgent, draftReviewAvailable: !!draft,
       ...(stream ? {} : { events: store.events(id) }) };
