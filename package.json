@@ -26,7 +26,8 @@
       },
       {
         "command": "codovyn.openChat",
-        "title": "CODOVYN: Open Chat"
+        "title": "CODOVYN: Open Chat",
+        "icon": "$(comment-discussion)"
       },
       {
         "command": "codovyn.openActivity",
@@ -71,6 +72,14 @@
           "description": "Explicit local model catalogue and routing policy. Edit in the CODOVYN agent workspace or Settings JSON; no prices or model access are inferred. See docs/agents/routing.md."
         }
       }
+    },
+    "menus": {
+      "editor/title": [
+        {
+          "command": "codovyn.openChat",
+          "group": "navigation@9"
+        }
+      ]
     }
   },
   "workspaces": [

@@ -1,6 +1,6 @@
 /* Compact composer. Provider content is always rendered as text. */
 class CodovynComposer {
-  constructor({ request, run, cancel, controls, getModels, changed, settings, manageModels }) {
+  constructor({ request, run, cancel, controls, getModels, changed, settings, manageModels, setup }) {
     Object.assign(this, { request, run, cancel, controls, getModels, changed });
     this.intent = controls.permission.value === 'read-write' ? 'agent' : 'ask';
     this.providers = [];
@@ -26,7 +26,8 @@ class CodovynComposer {
     this.results = document.createElement('div'); this.results.className = 'model-results';
     this.results.setAttribute('role', 'group'); this.results.setAttribute('aria-label', 'Models');
     const manage = chip('manage-models', 'Manage models…', () => { this.close(this.modelMenu); manageModels(); });
-    this.modelMenu.append(this.search, this.results, manage);
+    const providerSetup = chip('provider-setup', 'Provider setup…', () => { this.close(this.modelMenu); setup(); });
+    this.modelMenu.append(this.search, this.results, manage, providerSetup);
     this.search.addEventListener('input', () => this.renderModels());
     this.modeMenu = this.menu('mode-picker', 'Task mode', this.modeChip);
     for (const [intent, label, help] of [['ask', 'Ask', 'Read and explain. No file writes.'], ['agent', 'Agent', 'Propose edits in an isolated, reviewed draft.'], ['plan', 'Plan', 'Plan the work with file writes disabled.']]) {

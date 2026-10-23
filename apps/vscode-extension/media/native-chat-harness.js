@@ -108,6 +108,17 @@
     report.submittedPrompt = true;
     stage('prompt-rendered');
 
+    request.value = 'Queue another request while running';
+    const ime = new KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true, cancelable: true }); request.dispatchEvent(ime);
+    requireValue(!ime.defaultPrevented && !taskQueue.pending, 'IME composition submitted a task.');
+    const newline = new KeyboardEvent('keydown', { key: 'Enter', shiftKey: true, bubbles: true, cancelable: true }); request.dispatchEvent(newline);
+    requireValue(!newline.defaultPrevented && !taskQueue.pending, 'Shift+Enter did not preserve newline input.');
+    const activeQueued = hostMessage('queue-accepted');
+    request.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    const activeAck = await activeQueued;
+    requireValue(request.value === '' && chat.textContent.includes(prompt), 'Queueing the next instruction disrupted the active conversation.');
+    nextState = hostMessage('queue-state'); vscode.postMessage({ type: 'queue-cancel', id: activeAck.taskId }); await nextState;
+    compactComposer.close(taskQueue.menu);
     send({ type: 'progress', entries: [
       { type: 'tool', text: 'Reading the disposable project' },
       { type: 'message', text: 'First streamed chunk. ' },

@@ -751,7 +751,8 @@ request.addEventListener('keydown', (event) => {
   if (event.key !== 'Enter' || event.isComposing || event.keyCode === 229) return;
   if (event.shiftKey && !event.metaKey && !event.ctrlKey) return;
   event.preventDefault();
-  run.click();
+  if (run.disabled && !cancel.disabled) { taskQueue.enqueue(); compactComposer.open(taskQueue.menu); }
+  else run.click();
 });
 
 const workspaceTabs = [
@@ -907,6 +908,7 @@ compactComposer = new CodovynComposer({ request, run, cancel, controls: { provid
   getModels: () => taskModelCatalogue,
   changed: () => { updateLegacyMode(); storeTaskSelection(); },
   settings: () => { activateWorkspaceView('settings'); advancedTaskSettings.open = true; advancedSummary.focus(); },
+  setup: () => { activateWorkspaceView('settings'); agentSettings.open = true; inspectAgents.focus(); vscode.postMessage({ type: 'agent-diagnostics' }); },
   manageModels: () => { activateWorkspaceView('settings'); routingSettings.open = true; addModel.focus(); },
 });
 const taskQueue = new CodovynQueue(compactComposer, currentTaskConfiguration);
