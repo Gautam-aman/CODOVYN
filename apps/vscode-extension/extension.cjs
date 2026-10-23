@@ -45,6 +45,7 @@ function timeline(events) {
     if (entry.kind === 'agent-event' && entry.data.event.type === 'session') {
       return [{ type: 'agent', text: `${entry.data.agent}: selected model ${entry.data.event.model}` }];
     }
+    if (entry.kind === 'task-configuration') return [{ type: 'checkpoint', text: `Reasoning effort: ${entry.data.reasoning || 'Auto / provider default'} · requested task setting` }];
     if (entry.kind === 'agent-started') return [{ type: 'agent', text: `Started ${entry.data.agent}` }];
     if (entry.kind === 'agent-event' && entry.data.event.type === 'tool-start') {
       return [{ type: 'tool', text: ['file_change', 'replace', 'write_file', 'Edit', 'Write'].includes(entry.data.event.action) ? 'Editing draft files…' : entry.data.event.action === 'command_execution' ? 'Running a workspace command…' : `Using agent tool: ${entry.data.event.action}` }];

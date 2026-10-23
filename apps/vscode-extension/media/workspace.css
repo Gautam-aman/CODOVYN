@@ -216,3 +216,7 @@ button.composer-chip:hover, button.composer-chip[aria-expanded="true"] { color: 
 .composer-popover button[aria-pressed="true"] { border-color: var(--vscode-focusBorder); }
 
 #codovyn-panel-chat > .workspace-panel-heading { display: none; }
+/* Inline effort shares the lightweight composer popover and reduced-motion rules. */
+#effort-chip { white-space: nowrap; }
+#effort-picker { max-width: min(300px, calc(100vw - 24px)); }
+#effort-picker button:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }

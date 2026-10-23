@@ -14,6 +14,7 @@
     const tabs = view => document.querySelector(`[data-workspace-view="${view}"]`);
     requireValue(request && chat && tabs('chat') && tabs('activity'), 'The actual CODOVYN Chat workspace did not initialize.');
     stage('webview-dom-ready');
+    if (phase === 'relaunch') requireValue(compactComposer.efforts['default:codex'] === 'high', 'Per-model reasoning preference did not survive normal application restart.');
     if (phase === 'relaunch') requireValue(compactComposer.favorites.includes('model:native-fixture-codex'), 'Favorite models did not restore from host storage after restart.');
 
     const legacyMode = document.querySelector('#agent');
@@ -76,11 +77,30 @@
     document.querySelector('#model-chip').click();
     document.querySelector('#model-picker [data-choice="default:codex"]').click();
     requireValue(provider.value === 'codex' && model.value === '', 'Provider Default did not select the actual CLI default.');
+    for (let attempt = 0; attempt < 60 && ![...reasoning.options].some(option => option.value === 'high'); attempt++) await pause(50);
+    const effortChip = document.querySelector('#effort-chip'); effortChip.click();
+    const effortPicker = document.querySelector('#effort-picker');
+    requireValue(effortPicker.matches(':popover-open'), 'Inline Effort menu did not open.');
+    requireValue(!effortPicker.querySelector('[data-choice="minimal"]'), 'Unsupported effort was invented for the default model.');
+    effortPicker.querySelector('[data-choice="high"]').click();
+    requireValue(reasoning.value === 'high' && currentTaskConfiguration().reasoning === 'high' && model.value === '', 'Provider Default + High did not reach the actual task configuration.');
+    requireValue(!effortPicker.matches(':popover-open') && document.activeElement === effortChip, 'Effort selection did not restore focus.');
+    effortChip.click();
+    effortPicker.querySelector('button').dispatchEvent(new KeyboardEvent('keydown', {key:'End',bubbles:true}));
+    requireValue(document.activeElement.dataset.choice === 'xhigh', 'Effort End navigation failed.');
+    document.activeElement.dispatchEvent(new KeyboardEvent('keydown', {key:'Escape',bubbles:true}));
+    requireValue(!effortPicker.matches(':popover-open') && document.activeElement === effortChip, 'Effort Escape/focus behavior failed.');
+    compactComposer.rememberEffort(); provider.value = 'gemini'; provider.dispatchEvent(new Event('change'));
+    requireValue(reasoning.value === '' && reasoning.disabled, 'Unsupported provider retained a Codex effort.');
+    compactComposer.select(compactComposer.entries().find(entry => entry.key === 'default:codex'));
+    requireValue(reasoning.value === 'high', 'Returning to a model did not restore its effort preference.');
+    report.inlineEffort = true;
     let nextState = hostMessage('queue-state'); vscode.postMessage({ type: 'queue-list' });
     let queueState = await nextState;
     if (phase === 'relaunch') {
       const retained = queueState.tasks.find(task => task.request === 'Persistent native queue request' && task.status === 'queued');
       requireValue(retained, 'Queued request did not survive an actual native restart.');
+      requireValue(retained.configuration.reasoning === 'high', 'Accepted queue reasoning snapshot did not persist.');
       nextState = hostMessage('queue-state', state => state.tasks.some(task => task.id === retained.id && task.status === 'cancelled')); vscode.postMessage({ type: 'queue-cancel', id: retained.id }); await nextState;
       report.queueRestoredAfterRestart = true;
     }
@@ -88,6 +108,7 @@
       request.value = value;
       const accepted = hostMessage('queue-accepted'); const state = hostMessage('queue-state', data => data.tasks.some(task => task.request === value && task.status === 'queued'));
       taskQueue.enqueue(); const ack = await accepted; await state;
+      requireValue(taskQueue.tasks.find(task => task.id === ack.taskId)?.configuration.reasoning === 'high', 'Queued configuration dropped the selected reasoning effort.');
       requireValue(request.value === '', 'Durable queue acknowledgement did not clear the submitted composer draft.'); return ack.taskId;
     };
     const firstQueued = await addQueued('First native queued request');

@@ -4,6 +4,8 @@ class CodovynComposer {
     Object.assign(this, { request, run, cancel, controls, getModels, changed });
     this.intent = controls.permission.value === 'read-write' ? 'agent' : 'ask';
     this.providers = [];
+    this.efforts = {};
+    this.effortLabels = { '': 'Auto', none: 'None', minimal: 'Minimal', low: 'Low', medium: 'Medium', high: 'High', xhigh: 'Extra High', max: 'Max', ultra: 'Ultra' };
     const stored = vscode.getState?.()?.modelPicker;
     this.favorites = Array.isArray(stored?.favorites) ? stored.favorites.filter(x => typeof x === 'string').slice(0, 32) : [];
     this.recent = Array.isArray(stored?.recent) ? stored.recent.filter(x => typeof x === 'string').slice(0, 8) : [];
@@ -18,6 +20,10 @@ class CodovynComposer {
       button.className = 'composer-chip'; button.textContent = label; button.addEventListener('click', action); return button;
     };
     this.modelChip = chip('model-chip', 'Auto ⌄', () => this.openModels());
+    this.effortChip = chip('effort-chip', 'Effort · Auto ⌄', () => this.openEfforts());
+    this.effortMenu = this.menu('effort-picker', 'Reasoning effort', this.effortChip);
+    this.effortNotice = document.createElement('p'); this.effortNotice.className = 'queue-help';
+    this.effortChoices = document.createElement('div'); this.effortMenu.append(this.effortNotice, this.effortChoices);
     this.modeChip = chip('mode-chip', 'Ask ⌄', () => this.openModes());
     const gear = chip('composer-settings', '⚙', settings); gear.setAttribute('aria-label', 'Advanced task settings');
     this.modelMenu = this.menu('model-picker', 'Choose model', this.modelChip);
@@ -36,7 +42,7 @@ class CodovynComposer {
     }
     run.textContent = '↑'; run.title = 'Send · Enter (Shift+Enter for a new line)'; run.setAttribute('aria-label', 'Send message');
     cancel.textContent = '■'; cancel.title = 'Stop active task'; cancel.setAttribute('aria-label', 'Stop active task');
-    toolbar.append(this.modelChip, this.modeChip, gear, run, cancel);
+    toolbar.append(this.modelChip, this.effortChip, this.modeChip, gear, run, cancel);
     composer.querySelector('.actions').remove(); composer.append(toolbar);
     request.addEventListener('input', () => this.resize());
     for (const control of Object.values(controls)) control.addEventListener('change', () => {
@@ -77,6 +83,23 @@ class CodovynComposer {
   }
   close(menu) { menu.hidePopover(); menu.trigger.focus({ preventScroll: true }); }
   openModels() { if (!this.discoveryRequested) { this.discoveryRequested = true; vscode.postMessage({ type: 'agent-diagnostics' }); } this.search.value = ''; this.renderModels(); this.open(this.modelMenu); }
+  rememberEffort() {
+    this.efforts = Object.fromEntries([...Object.entries(this.efforts).filter(([key]) => key !== this.selectedKey()), [this.selectedKey(), this.controls.reasoning.value || null]].slice(-32));
+  }
+  openEfforts() {
+    this.effortChoices.replaceChildren();
+    this.effortNotice.textContent = this.controls.reasoning.title;
+    for (const option of this.controls.reasoning.options) {
+      if (option.disabled) continue;
+      const button = document.createElement('button'); button.type = 'button'; button.dataset.choice = option.value || 'auto';
+      button.textContent = option.value ? (this.effortLabels[option.value] || option.value) : 'Auto / Default';
+      button.setAttribute('aria-pressed', String(this.controls.reasoning.value === option.value));
+      button.title = option.value ? `Send ${option.value} to the selected adapter for the next task` : 'Omit the override and preserve the provider configuration';
+      button.addEventListener('click', () => { this.controls.reasoning.value = option.value; this.rememberEffort(); this.controls.reasoning.dispatchEvent(new Event('change')); this.refresh(); this.changed(); this.close(this.effortMenu); });
+      this.effortChoices.append(button);
+    }
+    this.open(this.effortMenu);
+  }
   openModes() {
     for (const button of this.modeMenu.querySelectorAll('button')) { button.dataset.choice = ''; button.setAttribute('aria-pressed', String(button.id === `mode-${this.intent}`)); }
     this.open(this.modeMenu);
@@ -131,15 +154,22 @@ class CodovynComposer {
   selectedKey() { return this.controls.model.value ? `model:${this.controls.model.value}` : this.controls.provider.value === 'auto' ? 'auto' : `default:${this.controls.provider.value}`; }
   select(entry) {
     if (entry.disabled) return;
+    this.rememberEffort();
     this.controls.provider.value = entry.provider;
     this.controls.provider.dispatchEvent(new Event('change'));
     this.controls.model.value = entry.id || '';
     this.controls.reasoning.value = '';
     this.controls.model.dispatchEvent(new Event('change'));
+    const savedEffort = this.efforts[entry.key] || '';
+    if ([...this.controls.reasoning.options].some(option => option.value === savedEffort)) this.controls.reasoning.value = savedEffort;
+    this.controls.reasoning.dispatchEvent(new Event('change'));
     this.recent = [entry.key, ...this.recent.filter(key => key !== entry.key)].slice(0, 8); this.save(); this.refresh(); this.close(this.modelMenu); this.changed();
   }
   save() { vscode.setState?.({ ...(vscode.getState?.() || {}), modelPicker: { favorites: this.favorites, recent: this.recent } }); this.changed(); }
   refresh() {
+    this.effortChip.textContent = `${(this.controls.reasoning.value ? this.effortLabels[this.controls.reasoning.value] : 'Effort · Auto') || 'Auto'} ⌄`;
+    this.effortChip.title = this.controls.reasoning.title || 'Reasoning effort · provider default';
+    this.effortChip.setAttribute('aria-label', `Reasoning effort: ${this.effortLabels[this.controls.reasoning.value] || 'Auto'}`);
     const entry = this.entries().find(entry => entry.key === this.selectedKey());
     this.modelChip.textContent = `${entry?.label?.replace(' · Provider Default', '').replace(' · Smart Routing', '') || (this.controls.model.value ? `${this.controls.model.value} · unavailable` : 'Select model')} ⌄`; this.modelChip.title = entry?.detail || 'Model selection needs review';
   }

@@ -24,6 +24,8 @@ let unseenActivityCount = 0;
 let pendingChatRequest = '';
 let acceptedChatRequest = '';
 let taskModelCatalogue = [];
+let codexReasoningMetadata = null;
+let reasoningInspectionRequested = false;
 let previousTaskProvider = null;
 let taskSubmissionId = null;
 let queueDispatching = false;
@@ -292,11 +294,21 @@ function updateTaskReasoning() {
   const previous = taskReasoning.value;
   taskReasoning.replaceChildren();
   const defaultOption = document.createElement('option'); defaultOption.value = ''; defaultOption.textContent = 'Provider default'; taskReasoning.append(defaultOption);
-  const supported = selectedModel?.provider === 'codex' && Array.isArray(selectedModel.reasoning) ? selectedModel.reasoning : [];
+  if (taskProvider.value === 'codex' && !taskModel.value && !reasoningInspectionRequested) {
+    reasoningInspectionRequested = true; vscode.postMessage({ type: 'reasoning-capabilities' });
+  }
+  const knownEfforts = ['none','minimal','low','medium','high','xhigh','max','ultra'];
+  const advertised = selectedModel?.provider === 'codex' ? selectedModel.reasoning :
+    taskProvider.value === 'codex' && !taskModel.value ? codexReasoningMetadata?.models?.find(entry => entry.model === codexReasoningMetadata.defaultModel)?.reasoning : [];
+  const supported = Array.isArray(advertised) ? knownEfforts.filter(value => advertised.includes(value)) : [];
   for (const effort of supported) { const option = document.createElement('option'); option.value = effort; option.textContent = effort; taskReasoning.append(option); }
   taskReasoning.disabled = !supported.length;
   if (supported.includes(previous)) taskReasoning.value = previous;
-  taskReasoning.title = supported.length ? 'Only reasoning options listed for this configured model are selectable.' : 'No reasoning options are configured for the selected model.';
+  if (!codexReasoningMetadata && taskProvider.value === 'codex' && !taskModel.value && previous) {
+    const pending = document.createElement('option'); pending.value = previous; pending.textContent = previous + ' · checking'; pending.disabled = true; taskReasoning.append(pending); taskReasoning.value = previous;
+  }
+  taskReasoning.title = supported.length ? (selectedModel ? 'Efforts declared for this catalogue model. Access remains unverified.' : 'Efforts advertised by the installed Codex CLI for its configured default model. Access remains unverified.') : taskProvider.value === 'codex' && !taskModel.value && !codexReasoningMetadata ? 'Checking installed Codex reasoning capabilities…' : 'No enforceable reasoning override is known for this selection. Auto preserves provider defaults.';
+  compactComposer?.refresh();
 }
 function updateLegacyMode() {
   const provider = taskProvider.value;
@@ -319,7 +331,7 @@ function storeTaskSelection() {
   } } });
   if (!restoringComposerPreferences) {
     const picker = vscode.getState?.()?.modelPicker || {};
-    vscode.postMessage({ type: 'composer-preferences-save', preferences: { version: 1, selection: currentTaskConfiguration(), favorites: picker.favorites || [], recent: picker.recent || [] } });
+    vscode.postMessage({ type: 'composer-preferences-save', preferences: { version: 1, selection: currentTaskConfiguration(), favorites: picker.favorites || [], recent: picker.recent || [], efforts: compactComposer?.efforts || {} } });
   }
 }
 function restoreTaskSelection() {
@@ -348,7 +360,7 @@ taskProvider.addEventListener('change', storeTaskSelection);
 taskModel.addEventListener('change', () => { updateTaskReasoning(); if (taskProvider.value === 'auto' && taskModel.value) taskRouting.value = 'custom'; updateLegacyMode(); storeTaskSelection(); });
 taskPermission.addEventListener('change', () => { updateLegacyMode(); storeTaskSelection(); });
 taskRouting.addEventListener('change', () => { updateLegacyMode(); storeTaskSelection(); });
-taskReasoning.addEventListener('change', () => { updateLegacyMode(); storeTaskSelection(); });
+taskReasoning.addEventListener('change', () => { compactComposer?.rememberEffort(); updateLegacyMode(); storeTaskSelection(); compactComposer?.refresh(); });
 routingSettings.addEventListener('input', () => { routingDirty = true; });
 routingSettings.addEventListener('change', () => { routingDirty = true; });
 function modelField(card, title, value, type = 'text') {
@@ -985,6 +997,8 @@ window.addEventListener('message', ({ data }) => {
     if (data.selectedRoot) { project.value = data.selectedRoot; selectedProjectRoot = data.selectedRoot; }
     project.disabled = !data.projects?.length;
   } else if (data.type === 'project-selected') {
+    codexReasoningMetadata = null; reasoningInspectionRequested = false;
+    if (compactComposer) compactComposer.efforts = {};
     taskProvider.value = 'codex'; taskModel.value = ''; taskPermission.value = 'read'; taskRouting.value = 'manual'; taskReasoning.value = '';
     compactComposer?.setIntent('ask');
     selectedProjectRoot = project.value;
@@ -996,6 +1010,11 @@ window.addEventListener('message', ({ data }) => {
     status.textContent = 'Ready';
     empty.textContent = 'Task steps and agent handoffs will appear here.';
     diffOutput.textContent = 'Choose a diff to review.';
+  } else if (data.type === 'reasoning-capabilities') {
+    codexReasoningMetadata = data.metadata || { models: [], defaultModel: null };
+    const previous = taskReasoning.value; updateTaskReasoning();
+    if (previous && !taskReasoning.value) { status.textContent = 'Previous effort is unsupported for this selection; reset to Auto.'; storeTaskSelection(); }
+    restoreTaskSelection();
   } else if (data.type === 'composer-preferences') {
     const saved = data.preferences;
     if (!saved?.selection || !compactComposer || !selectedProjectRoot) return;
@@ -1003,7 +1022,7 @@ window.addEventListener('message', ({ data }) => {
     const state = vscode.getState?.() || {};
     const selection = saved.selection;
     vscode.setState?.({ ...state, modelPicker: { favorites: saved.favorites, recent: saved.recent }, taskSelections: { ...(state.taskSelections || {}), [selectedProjectRoot.slice(0, 1024)]: { ...selection, modelId: selection.modelId || '', reasoning: selection.reasoning || '' } } });
-    compactComposer.favorites = saved.favorites; compactComposer.recent = saved.recent;
+    compactComposer.favorites = saved.favorites; compactComposer.recent = saved.recent; compactComposer.efforts = saved.efforts || {};
     restoreTaskSelection(); restoringComposerPreferences = false;
   } else if (data.type === 'queue-dispatch') {
     pendingChatRequest = data.request; taskSubmissionId = data.requestId; queueDispatching = true;

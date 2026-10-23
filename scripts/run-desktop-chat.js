@@ -17,6 +17,9 @@ const cancellation = nativeTestCancellation();
 let passed = false;
 try {
   await mkdir(fixture);
+  const fixtureBin = join(temporary, 'bin'); await mkdir(fixtureBin);
+  // Documented metadata transport fixture; no thread/turn or paid request.
+  await writeFile(join(fixtureBin, 'codex'), '#!' + process.execPath + '\n' + `if(process.argv.includes('--version')){console.log('codex-cli fixture');process.exit(0);}const readline=require('readline');readline.createInterface({input:process.stdin}).on('line',line=>{const m=JSON.parse(line);if(m.id)console.log(JSON.stringify({id:m.id,result:m.id===1?{}:m.id===2?{data:[{model:'native-default',isDefault:true,supportedReasoningEfforts:[{reasoningEffort:'low'},{reasoningEffort:'high'},{reasoningEffort:'xhigh'}]}]}:{config:{model:'native-default'}}}));});`, { mode: 0o755 });
   await writeFile(join(fixture, 'chat-smoke.txt'), 'Disposable native Chat fixture.\n');
   execFileSync('git', ['init', '-q', fixture]);
   execFileSync('git', ['-C', fixture, 'add', '.']);
@@ -36,7 +39,7 @@ try {
       phase: `chat-${phase}`, args: [fixture, ...nativeProfileArgs(temporary),
         '--disable-workspace-trust', '--skip-welcome', '--skip-release-notes',
         ...(process.env.CODOVYN_HOST_DEBUG_PORT ? [`--remote-debugging-port=${process.env.CODOVYN_HOST_DEBUG_PORT}`] : [])],
-      env: { ...process.env, PATH: '/usr/bin:/bin:/usr/sbin:/sbin', CODOVYN_NATIVE_CHAT_TEST: '1',
+      env: { ...process.env, PATH: `${fixtureBin}:/usr/bin:/bin:/usr/sbin:/sbin`, CODOVYN_NATIVE_CHAT_TEST: '1',
         CODOVYN_NATIVE_CHAT_PHASE: phase, CODOVYN_NATIVE_CHAT_DATA_DIR: dataDirectory,
         CODOVYN_NATIVE_CHAT_REPORT: output,
         CODOVYN_NATIVE_CHAT_SCREENSHOT: phase === 'first-launch'

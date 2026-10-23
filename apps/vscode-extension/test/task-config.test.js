@@ -60,3 +60,11 @@ test('Codex Provider Default accepts independent reasoning and freezes it withou
  assert.equal(resolveTaskMode(config), 'codex');
  assert.equal(Object.isFrozen(validateTaskConfiguration(config)), true);
 });
+
+test('per-model effort preferences remain bounded, validate values, and migrate existing preferences', () => {
+ const { validateComposerPreferences }=createRequire(import.meta.url)('../task-config.cjs');
+ const input={version:1,selection:{provider:'codex',modelId:null,permission:'read',routingMode:'manual',reasoning:'high'},favorites:[],recent:[],efforts:{'default:codex':'high','model:custom':'low'}};
+ assert.deepEqual(validateComposerPreferences(input).efforts,input.efforts);
+ assert.throws(()=>validateComposerPreferences({...input,efforts:{'default:codex':'invented'}}),/saved reasoning/);
+ assert.throws(()=>validateComposerPreferences({...input,efforts:{'command:execute':'high'}}),/model list/);
+});

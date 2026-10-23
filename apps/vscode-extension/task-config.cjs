@@ -54,12 +54,18 @@ function resolveTaskMode(configuration) {
 }
 
 function validateComposerPreferences(value) {
-  if (!value || value.version !== 1 || Object.keys(value).some(key => !['version','selection','favorites','recent'].includes(key))) throw new TypeError('Invalid composer preferences');
+  if (!value || value.version !== 1 || Object.keys(value).some(key => !['version','selection','favorites','recent','efforts'].includes(key))) throw new TypeError('Invalid composer preferences');
   const selection = validateTaskConfiguration(value.selection);
   const keys = list => {
     if (!Array.isArray(list) || list.length > 32 || list.some(key => typeof key !== 'string' || !/^(auto|default:(codex|gemini|claude)|model:[a-zA-Z0-9][a-zA-Z0-9._/-]{0,127})$/.test(key))) throw new TypeError('Invalid saved model list');
     return [...new Set(list)];
   };
-  return { version: 1, selection, favorites: keys(value.favorites), recent: keys(value.recent).slice(0, 8) };
+  const efforts = value.efforts || {};
+  if (typeof efforts !== 'object' || Array.isArray(efforts) || Object.keys(efforts).length > 32) throw new TypeError('Invalid effort preferences');
+  for (const [key, effort] of Object.entries(efforts)) {
+    keys([key]);
+    if (effort !== null && !['none','minimal','low','medium','high','xhigh','max','ultra'].includes(effort)) throw new TypeError('Invalid saved reasoning effort');
+  }
+  return { version: 1, selection, ...(value.efforts ? { efforts: { ...efforts } } : {}), favorites: keys(value.favorites), recent: keys(value.recent).slice(0, 8) };
 }
 module.exports = { validateTaskConfiguration, resolveTaskMode, validateComposerPreferences };
