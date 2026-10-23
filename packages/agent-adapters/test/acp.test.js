@@ -30,3 +30,13 @@ test('ACP rejects outgoing size overflow and missing executables',async()=>{
  const missing=new AcpConnection({command:'/missing/acp',cwd:process.cwd(),env:process.env});
  try{await assert.rejects(missing.request('initialize',{}));}finally{await missing.dispose();}
 });
+
+test('ACP standard authentication/cancellation codes are typed without exposing remote details',async()=>{
+ for(const [code,kind]of [[-32000,'authentication'],[-32800,'cancelled'],[429,'fatal']]){
+  const client=connect(peer(`rl.on('line',l=>{const m=JSON.parse(l);send({id:m.id,error:{code:${code},message:'private-token-do-not-log'}});});`));
+  try{await assert.rejects(client.request('initialize',{}),error=>error.kind===kind&&!error.message.includes('private-token'));}finally{await client.dispose();}
+ }
+});
+test('ACP peer startup failure settles exit before reporting disconnection',async()=>{
+ const client=connect('process.exit(2)');try{await assert.rejects(client.request('initialize',{}),/disconnected/);}finally{await client.dispose();}
+});

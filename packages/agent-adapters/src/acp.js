@@ -31,11 +31,16 @@ export class AcpConnection {
             const pending = this.pending.get(message.id);
             if (!pending) throw new AgentFailure('fatal','Unexpected or duplicate ACP response');
             clearTimeout(pending.timer); this.pending.delete(message.id);
-            if (message.error) pending.reject(new AgentFailure('fatal','OpenCode ACP request failed'));
+            if (message.error) pending.reject(new AgentFailure(message.error.code === -32000 ? 'authentication' : message.error.code === -32800 ? 'cancelled' : 'fatal', message.error.code === -32000 ? 'OpenCode authentication is required in the isolated provider context' : 'OpenCode ACP request failed'));
             else if ('result' in message) pending.resolve(message.result);
             else throw new AgentFailure('fatal','ACP response has no result');
           }
         }
+        // stdout can close just before Darwin publishes child exit. Give that
+        // owned exit a bounded settlement window before signalling its group.
+        let exitTimer;
+        try { await Promise.race([this.lifecycle.exited, new Promise(resolve => { exitTimer = setTimeout(resolve, 100); })]); }
+        finally { clearTimeout(exitTimer); }
         this.fail(new AgentFailure('fatal','ACP disconnected; action outcomes may require reconciliation'));
       } catch (error) { this.fail(error); }
     })();
