@@ -1,3 +1,4 @@
+import { validateContextFlow, digest } from '../../agent-core/src/contextflow.js';
 import { microUsd, budgetScope } from './budget.js';
 import { chmodSync, mkdirSync, statSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -78,6 +79,12 @@ export class TaskStore {
         updated_at TEXT NOT NULL
       );
       CREATE INDEX IF NOT EXISTS queued_tasks_order ON queued_tasks(repository_root, status, position);
+      CREATE TABLE IF NOT EXISTS contextflow_transfers (
+        id TEXT PRIMARY KEY, task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+        packet TEXT NOT NULL, configuration TEXT NOT NULL, binding TEXT NOT NULL,
+        hash TEXT NOT NULL, status TEXT NOT NULL, expires_at INTEGER NOT NULL, journal_seq INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS contextflow_by_task ON contextflow_transfers(task_id);
       CREATE TABLE IF NOT EXISTS task_queue_settings (
         repository_root TEXT PRIMARY KEY,
         paused INTEGER NOT NULL DEFAULT 0
@@ -152,12 +159,67 @@ export class TaskStore {
       throw new TypeError('Invalid execution owner');
     }
     if (!this.get(id)) throw new Error('Unknown task');
-    const result = this.#db.prepare(`INSERT INTO execution_leases VALUES (?, ?, ?, ?, NULL)
+    const result = this.#db.prepare(`INSERT INTO execution_leases SELECT ?, ?, ?, ?, NULL WHERE NOT EXISTS (
+      SELECT 1 FROM execution_leases held JOIN tasks occupied ON occupied.id=held.task_id
+      WHERE held.task_id<>? AND held.released_at IS NULL AND occupied.repository_root=(SELECT repository_root FROM tasks WHERE id=?))
       ON CONFLICT(task_id) DO UPDATE SET token=excluded.token, owner=excluded.owner,
       acquired_at=excluded.acquired_at, released_at=NULL WHERE execution_leases.released_at IS NOT NULL`)
-      .run(id, token, JSON.stringify({ pid, host, kind }), new Date().toISOString());
+      .run(id, token, JSON.stringify({ pid, host, kind }), new Date().toISOString(),id,id);
     if (result.changes !== 1) throw new Error('Task has an unreconciled execution owner');
     return this.executionLease(id);
+  }
+
+  prepareContextFlow({id,taskId,packet,configuration,binding,now=Date.now()}) {
+    validId(id);validId(taskId);validateContextFlow(packet);
+    if(packet.task.id!==taskId||typeof binding!=='string'||binding.length>1024||!Number.isSafeInteger(now)||JSON.stringify(configuration).length>4096)throw new TypeError('Invalid transfer configuration');
+    const hash=digest(JSON.stringify({packet,configuration,binding}));
+    this.#db.exec('BEGIN IMMEDIATE');
+    try {
+      const task=this.get(taskId);
+      if(!task||!['interrupted','cancelled'].includes(task.status)||!this.executionLease(taskId)?.releasedAt)throw new Error('Reconcile task ownership before preparing ContextFlow');
+      this.#db.prepare("UPDATE contextflow_transfers SET status=CASE WHEN status='starting' THEN 'interrupted' ELSE 'expired' END WHERE task_id=? AND status IN ('prepared','starting')").run(taskId);
+      const seq=this.append(taskId,'contextflow-prepared',{id,hash,destination:'opencode',bytes:Buffer.byteLength(JSON.stringify(packet)),expiresAt:now+600000});
+      this.#db.prepare("INSERT INTO contextflow_transfers VALUES (?,?,?,?,?,?,'prepared',?,?)").run(id,taskId,JSON.stringify(packet),JSON.stringify(configuration),binding,hash,now+600000,seq);
+      this.#db.exec('COMMIT');return this.contextFlowTransfer(id);
+    }catch(error){this.#db.exec('ROLLBACK');throw error;}
+  }
+  contextFlowTransfer(id) {
+    const row=this.#db.prepare('SELECT * FROM contextflow_transfers WHERE id=?').get(validId(id));if(!row)return null;
+    const packet=validateContextFlow(JSON.parse(row.packet)),configuration=JSON.parse(row.configuration);
+    if(digest(JSON.stringify({packet,configuration,binding:row.binding}))!==row.hash)throw new Error('ContextFlow storage integrity mismatch');
+    return {id:row.id,taskId:row.task_id,packet,configuration,binding:row.binding,hash:row.hash,status:row.status,expiresAt:row.expires_at,journalSeq:row.journal_seq};
+  }
+  latestContextFlow(taskId) {
+    const row=this.#db.prepare('SELECT id FROM contextflow_transfers WHERE task_id=? ORDER BY journal_seq DESC LIMIT 1').get(validId(taskId));return row?this.contextFlowTransfer(row.id):null;
+  }
+  claimContextFlow(id,hash,owner,now=Date.now()) {
+    this.#db.exec('BEGIN IMMEDIATE');
+    try {
+      const transfer=this.contextFlowTransfer(id),task=transfer&&this.get(transfer.taskId);
+      if(!transfer||transfer.status!=='prepared'||transfer.hash!==hash||transfer.expiresAt<=now||!['interrupted','cancelled'].includes(task.status)||
+        this.events(task.id).at(-1)?.seq!==transfer.journalSeq)throw new Error('ContextFlow approval is expired, consumed or stale; prepare and review again');
+      if(this.#db.prepare("SELECT 1 FROM queued_tasks WHERE repository_root=? AND id<>? AND status IN ('starting','running')").get(task.repositoryRoot,task.id))throw new Error('Another queued task owns this repository');
+      this.claimExecution(task.id,owner);
+      this.#db.prepare("UPDATE contextflow_transfers SET status='starting' WHERE id=?").run(id);
+      this.#db.prepare("UPDATE queued_tasks SET status='running',updated_at=? WHERE id=? AND status IN ('interrupted','cancelled','failed','blocked')").run(new Date().toISOString(),task.id);
+      this.append(task.id,'contextflow-approved',{id,hash,destination:'opencode',policy:'One new session only; no action replay'});
+      this.#db.exec('COMMIT');return transfer;
+    }catch(error){this.#db.exec('ROLLBACK');throw error;}
+  }
+  finishContextFlow(id,status) {
+    if(!['completed','interrupted','cancelled'].includes(status))throw new TypeError('Invalid continuation outcome');
+    this.#db.exec('BEGIN IMMEDIATE');try {
+      const transfer=this.contextFlowTransfer(id);if(!transfer||transfer.status!=='starting')throw new Error('No active ContextFlow segment');
+      this.#db.prepare('UPDATE contextflow_transfers SET status=? WHERE id=?').run(status,id);
+      this.#db.prepare("UPDATE queued_tasks SET status=?,updated_at=? WHERE id=? AND status='running'").run(status,new Date().toISOString(),transfer.taskId);
+      this.append(transfer.taskId,'contextflow-'+status,{id,destination:'opencode'});this.#db.exec('COMMIT');
+    }catch(error){this.#db.exec('ROLLBACK');throw error;}
+  }
+  rejectContextFlow(id) {
+    this.#db.exec('BEGIN IMMEDIATE');try {
+      const transfer=this.contextFlowTransfer(id);if(!transfer||transfer.status!=='prepared')throw new Error('Only an unstarted transfer can be rejected');
+      this.#db.prepare("UPDATE contextflow_transfers SET status='rejected' WHERE id=?").run(id);this.append(transfer.taskId,'contextflow-rejected',{id});this.#db.exec('COMMIT');return this.contextFlowTransfer(id);
+    }catch(error){this.#db.exec('ROLLBACK');throw error;}
   }
 
   executionLease(id) {
@@ -341,6 +403,7 @@ export class TaskStore {
       if (!task || task.status !== 'queued') throw new Error('Queued task is no longer dispatchable');
       if (this.#db.prepare('SELECT paused FROM task_queue_settings WHERE repository_root = ? AND paused = 1').get(task.repositoryRoot)) throw new Error('Task queue is paused');
       if (task.baselineFingerprint !== currentFingerprint) throw new Error('Repository baseline changed; queued task requires review');
+      if(this.#db.prepare("SELECT 1 FROM contextflow_transfers c JOIN tasks t ON t.id=c.task_id WHERE t.repository_root=? AND c.status IN ('prepared','starting')").get(task.repositoryRoot))throw new Error('Review the pending ContextFlow transfer before queue dispatch');
       const first = this.#db.prepare("SELECT id FROM queued_tasks WHERE repository_root = ? AND status = 'queued' ORDER BY position, created_at, id LIMIT 1").get(task.repositoryRoot);
       if (first?.id !== id) throw new Error('Reorder the queue before dispatching a later task');
       if (this.#db.prepare("SELECT 1 FROM queued_tasks WHERE repository_root = ? AND status IN ('starting', 'running', 'interrupted', 'blocked') LIMIT 1").get(task.repositoryRoot)) throw new Error('Another queued task requires reconciliation for this repository');

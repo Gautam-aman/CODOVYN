@@ -7,6 +7,7 @@ import { AcpConnection } from './acp.js';
 import { manageAgentProcess } from './process.js';
 import { openCodeBoundary } from './opencode-sandbox.js';
 import { AgentFailure } from '../../agent-core/src/index.js';
+import { validateContextFlow } from '../../agent-core/src/contextflow.js';
 import { createHandoffPacket } from '../../agent-core/src/handoff.js';
 async function ownedOutput(command,args,options) {
   const controller=new AbortController();
@@ -139,7 +140,7 @@ export function createOpenCodeAdapter({cwd,stateDirectory,command,write=false,mo
         const session=await begin(connection,boundary.cwd,model,reasoning,write);sessionId=session.sessionId;
         enqueue({type:'session',sessionId,model:configOption(session,'model')?.currentValue,reasoning:configOption(session,'effort')?.currentValue});
         let result,error,settled=false;
-        const prompt=connection.request('session/prompt',{sessionId,prompt:[{type:'text',text:JSON.stringify(createHandoffPacket(handoff))}]},120000).then(value=>{result=value;},failure=>{error=failure;}).finally(()=>{settled=true;wake?.();});
+        const prompt=connection.request('session/prompt',{sessionId,prompt:[{type:'text',text:JSON.stringify(handoff.contextFlow?validateContextFlow(handoff.contextFlow):createHandoffPacket(handoff))}]},120000).then(value=>{result=value;},failure=>{error=failure;}).finally(()=>{settled=true;wake?.();});
         while(!settled||events.length){if(events.length)yield events.shift();else await new Promise(resolve=>{wake=resolve;});}
         await prompt;
         if(error)throw error;if(signal?.aborted)throw new AgentFailure('cancelled','OpenCode task cancelled');

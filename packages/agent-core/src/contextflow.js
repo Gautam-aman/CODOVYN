@@ -9,12 +9,15 @@ const text = (value, max) => typeof value === 'string' && value.length <= max;
 export function redactContext(value) {
   return String(value).replace(/-----BEGIN [^-]*PRIVATE KEY-----[\s\S]*?-----END [^-]*PRIVATE KEY-----/g,'[REDACTED PRIVATE KEY]')
     .replace(/\b(?:sk-[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AIza[A-Za-z0-9_-]{25,})\b/g,'[REDACTED TOKEN]')
+    .replace(/\bAKIA[A-Z0-9]{16}\b/g,'[REDACTED TOKEN]')
+    .replace(/(<(?:password|token|secret|apiKey)>)[^<]+(<\/[^>]+>)/gi,'$1[REDACTED]$2')
+    .replace(/\b([a-z][a-z0-9+.-]*:\/\/)[^/\s:@]+:[^@/\s]+@/gi,'$1[REDACTED]@')
     .replace(/\b(Bearer\s+)[A-Za-z0-9._~+/-]{12,}/gi,'$1[REDACTED]')
-    .replace(/\b((?:api[_-]?key|password|passwd|access[_-]?token|refresh[_-]?token|secret|authorization)\s*[=:]\s*)[^\s,;]+/gi,'$1[REDACTED]');
+    .replace(/\b((?:api[_-]?key|password|passwd|access[_-]?token|refresh[_-]?token|client[_-]?secret|secret|authorization)["']?\s*[=:]\s*["']?)[^\s,;"']+/gi,'$1[REDACTED]');
 }
 export function contextPath(path) {
   return text(path,512) && path.length>0 && !/[\x00-\x1f]/.test(path) && !path.startsWith('/') && !path.includes('\\') && !path.split('/').some(part=>
-    !part || part==='.' || part==='..' || /^(?:\.git|\.opencode|\.ssh|\.aws|\.config|node_modules|vendor|dist|build)$/i.test(part) ||
+    !part || part==='.' || part==='..' || /^(?:\.git|\.opencode|\.ssh|\.aws|\.config|\.docker|\.npmrc|\.netrc|\.pypirc|node_modules|vendor|dist|build)$/i.test(part) ||
     /(?:^\.env|credential|secret|auth\.json|^id_rsa|\.(?:pem|key|p12|pfx|keystore)$)/i.test(part));
 }
 function safeStrings(value) {
@@ -27,7 +30,7 @@ export function validateContextFlow(packet) {
     !keys(packet.repository,['identity','branch','commit','fingerprint','originalFingerprint','changedFiles']) ||
     !hash(packet.repository.identity)||!hash(packet.repository.fingerprint)||!hash(packet.repository.originalFingerprint)||!text(packet.repository.branch,256)||!text(packet.repository.commit,128)||
     !keys(packet.context,['files','actions','providerClaims','verifiedActions','pendingSteps','testResults','decisions']) ||
-    !keys(packet.handoff,['fromProvider','toProvider','reason','requiresApproval']) || packet.handoff.fromProvider!=='codex'||packet.handoff.toProvider!=='opencode'||packet.handoff.requiresApproval!==true ||
+    !keys(packet.handoff,['fromProvider','toProvider','model','reason','requiresApproval']) || packet.handoff.fromProvider!=='codex'||packet.handoff.toProvider!=='opencode'||packet.handoff.requiresApproval!==true||!text(packet.handoff.model,256) ||
     !['quota','authentication','temporary','unavailable','user-requested-switch'].includes(packet.handoff.reason)||!text(packet.instructions,1024)||
     !keys(packet.accounting,['reportedInputTokens','reportedOutputTokens','reportedCostUsd'])||Object.keys(packet.accounting).length!==3||Object.values(packet.accounting).some(v=>v!==null))throw new TypeError('Invalid ContextFlow version or structure');
   for(const list of [packet.task.requirements,packet.task.acceptanceCriteria,packet.context.pendingSteps,packet.context.decisions])
@@ -44,7 +47,7 @@ export function validateContextFlow(packet) {
   if(Buffer.byteLength(JSON.stringify(packet))>contextFlowLimit)throw new TypeError('ContextFlow packet exceeds 32 KiB; manual context review required');
   return packet;
 }
-export function createContextFlow({task,snapshot,fingerprint,originalFingerprint,history,files=[],reason,requirements=[],acceptanceCriteria=[]}) {
+export function createContextFlow({task,snapshot,fingerprint,originalFingerprint,history,files=[],reason,destinationModel='unknown',requirements=[],acceptanceCriteria=[]}) {
   const legacy=createHandoffPacket({request:task.request,snapshot,history,step:task.step});
   if(legacy.actions.some(action=>action.state==='unresolved'))throw new Error('Unresolved tool actions block ContextFlow; no replay or guessed outcome is permitted');
   const changedFiles=snapshot.changedPaths||[];
@@ -55,7 +58,7 @@ export function createContextFlow({task,snapshot,fingerprint,originalFingerprint
       verifiedActions:history.filter(event=>['draft-created','draft-reconciled','draft-accepted','contextflow-completed'].includes(event.kind)).slice(-16).map(event=>({kind:event.kind,verification:'host-journal'})),
       pendingSteps:['Inspect current files and verify remaining work against the original objective.','Do not repeat completed or ambiguous commands or writes.'],decisions:[],
       testResults:history.filter(event=>event.kind==='host-test-result'&&event.data?.verification==='host-journal'&&Number.isSafeInteger(event.data.exitCode)).slice(-16).map(event=>({label:redactContext(String(event.data.label).slice(0,256)),exitCode:event.data.exitCode,verification:'host-journal'}))},
-    handoff:{fromProvider:'codex',toProvider:'opencode',reason,requiresApproval:true},
+    handoff:{fromProvider:'codex',toProvider:'opencode',model:destinationModel,reason,requiresApproval:true},
     instructions:'New authorized provider session, not native session migration. Host file hashes establish observed content, not test success. Provider claims remain unverified. Inspect the worktree and continue without replaying the action ledger. Review all draft changes before application.',
     accounting:{reportedInputTokens:null,reportedOutputTokens:null,reportedCostUsd:null}};
   return validateContextFlow(packet);

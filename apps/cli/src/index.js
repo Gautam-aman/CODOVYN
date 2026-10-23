@@ -12,6 +12,8 @@ import { TaskStore } from '../../../packages/storage/src/index.js';
 import { createHandoffPacket } from '../../../packages/agent-core/src/handoff.js';
 import agentPolicy from '../../../packages/agent-core/src/policy.cjs';
 import { executionRecovery, recoveryFingerprint, reconcileDraft } from '../../../packages/task-engine/src/recovery.js';
+import { prepareContextFlow, verifyContextFlow, contextFlowBinding } from '../../../packages/task-engine/src/contextflow.js';
+import { contextFlowAccounting } from '../../../packages/agent-core/src/contextflow.js';
 import { TaskEngine } from '../../../packages/task-engine/src/index.js';
 import { commitStaged, createBranch, fetchRemote, pullFastForward, pushCurrentBranch, repositoryDiff, repositorySnapshot, stagePaths } from '../../../packages/git-engine/src/index.js';
 import { createClaudeAdapter, createCodexAdapter, createGeminiAdapter } from '../../../packages/agent-adapters/src/index.js';
@@ -24,6 +26,10 @@ import taskConfigurationSchema from '../../../apps/vscode-extension/task-config.
 import { createIssue, createPullRequest, issueDetails, listIssues, listPullRequests, listWorkflowRuns, previewPullRequest, pullRequestDetails, pullRequestDiff } from '../../../packages/github-integration/src/index.js';
 
 const usage = `Usage:
+  codovyn contextflow-read <task-id> <repository>
+  codovyn contextflow-prepare <task-id> <repository> <destination-configuration-json> --manual
+  codovyn contextflow-run <transfer-id> <repository> <reviewed-hash> --yes
+  codovyn contextflow-reject <transfer-id> <repository> --yes
   codovyn resume <task-id> <repository> --yes (read-only tasks)
   codovyn route <repository> <request> (preview only)
   codovyn routed <repository> <request>
@@ -110,7 +116,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
   github = { createIssue, createPullRequest, issueDetails, listIssues, listPullRequests, listWorkflowRuns, previewPullRequest, pullRequestDetails, pullRequestDiff },
   adapters = { createCodexAdapter, createClaudeAdapter, createGeminiAdapter }, confirm = confirmAction) {
   const [mode, value, ...rest] = args;
-  if (!['provider-models', 'provider-context', 'opencode', 'opencode-edit', 'reasoning', 'resume', 'route', 'routed', 'routed-edit', 'agents', 'configured', 'configured-edit', 'demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit', 'draft-continue', 'draft-reconcile', 'draft-abandon', 'draft-inspect', 'draft-review', 'draft-accept', 'draft-reject', 'tasks', 'history', 'task-delete', 'task-prune', 'queue-add', 'queue-list', 'queue-cancel', 'queue-remove', 'queue-reorder', 'queue-pause', 'queue-resume', 'queue-claim', 'queue-update', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'pr-preview', 'pr-create', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
+  if (!['contextflow-prepare','contextflow-read','contextflow-run','contextflow-reject','provider-models', 'provider-context', 'opencode', 'opencode-edit', 'reasoning', 'resume', 'route', 'routed', 'routed-edit', 'agents', 'configured', 'configured-edit', 'demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit', 'draft-continue', 'draft-reconcile', 'draft-abandon', 'draft-inspect', 'draft-review', 'draft-accept', 'draft-reject', 'tasks', 'history', 'task-delete', 'task-prune', 'queue-add', 'queue-list', 'queue-cancel', 'queue-remove', 'queue-reorder', 'queue-pause', 'queue-resume', 'queue-claim', 'queue-update', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'pr-preview', 'pr-create', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
   const stream = process.env.CODOVYN_EVENT_STREAM === '1';
   const geminiAdapter = options => {
     const command = configuredGeminiCommand();
@@ -295,6 +301,38 @@ export async function main(args = process.argv.slice(2), output = console, signa
   }
   const store = new TaskStore(join(dataDirectory, 'tasks.sqlite'));
   try {
+    if(mode.startsWith('contextflow-')) {
+      if(!['contextflow-prepare','contextflow-read','contextflow-run','contextflow-reject'].includes(mode))throw new TypeError('Unknown ContextFlow operation');
+      if(!value||!rest[0])throw new TypeError('ContextFlow requires a task/transfer and repository');
+      const repository=(await repositorySnapshot(rest[0])).root;
+      const emit=transfer=>output.log(JSON.stringify(stream?{type:'result',transfer}:{transfer}));
+      const lookupTask=()=>{const task=store.get(value);if(!task||task.repositoryRoot!==repository)throw new Error('Task belongs to a different repository');return task;};
+      const destination=async configuration=>{
+        configuration=taskConfigurationSchema.validateTaskConfiguration(configuration);
+        if(configuration.provider!=='opencode')throw new TypeError('ContextFlow destination must be OpenCode');
+        const metadata=await(adapters.discoverProvider||discoverProvider)('opencode',{cwd:repository,dataDirectory,modelId:configuration.modelId,signal});
+        const selected=metadata.models.find(entry=>configuration.modelId?entry.id===configuration.modelId:entry.model===metadata.defaultModel);
+        if(!selected||configuration.reasoning&&!selected.reasoning.includes(configuration.reasoning))throw new Error('Destination model or variant is not currently advertised');
+        return {configuration,model:selected.model,command:metadata.command,reasoning:configuration.reasoning||undefined,
+          binding:contextFlowBinding({configuration,model:selected.model,command:metadata.command||'',version:metadata.version||'',configuredCommand:process.env.CODOVYN_OPENCODE_COMMAND||''})};
+      };
+      if(mode==='contextflow-prepare') {
+        lookupTask();if(rest.length!==3||!['--manual','--eligible'].includes(rest[2])||rest[1].length>4096)throw new TypeError('Invalid ContextFlow preparation');
+        const selection=await destination(JSON.parse(rest[1]));
+        emit(await prepareContextFlow({store,taskId:value,dataDirectory,configuration:selection.configuration,binding:selection.binding,destinationModel:selection.model,manual:rest[2]==='--manual'}));return 0;
+      }
+      if(mode==='contextflow-read') {lookupTask();if(rest.length!==1)throw new TypeError('Invalid ContextFlow inspection');const transfer=store.latestContextFlow(value);emit(transfer?{...transfer,metrics:contextFlowAccounting(transfer.packet)}:null);return 0;}
+      const transfer=store.contextFlowTransfer(value);if(!transfer||store.get(transfer.taskId)?.repositoryRoot!==repository)throw new Error('Transfer belongs to a different repository');
+      if(mode==='contextflow-reject'){if(rest.length!==2||rest[1]!=='--yes')throw new Error('Explicit rejection required');emit(store.rejectContextFlow(value));return 0;}
+      if(rest.length!==3||rest[1]!==transfer.hash||rest[2]!=='--yes')throw new Error('Explicit recipient and context approval required');
+      const selection=await destination(transfer.configuration);
+      const verified=await verifyContextFlow({store,transferId:value,hash:rest[1],dataDirectory,binding:selection.binding});
+      const registry=new AgentRegistry();registry.register((adapters.createOpenCodeAdapter||createOpenCodeAdapter)({cwd:verified.workspace.cwd,stateDirectory:openCodeStateDirectory(dataDirectory,repository),command:selection.command,model:selection.model,reasoning:selection.reasoning,write:selection.configuration.permission==='read-write'}));
+      const snapshot=async()=>{if(recoveryFingerprint(await repositorySnapshot(repository))!==transfer.packet.repository.originalFingerprint)throw new Error('Original repository changed after handoff approval');return repositorySnapshot(verified.workspace.cwd);};
+      const engine=new TaskEngine({store,registry,snapshot,onEvent:stream?event=>output.log(JSON.stringify({type:'event',taskId:verified.task.id,event})):undefined});
+      const task=await engine.run(verified.task.id,{signal,contextFlow:{id:value,hash:transfer.hash}});
+      output.log(JSON.stringify({...(stream?{type:'result'}:{}),taskId:task.id,status:task.status,activeAgent:task.activeAgent,draftReviewAvailable:!!verified.workspace.draft}));return task.status==='completed'?0:1;
+    }
     if (mode.startsWith('queue-')) {
       const emit = value => output.log(JSON.stringify(stream ? { type: 'result', ...value } : value, null, stream ? 0 : 2));
       if (mode === 'queue-add') {

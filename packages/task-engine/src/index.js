@@ -58,23 +58,33 @@ export class TaskEngine {
       throw new Error('Task requires verified process reconciliation before execution');
     }
     const token = randomUUID();
-    this.store.claimExecution(id, { token, pid: process.pid, host: hostname() });
+    if(options.contextFlow && options.continuation)throw new Error('Choose one continuation policy');
+    const transfer=options.contextFlow?this.store.claimContextFlow(options.contextFlow.id,options.contextFlow.hash,{token,pid:process.pid,host:hostname()}):null;
+    if(!transfer)this.store.claimExecution(id, { token, pid: process.pid, host: hostname() });
     const start = this.#record(id, 'execution-owned', { token });
-    try { return await this.#runOwned(id, options); }
+    try { return await this.#runOwned(id, {...options,contextFlow:transfer}); }
     finally {
       const events = this.store.events(id).filter(event => event.seq > start);
       const process = events.findLast(event => ['provider-starting', 'provider-spawned', 'provider-stopped'].includes(event.kind));
       // Failed cleanup or a registration gap must retain ownership for reconciliation.
       if (!process || process.kind === 'provider-stopped') this.store.releaseExecution(id, token);
+      if(transfer)this.store.finishContextFlow(transfer.id,this.store.get(id).status==='completed'?'completed':this.store.get(id).status==='cancelled'?'cancelled':'interrupted');
     }
   }
 
-  async #runOwned(id, { signal, continuation } = {}) {
+  async #runOwned(id, { signal, continuation, contextFlow } = {}) {
     if (this.#running.has(id)) throw new Error(`Task already running: ${id}`);
     const task = this.store.get(id);
     if (!task) throw new Error(`Unknown task: ${id}`);
-    if (!['pending', 'running', 'interrupted'].includes(task.status)) throw new Error(`Cannot run task in ${task.status} state`);
+    if (!['pending', 'running', 'interrupted',...(contextFlow?['cancelled']:[])].includes(task.status)) throw new Error(`Cannot run task in ${task.status} state`);
     let approvedRepository;
+    if(contextFlow){
+      const destination=this.registry.require('opencode');
+      if(destination.capabilities.shell!==false || (contextFlow.configuration.permission==='read'&&destination.capabilities.writes))throw new Error('ContextFlow destination exceeds approved permissions');
+      approvedRepository=await this.snapshot();
+      if(recoveryFingerprint(approvedRepository)!==contextFlow.packet.repository.fingerprint)throw new Error('ContextFlow repository changed since approval');
+      this.#record(id,'contextflow-segment-started',{id:contextFlow.id,from:'codex',to:'opencode',configuration:contextFlow.configuration});
+    }
     if (continuation) {
       const records=this.store.events(id);
       const reconciled=records.findLast(event=>event.kind==='draft-reconciled');
@@ -87,7 +97,7 @@ export class TaskEngine {
       this.#record(id,'continuation-approved',{agent:continuation.agent,fingerprint:continuation.fingerprint,
         policy:'Inspect current files; never replay unresolved writes or commands. Outcomes remain unknown.'});
     }
-    if (task.status !== 'pending' && !continuation) {
+    if (task.status !== 'pending' && !continuation && !contextFlow) {
       const history = this.store.events(id);
       if (task.status === 'interrupted') {
         const checkpoint = history.findLast((entry) => entry.kind === 'checkpoint');
@@ -139,7 +149,7 @@ export class TaskEngine {
       }
     }
     this.#running.add(id);
-    try { return await this.#run(task, signal, { agent:continuation?.agent, repository:approvedRepository }); }
+    try { return await this.#run(task, signal, { agent:contextFlow?'opencode':continuation?.agent, repository:approvedRepository, contextFlow:contextFlow?.packet }); }
     finally { this.#running.delete(id); }
   }
 
@@ -192,7 +202,7 @@ export class TaskEngine {
         if (previous) this.#record(task.id, 'handoff', { from: previous, to: id });
         this.#record(task.id, 'agent-started', { agent: id, repository: baseline });
         const planning = this.store.events(task.id).findLast(event => event.kind === 'task-configuration')?.data.intent === 'plan';
-        const handoff = { request: planning ? `${task.request}\n\nCODOVYN task mode: Plan. Produce an implementation plan and verification steps only. Do not modify files or execute write-capable actions.` : task.request, step: task.step, history: this.store.events(task.id), snapshot: baseline };
+        const handoff = { request: planning ? `${task.request}\n\nCODOVYN task mode: Plan. Produce an implementation plan and verification steps only. Do not modify files or execute write-capable actions.` : task.request, step: task.step, history: this.store.events(task.id), snapshot: baseline, ...(continuation.contextFlow?{contextFlow:continuation.contextFlow}:{}) };
         this.#record(task.id, 'handoff-prepared', { agent: id, packet: createHandoffPacket(handoff) });
         for await (const event of agent.run({ taskId: task.id, handoff, signal, execution: {
           starting: () => this.#record(task.id, 'provider-starting', { agent: id }),
