@@ -1,0 +1,6 @@
+import test from 'node:test';import assert from 'node:assert/strict';import{mkdtempSync,writeFileSync,mkdirSync,symlinkSync,rmSync}from'node:fs';import{tmpdir}from'node:os';import{join}from'node:path';import{execFileSync}from'node:child_process';import{selectContextFiles}from'../src/contextflow-files.js';
+test('ContextFlow selects bounded tracked relevant source, hashes full files and excludes secrets/symlinks',async()=>{
+ const root=mkdtempSync(join(tmpdir(),'codovyn-context-files-'));try{execFileSync('git',['init','-q',root]);mkdirSync(join(root,'src'));writeFileSync(join(root,'src/Utility.java'),'class Utility { String value="ok"; }');writeFileSync(join(root,'README.md'),'api_key=do-not-transfer');writeFileSync(join(root,'.env'),'SECRET=private');writeFileSync(join(root,'untracked.java'),'not approved');symlinkSync('/etc/passwd',join(root,'src/external.java'));execFileSync('git',['-C',root,'add','src','README.md','.env']);
+ const files=await selectContextFiles(root,'Explain Utility Java',['src/Utility.java']);assert.ok(files.some(file=>file.path==='src/Utility.java'&&file.sha256.length===64));assert.ok(files.find(file=>file.path==='README.md').excerpt.includes('[REDACTED]'));assert.ok(!files.some(file=>/env|external|untracked/.test(file.path)));assert.ok(files.length<=8);
+ }finally{rmSync(root,{recursive:true,force:true});}
+});

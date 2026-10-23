@@ -1,0 +1,11 @@
+# Phase 11 architecture checkpoint
+
+Starting and recoverable source: `677089e44192e6d8c9f144b040cdafe9188f9608`, clean `main`, fetched and fast-forward checked. Dependency installation passed with scripts disabled; baseline: 225 tests passed. No live inference consent has been received. Existing CLI sessions and the separate OpenCode context must not be treated as permission to spend.
+
+ContextFlow extends the portable handoff format and existing TaskEngine. It does not replace the journal, queue or worktree manager. A 32 KiB versioned packet carries host-read source hashes, bounded excerpts, repository fingerprints, explicit permission constraints and a provider-reported action ledger. Tool completion is not automatically host verification. Pending actions block preparation; secret/path exclusions and redaction are best-effort safeguards, not perfect detection.
+
+A persisted transfer is an immutable preview, not an authorization. Native consent binds its digest, destination model/variant, permission scope, provider configuration and repository fingerprints. An atomic one-use transfer claim shares the existing execution lease transaction. Crashed starting transfers remain consumed and require reconciliation; they never redispatch on restart. A new OpenCode ACP session continues the same CODOVYN task identity. No native provider-session migration is claimed.
+
+Initial switching is Codex to OpenCode only, with a destination no broader than the original approved task. Unknown failures cannot trigger automatic preparation. Automatic preparation defaults off and never implies authorization. Routed tasks require separate budget admission and remain blocked from this initial continuation path. Draft changes require explicit preserve/reconciliation before transfer; unresolved tool actions never become replay instructions.
+
+Provider usage and local serialized byte counts have separate provenance. A local fixture comparison can measure payload sizes, not actual token savings or model correctness. Live tasks and a real controlled handoff remain separate consent/authentication gates. Issue #16 remains open; all desktop checks retain isolated profiles and owned bounded cleanup. The installed `/Applications/CODOVYN.app` is untouched.
