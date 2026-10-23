@@ -89,7 +89,7 @@ exports.run = async () => {
     trace('webview-test-requested');
     const report = await result;
     assert.equal(report?.passed, true, `Native Chat checks failed: ${report?.error || 'unknown failure'}`);
-    for (const name of ['queueManagement', 'compactComposer', 'composerControls', 'submissionAcknowledgement', 'submittedPrompt', 'streamingOrderAndTextSafety', 'navigationAndActivitySeparation',
+    for (const name of ['openCodeModelAndVariant', 'queueManagement', 'compactComposer', 'composerControls', 'submissionAcknowledgement', 'submittedPrompt', 'streamingOrderAndTextSafety', 'navigationAndActivitySeparation',
       'completionState', 'scrollFollowAndJump', 'sqliteJournalRestoration', 'interruptionState']) {
       assert.equal(report.checks?.[name], true, `Native Chat check did not pass: ${name}`);
     }

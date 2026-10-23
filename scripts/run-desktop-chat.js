@@ -52,6 +52,8 @@ try {
     reports.push(report);
     await copyFile(join(phaseDirectory, `chat-${phase}-lifecycle.json`), join(root, 'dist/desktop', `chat-${phase}-lifecycle.json`));
   }
+  assert.equal(reports[1].checks.openCodePreferencesRestored, true);
+  assert.equal(reports[1].checks.openCodeQueueRestored, true);
   assert.equal(reports[1].checks.queueRestoredAfterRestart, true, 'Queued tasks remain durable and inert across native restart.');
   assert.deepEqual(reports[0].checks.transcriptMessages, reports[1].checks.transcriptMessages,
     'The same persisted task journal must reconstruct the same transcript after an application restart.');

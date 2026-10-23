@@ -12,7 +12,7 @@ const workspaceFile = join(temporary, 'workspace-path');
 const port = 9400 + Math.floor(Math.random() * 500);
 const child = spawn(process.execPath, [join(root, 'scripts/run-desktop-host.js')], {
   cwd: root, stdio: ['ignore', 'pipe', 'pipe'],
-  env: { ...process.env, CODOVYN_DESKTOP_APP: app, CODOVYN_HOST_DEBUG_PORT: String(port),
+  env: { ...process.env, CODOVYN_NATIVE_ROUTING_TEST:'1', CODOVYN_DESKTOP_APP: app, CODOVYN_HOST_DEBUG_PORT: String(port),
     CODOVYN_HOST_INSPECTION_HOLD_MS: process.env.CODOVYN_CAPTURE_DIR ? '30000' : '20000', CODOVYN_HOST_WORKSPACE_FILE: workspaceFile },
 });
 const childExited = new Promise(resolve => child.once('exit', (code, signal) => resolve({ code, signal })));
@@ -123,6 +123,7 @@ try {
   });
   await send('Runtime.enable');
   const evaluate = async expression => {
+    expression=expression.replaceAll('new MessageEvent(', 'new window.CodovynFixtureMessageEvent(');
     const run = async selectedContext => {
       const result = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true,
         ...(selectedContext === undefined ? {} : { contextId: selectedContext }) });
@@ -148,6 +149,7 @@ try {
   const click = label => evaluate(`(() => { const button = [...document.querySelectorAll('button')].find(item => item.textContent.trim() === ${JSON.stringify(label)}); if (!button) return false; button.click(); return true; })()`);
   const selectTab = view => evaluate(`document.querySelector('[data-workspace-view=${JSON.stringify(view)}]').click()`);
   await waitFor("!!document.querySelector('.routing-settings')", 'Routing catalogue did not render.');
+  await evaluate("window.CodovynFixtureMessageEvent=class extends MessageEvent {constructor(type,options){super(type,{...options,data:{...options.data,__codovynFixture:true}});}}");
   const tabs = await evaluate("[...document.querySelectorAll('[role=tab]')].map(tab => ({ label: tab.textContent, selected: tab.getAttribute('aria-selected'), tabIndex: tab.tabIndex, panel: tab.getAttribute('aria-controls') }))");
   assert.deepEqual(tabs.map(tab => tab.label), ['Chat', 'Activity', 'History', 'Changes', 'Settings'],
     'The workspace exposes five discoverable destinations.');
@@ -253,9 +255,9 @@ try {
     await evaluate("compactComposer.close(taskQueue.menu)");
   }
   // From this point onward use synthetic UI fixtures only. Capture blocks late
-  // browser-posted host messages while dispatchEvent fixtures remain untrusted.
+  // late host messages using the pre-registered test-only gate and marked fixtures.
   // Persistence above still used the actual host transport and workspace settings.
-  await evaluate("window.addEventListener('message', event => { if (event.isTrusted) event.stopImmediatePropagation(); }, true)");
+  await evaluate("window.__codovynNativeFixtureOnly=true");
   await evaluate("window.dispatchEvent(new MessageEvent('message', { data: { type: 'running' } }))");
   const runningBeforeSwitch = await evaluate("({ status: document.querySelector('#status').textContent, cancelDisabled: document.querySelector('#cancel').disabled })");
   await selectTab('history');
@@ -307,6 +309,13 @@ try {
     await writeFile(join(directory, 'reasoning-effort-menu.png'), Buffer.from((await captureApplication()).data, 'base64'));
     await evaluate('compactComposer.close(compactComposer.effortMenu)');
   }
+  await selectTab('chat');
+  await evaluate("window.dispatchEvent(new MessageEvent('message',{data:{type:'provider-models',provider:'opencode',metadata:{defaultModel:'fixture/review-model',models:[{id:'discovered-opencode-nativecapture',provider:'opencode',model:'fixture/review-model',source:'discovered',availability:'unknown',reasoning:['deep']}]}}}));document.querySelector('#model-chip').click();compactComposer.search.value='fixture/review';compactComposer.search.dispatchEvent(new Event('input'))");
+  assert.equal(await evaluate("document.querySelectorAll('#model-picker [data-choice]').length"),1,'OpenCode model search filters the actual native popover.');
+  if(process.env.CODOVYN_CAPTURE_DIR) await writeFile(join(resolve(process.env.CODOVYN_CAPTURE_DIR),'opencode-model-picker.png'),Buffer.from((await captureApplication()).data,'base64'));
+  await evaluate("document.querySelector('#model-picker [data-choice=\"model:discovered-opencode-nativecapture\"]').click();document.querySelector('#effort-chip').click();document.querySelector('#effort-picker [data-choice=deep]').click()");
+  assert.deepEqual(await evaluate("({provider:currentTaskConfiguration().provider,modelId:currentTaskConfiguration().modelId,modelSource:currentTaskConfiguration().modelSource,reasoning:currentTaskConfiguration().reasoning})"),{provider:'opencode',modelId:'discovered-opencode-nativecapture',modelSource:'discovered',reasoning:'deep'},'Discovered model and exact variant reach the native task snapshot.');
+  if(process.env.CODOVYN_CAPTURE_DIR) await writeFile(join(resolve(process.env.CODOVYN_CAPTURE_DIR),'opencode-composer.png'),Buffer.from((await captureApplication()).data,'base64'));
   await evaluate("window.dispatchEvent(new MessageEvent('message', { data: { type: 'running' } }))");
   await selectTab('activity');
   await evaluate("document.querySelector('#timeline').scrollTop = document.querySelector('#timeline').scrollHeight");

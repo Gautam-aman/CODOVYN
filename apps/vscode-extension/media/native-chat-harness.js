@@ -1,5 +1,10 @@
 /* Loaded only by the isolated standalone desktop Chat test host. */
 (() => {
+  // This script is packaged only for the explicit isolated native test host.
+  // Keep asynchronous real metadata replies out of the OpenCode DOM fixture.
+  window.addEventListener('message', event => {
+    if(event.data?.provider === 'opencode' && ['provider-models','provider-models-loading'].includes(event.data.type) && event.data?.metadata?.source !== 'native-opencode-fixture') event.stopImmediatePropagation();
+  }, true);
   const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
   const send = data => window.dispatchEvent(new MessageEvent('message', { data }));
   const text = selector => document.querySelector(selector)?.textContent || '';
@@ -17,6 +22,11 @@
     if (phase === 'relaunch') requireValue(compactComposer.efforts['default:codex'] === 'high', 'Per-model reasoning preference did not survive normal application restart.');
     if (phase === 'relaunch') requireValue(compactComposer.favorites.includes('model:native-fixture-codex'), 'Favorite models did not restore from host storage after restart.');
 
+    if(phase === 'relaunch') {
+      const saved = vscode.getState().taskSelections?.[selectedProjectRoot.slice(0,1024)];
+      requireValue(saved?.provider === 'opencode' && saved?.modelSource === 'discovered' && compactComposer.efforts['model:discovered-opencode-nativefixture'] === 'deep', 'Discovered OpenCode selection/variant did not restore from host preferences.');
+      report.openCodePreferencesRestored = true;
+    }
     const legacyMode = document.querySelector('#agent');
     const provider = document.querySelector('#task-provider');
     const model = document.querySelector('#task-model');
@@ -257,6 +267,35 @@
     requireValue(chat.textContent.includes(historyLabel), 'Error handling discarded the previous journal transcript.');
     report.interruptionState = true;
     stage('interruption-state-verified');
+    // DOM metadata fixture only: real provider transport and OS policy have separate tests.
+    const fixtureId = 'discovered-opencode-nativefixture';
+    send({type:'provider-models',provider:'opencode',metadata:{source:'native-opencode-fixture',defaultModel:'fixture/native-model',models:[{id:fixtureId,provider:'opencode',model:'fixture/native-model',source:'discovered',reasoning:['deep'],availability:'unknown'}]}});
+    document.querySelector('#model-chip').click();
+    search.value='fixture/native';search.dispatchEvent(new Event('input'));
+    const openCodeChoice=picker.querySelector(`[data-choice="model:${fixtureId}"]`);
+    requireValue(openCodeChoice && picker.querySelectorAll('[data-choice]').length===1,'OpenCode discovered model was not searchable.');
+    const favorite=picker.querySelector('.model-favorite');if(favorite.getAttribute('aria-pressed')!=='true')favorite.click();
+    picker.querySelector(`[data-choice="model:${fixtureId}"]`).click();
+    requireValue(provider.value==='opencode' && model.value===fixtureId,'OpenCode model selection did not update actual task controls.');
+    effortChip.click();
+    requireValue(!effortPicker.querySelector('[data-choice="high"]') && effortPicker.querySelector('[data-choice="deep"]'),'OpenCode variants were replaced with unsupported generic reasoning.');
+    effortPicker.querySelector('[data-choice="deep"]').click();
+    const snapshot=currentTaskConfiguration();
+    requireValue(snapshot.modelSource==='discovered' && snapshot.reasoning==='deep' && snapshot.provider==='opencode','OpenCode exact model/variant snapshot was lost.');
+    for(const mode of ['agent','plan','ask']) {document.querySelector('#mode-chip').click();document.querySelector(`#mode-${mode}`).click();requireValue(permission.value===(mode==='agent'?'read-write':'read'),'OpenCode mode granted incorrect permissions.');}
+    requireValue(currentTaskConfiguration().reasoning==='deep','Variant lost while changing modes: '+JSON.stringify(currentTaskConfiguration()));
+    nextState=hostMessage('queue-state');vscode.postMessage({type:'queue-list'});queueState=await nextState;
+    requireValue(currentTaskConfiguration().reasoning==='deep','Variant lost while loading queue: '+JSON.stringify(currentTaskConfiguration()));
+    if(phase==='relaunch') {
+      const retained=queueState.tasks.find(task=>task.request==='Persistent native OpenCode fixture'&&task.status==='queued');
+      requireValue(retained?.configuration.modelId===fixtureId && retained.configuration.reasoning==='deep' && retained.configuration.modelSource==='discovered','OpenCode queue snapshot did not survive native restart.');
+      nextState=hostMessage('queue-state',state=>state.tasks.some(task=>task.id===retained.id&&task.status==='cancelled'));vscode.postMessage({type:'queue-cancel',id:retained.id});await nextState;
+      report.openCodeQueueRestored=true;
+    } else {
+      request.value='Persistent native OpenCode fixture';const acknowledged=hostMessage('queue-accepted');nextState=hostMessage('queue-state',state=>state.tasks.some(task=>task.request==='Persistent native OpenCode fixture'));taskQueue.enqueue();await acknowledged;await nextState;
+    }
+    compactComposer.close(taskQueue.menu);storeTaskSelection();
+    report.openCodeModelAndVariant=true;stage('opencode-model-queue-verified');
     report.transcriptMessages = [...chat.querySelectorAll('.chat-message')].map(item => item.textContent);
     report.activityRows = [...document.querySelectorAll('#timeline > li')].map(item => item.textContent);
     return report;
@@ -269,5 +308,5 @@
     catch (error) { report = { passed: false, error: String(error?.message || error) }; }
     vscode.postMessage({ type: 'codovyn-native-chat-test-result', token: data.token, report });
   });
-  vscode.postMessage({ type: 'codovyn-native-chat-test-ready' });
+  window.addEventListener('DOMContentLoaded',()=>vscode.postMessage({ type: 'codovyn-native-chat-test-ready' }),{once:true});
 })();
