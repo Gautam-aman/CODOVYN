@@ -59,6 +59,11 @@
     compact.style.width = '260px';
     requireValue(compact.scrollWidth <= 262, 'Compact composer overflows a narrow panel.'); compact.style.width = '';
     requireValue(!document.querySelector('.composer #permission-help'), 'Advanced permission help still clutters the compact composer.');
+    const previousTheme = document.body.dataset.codovynTheme;
+    document.body.dataset.codovynTheme = 'light';
+    requireValue(getComputedStyle(document.querySelector('.workspace-context')).backgroundColor === getComputedStyle(request).getPropertyValue('--vscode-input-background').trim().replace(/^#([a-f0-9]{6})$/i, (_, hex) => `rgb(${parseInt(hex.slice(0,2),16)}, ${parseInt(hex.slice(2,4),16)}, ${parseInt(hex.slice(4,6),16)})`), 'Light panel surfaces inherited a dark workbench color.');
+    requireValue(getComputedStyle(document.querySelector('.workspace-tab[aria-selected="true"]')).color === getComputedStyle(document.body).color, 'Light panel navigation foreground does not follow the selected palette.');
+    document.body.dataset.codovynTheme = previousTheme;
     report.compactComposer = true;
     report.composerControls = true;
     stage('separate-composer-controls-verified');
