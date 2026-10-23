@@ -24,6 +24,8 @@ function themeStyles() {
   return themes.map(({ id, kind, colors: c }) => {
     const tokens = {
       'editor-background': c.background, 'editor-foreground': c.foreground,
+      foreground: c.foreground, 'sideBar-background': c.surface,
+      'editorWidget-background': c.surface, 'widget-border': c.border,
       'input-background': c.surface, 'input-foreground': c.foreground, 'input-border': c.border,
       'panel-border': c.border, descriptionForeground: c.muted,
       'button-background': c.accent, 'button-foreground': c.accentText, 'button-hoverBackground': c.hover,
