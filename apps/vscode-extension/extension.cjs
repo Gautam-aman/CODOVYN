@@ -171,6 +171,14 @@ function createExtension(api, runner = runCli) {
             if (!disposed && folderForTask() === folder) panel.webview.postMessage({ type: 'agent-diagnostics', agents: result.agents || [] });
           } catch { panel.webview.postMessage({ type: 'agent-diagnostics-error', text: 'Could not inspect agent CLIs. Check the local runtime and CLI installation.' }); }
         };
+        const inspectReasoning = async () => {
+          const folder = folderForTask();
+          if (!folder || !api.workspace.isTrusted) return;
+          try {
+            const result = await runner(runtimePath(api, context), [join(context.extensionPath, 'apps', 'cli', 'src', 'index.js'), 'reasoning', folder.uri.fsPath], { cwd: folder.uri.fsPath, env: { ...providerEnvironment(api), CODOVYN_EVENT_STREAM: '1' }, onChild: () => {}, onEvent: () => {} });
+            if (!disposed && folderForTask() === folder) panel.webview.postMessage({ type: 'reasoning-capabilities', metadata: result.reasoning });
+          } catch { if (!disposed && folderForTask() === folder) panel.webview.postMessage({ type: 'reasoning-capabilities', metadata: { models: [], defaultModel: null }, text: 'Codex effort metadata unavailable. Use Auto or inspect your Codex installation.' }); }
+        };
         const sendProjects = () => panel.webview.postMessage({ type: 'projects', selectedRoot,
           projects: (api.workspace.workspaceFolders || []).map((folder) => ({
             root: folder.uri.fsPath, name: folder.name || folder.uri.fsPath.split(/[\\/]/).at(-1),
@@ -310,6 +318,7 @@ function createExtension(api, runner = runCli) {
             await api.commands.executeCommand('workbench.action.openSettings', 'codovyn.geminiCliPath');
             return;
           }
+          if (message.type === 'reasoning-capabilities') { await inspectReasoning(); return; }
           if (message.type === 'agent-diagnostics') { await inspectAgents(); return; }
           if (message.type === 'agent-policy-save' && !active && !starting && !draftBusy && !queueBusy && !disposed && folderForTask()) {
             try {
@@ -579,7 +588,6 @@ function createExtension(api, runner = runCli) {
                 }
               }
               if (editMode) taskRouting.requiredCapabilities=[...new Set([...(taskRouting.requiredCapabilities||[]),'writes'])];
-              if (taskConfiguration?.reasoning && !taskConfiguration.modelId) throw new Error('Choose a catalogue model before selecting a reasoning setting.');
               const serialized=JSON.stringify(taskRouting);
               if(serialized.length>65536)throw new Error('Routing settings exceed the local size limit.');
               const preview=await runner(runtimePath(api,context),[join(context.extensionPath,'apps','cli','src','index.js'),'route',folder.uri.fsPath,request],{

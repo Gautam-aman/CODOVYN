@@ -29,7 +29,9 @@ test('task configuration rejects write-only, unknown providers, arbitrary fields
     { ...valid, admin: true },
     { ...valid, provider: 'codex', routingMode: 'balanced' },
     { ...valid, provider: 'auto', routingMode: 'custom' },
-    { ...valid, modelId: null, reasoning: 'high' },
+    { ...valid, modelId: null, reasoning: 'invented' },
+    { ...valid, provider: 'gemini', reasoning: 'high' },
+    { ...valid, provider: 'auto', routingMode: 'auto', reasoning: 'high' },
   ]) assert.throws(() => validateTaskConfiguration(value), TypeError);
 });
 
@@ -50,4 +52,11 @@ test('saved composer preferences validate bounded favorites and keep permissions
   assert.throws(() => validateComposerPreferences({ ...input, favorites: ['command:execute'] }), TypeError);
   assert.throws(() => validateComposerPreferences({ ...input, selection: { ...input.selection, permission: 'read-write' } }), TypeError);
   assert.throws(() => validateComposerPreferences({ ...input, recent: Array(100).fill('auto') }), TypeError);
+});
+
+test('Codex Provider Default accepts independent reasoning and freezes it without changing permissions', () => {
+ const config = { provider:'codex', modelId:null, permission:'read', routingMode:'manual', reasoning:'high' };
+ assert.equal(validateTaskConfiguration(config).reasoning, 'high');
+ assert.equal(resolveTaskMode(config), 'codex');
+ assert.equal(Object.isFrozen(validateTaskConfiguration(config)), true);
 });

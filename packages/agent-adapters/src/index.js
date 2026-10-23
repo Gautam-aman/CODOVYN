@@ -45,7 +45,7 @@ export function createCodexAdapter({ cwd, command = 'codex', prefixArgs = [], wr
   if (typeof cwd !== 'string' || !cwd) throw new TypeError('Workspace directory is required');
   if (typeof write !== 'boolean') throw new TypeError('Write permission must be explicit');
   if (model!==undefined && (typeof model!=='string'||!/^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,127}$/.test(model))) throw new TypeError('Invalid Codex model');
-  if (reasoning!==undefined && (!model || !['none','minimal','low','medium','high','xhigh','max','ultra'].includes(reasoning))) throw new TypeError('Invalid Codex reasoning selection');
+  if (reasoning!==undefined && (!['none','minimal','low','medium','high','xhigh','max','ultra'].includes(reasoning))) throw new TypeError('Invalid Codex reasoning selection');
   return {
     id: 'codex',
     capabilities: { shell:true, streaming: true, resume: false, tools: true, writes: write, authenticationStatus: false, usage: true },

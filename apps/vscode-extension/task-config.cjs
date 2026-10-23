@@ -30,8 +30,9 @@ function validateTaskConfiguration(value) {
   if (value.provider === 'auto' && value.routingMode !== 'custom' && value.modelId !== null) {
     throw new TypeError('A directly selected model requires custom routing.');
   }
-  if (value.reasoning !== null && value.modelId === null) {
-    throw new TypeError('Choose a model before selecting a reasoning effort.');
+  if (value.reasoning !== null && (!['none','minimal','low','medium','high','xhigh','max','ultra'].includes(value.reasoning) ||
+    !['codex', 'auto'].includes(value.provider) || (value.provider === 'auto' && value.modelId === null))) {
+    throw new TypeError('Reasoning effort requires Codex or an explicitly selected compatible catalogue model.');
   }
   return Object.freeze({
     provider: value.provider,

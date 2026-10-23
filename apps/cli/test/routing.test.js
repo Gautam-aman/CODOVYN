@@ -53,3 +53,26 @@ test('concurrent routed requests with stale previews cannot reserve the same rem
   rmSync(directory,{recursive:true,force:true});
  }
 });
+
+test('Provider Default effort is checked at dispatch, passed to Codex and recorded in task history', async () => {
+ const directory=mkdtempSync(join(tmpdir(),'codovyn-default-effort-'));
+ const oldData=process.env.CODOVYN_DATA_DIR, oldConfig=process.env.CODOVYN_TASK_CONFIGURATION;
+ try {
+  execFileSync('git',['init','-q',directory]);
+  process.env.CODOVYN_DATA_DIR=join(directory,'data');
+  process.env.CODOVYN_TASK_CONFIGURATION=JSON.stringify({provider:'codex',modelId:null,permission:'read',routingMode:'manual',reasoning:'high'});
+  let received;const lines=[];const output={log:x=>lines.push(x),error:x=>assert.fail(x)};
+  const factories={inspectCodexReasoning:async()=>({defaultModel:'fixture',models:[{model:'fixture',reasoning:['high']}]}),createCodexAdapter:options=>{received=options;return {id:'codex',capabilities:{streaming:true,tools:true},availability:async()=> 'available',async *run(){yield {type:'completed'};}};}};
+  assert.equal(await main(['codex',directory,'Explain'],output,undefined,undefined,factories),0);
+  assert.equal(received.reasoning,'high');assert.equal(received.model,undefined);
+  assert.equal(JSON.parse(lines.at(-1)).events.find(event=>event.kind==='task-configuration').data.reasoning,'high');
+  factories.inspectCodexReasoning=async()=>({defaultModel:'fixture',models:[{model:'fixture',reasoning:['low']}]});
+  received=null;
+  await assert.rejects(main(['codex',directory,'Explain'],output,undefined,undefined,factories),/does not advertise/);
+  assert.equal(received,null);
+ } finally {
+  if(oldData===undefined)delete process.env.CODOVYN_DATA_DIR;else process.env.CODOVYN_DATA_DIR=oldData;
+  if(oldConfig===undefined)delete process.env.CODOVYN_TASK_CONFIGURATION;else process.env.CODOVYN_TASK_CONFIGURATION=oldConfig;
+  rmSync(directory,{recursive:true,force:true});
+ }
+});

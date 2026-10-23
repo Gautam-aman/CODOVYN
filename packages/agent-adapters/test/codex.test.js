@@ -52,3 +52,11 @@ test('cancels a running Codex subprocess without waiting for its reply', async (
     }, (error) => error.kind === 'cancelled');
   } finally { clearTimeout(timer); }
 });
+
+test('independent reasoning reaches Codex config without selecting a model or broadening sandbox', async () => {
+ const script = `if(process.argv.includes('--model')||!process.argv.includes('model_reasoning_effort="high"')||!process.argv.includes('read-only'))process.exit(4);process.stdin.resume();process.stdin.on('end',()=>console.log(JSON.stringify({type:'turn.completed'})));`;
+ const adapter = createCodexAdapter({cwd:process.cwd(),reasoning:'high',command:process.execPath,prefixArgs:['-e',script]});
+ const events=[];for await(const event of adapter.run({handoff:{request:'Inspect',snapshot:{}}}))events.push(event);
+ assert.deepEqual(events.map(e=>e.type),['completed']);
+ assert.throws(()=>createCodexAdapter({cwd:process.cwd(),reasoning:'invented'}),/Invalid Codex reasoning/);
+});

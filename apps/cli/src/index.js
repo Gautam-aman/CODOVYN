@@ -16,6 +16,7 @@ import { TaskEngine } from '../../../packages/task-engine/src/index.js';
 import { commitStaged, createBranch, fetchRemote, pullFastForward, pushCurrentBranch, repositoryDiff, repositorySnapshot, stagePaths } from '../../../packages/git-engine/src/index.js';
 import { createClaudeAdapter, createCodexAdapter, createGeminiAdapter } from '../../../packages/agent-adapters/src/index.js';
 import { validateDraftWorkspace, createDraftWorkspace, reviewDraftWorkspace, acceptDraftWorkspace, rejectDraftWorkspace } from '../../../packages/git-engine/src/draft-workspace.js';
+import { inspectCodexReasoning } from '../../../packages/agent-adapters/src/codex-models.js';
 import taskConfigurationSchema from '../../../apps/vscode-extension/task-config.cjs';
 import { createIssue, createPullRequest, issueDetails, listIssues, listPullRequests, listWorkflowRuns, previewPullRequest, pullRequestDetails, pullRequestDiff } from '../../../packages/github-integration/src/index.js';
 
@@ -106,7 +107,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
   github = { createIssue, createPullRequest, issueDetails, listIssues, listPullRequests, listWorkflowRuns, previewPullRequest, pullRequestDetails, pullRequestDiff },
   adapters = { createCodexAdapter, createClaudeAdapter, createGeminiAdapter }, confirm = confirmAction) {
   const [mode, value, ...rest] = args;
-  if (!['resume', 'route', 'routed', 'routed-edit', 'agents', 'configured', 'configured-edit', 'demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit', 'draft-continue', 'draft-reconcile', 'draft-abandon', 'draft-inspect', 'draft-review', 'draft-accept', 'draft-reject', 'tasks', 'history', 'task-delete', 'task-prune', 'queue-add', 'queue-list', 'queue-cancel', 'queue-remove', 'queue-reorder', 'queue-pause', 'queue-resume', 'queue-claim', 'queue-update', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'pr-preview', 'pr-create', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
+  if (!['reasoning', 'resume', 'route', 'routed', 'routed-edit', 'agents', 'configured', 'configured-edit', 'demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit', 'draft-continue', 'draft-reconcile', 'draft-abandon', 'draft-inspect', 'draft-review', 'draft-accept', 'draft-reject', 'tasks', 'history', 'task-delete', 'task-prune', 'queue-add', 'queue-list', 'queue-cancel', 'queue-remove', 'queue-reorder', 'queue-pause', 'queue-resume', 'queue-claim', 'queue-update', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'pr-preview', 'pr-create', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
   const stream = process.env.CODOVYN_EVENT_STREAM === '1';
   const geminiAdapter = options => {
     const command = configuredGeminiCommand();
@@ -118,6 +119,11 @@ export async function main(args = process.argv.slice(2), output = console, signa
   const taskConfiguration = process.env.CODOVYN_TASK_CONFIGURATION
     ? taskConfigurationSchema.validateTaskConfiguration(JSON.parse(process.env.CODOVYN_TASK_CONFIGURATION)) : null;
   if (taskConfiguration && taskConfigurationSchema.resolveTaskMode(taskConfiguration) !== mode) throw new TypeError('Task mode differs from the approved configuration');
+  if (taskConfiguration?.provider === 'codex' && !taskConfiguration.modelId && taskConfiguration.reasoning) {
+    const metadata = await (adapters.inspectCodexReasoning || inspectCodexReasoning)({ cwd: value });
+    const selected = metadata.models.find(entry => entry.model === metadata.defaultModel);
+    if (!selected?.reasoning.includes(taskConfiguration.reasoning)) throw new TypeError('The current Codex default model does not advertise this reasoning effort. Refresh the Effort menu.');
+  }
   let routing, routingBudget;
   if (['route','routed','routed-edit'].includes(mode)) {
     const json=process.env.CODOVYN_ROUTING_POLICY||'';
@@ -144,6 +150,11 @@ export async function main(args = process.argv.slice(2), output = console, signa
     const json = process.env.CODOVYN_AGENT_POLICY || '';
     if (json.length > 4096) throw new TypeError('Agent policy exceeds size limit');
     policy = agentPolicy.validateAgentPolicy(JSON.parse(json));
+  }
+  if (mode === 'reasoning') {
+    if (!value || rest.length) { output.error(usage); return 2; }
+    const reasoning = await inspectCodexReasoning({ cwd: value });
+    output.log(JSON.stringify(stream ? { type: 'result', reasoning } : { reasoning })); return 0;
   }
   if (mode === 'agents') {
     if (!value || rest.length) { output.error(usage); return 2; }
@@ -493,7 +504,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
       }
       const factories = { codex: adapters.createCodexAdapter, claude: adapters.createClaudeAdapter, gemini: geminiAdapter };
       for (const provider of [primaryAgent, ...fallbackAgents]) {
-        registry.register(factories[provider]({ cwd: draft?.path || repository, write: !!draft, ...(routing?{model:routing.selected.model,...(routing.selected.reasoning?{reasoning:routing.selected.reasoning}:{})}:{}), ...(provider === 'gemini' && policy?.geminiModel ? { model: policy.geminiModel } : {}) }));
+        registry.register(factories[provider]({ cwd: draft?.path || repository, write: !!draft, ...(routing?{model:routing.selected.model,...(routing.selected.reasoning?{reasoning:routing.selected.reasoning}:{})}:{}), ...(provider === 'codex' && !routing && taskConfiguration?.reasoning ? { reasoning: taskConfiguration.reasoning } : {}), ...(provider === 'gemini' && policy?.geminiModel ? { model: policy.geminiModel } : {}) }));
       }
     }
     }catch(error){if(routing)store.voidUnstartedRoute(id);throw error;}
