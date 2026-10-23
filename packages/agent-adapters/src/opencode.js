@@ -112,13 +112,13 @@ export function createOpenCodeAdapter({cwd,stateDirectory,command,write=false,mo
       const events=[],actions=new Set();let wake,sessionId=null,violation=false,textBytes=0;
       const enqueue=event=>{if(events.length>=256)throw new AgentFailure('fatal','OpenCode event backlog exceeded bound');events.push(event);wake?.();};
       const connection=new AcpConnection({...boundary,args:[...boundary.prefixArgs,'acp'],execution,onRequest:(method,params)=>{
-        if(method!=='session/request_permission')return null;
+        if(method!=='session/request_permission'){violation=true;enqueue({type:'permission',status:'denied',action:'unsupported-client-capability'});queueMicrotask(()=>connection.fail(new AgentFailure('fatal','OpenCode requested an unadvertised client capability')));return null;}
         const tool=params?.toolCall,kind=tool?.kind;
         const paths=[...(Array.isArray(tool?.locations)?tool.locations.map(entry=>entry.path):[]),...[tool?.rawInput?.filePath,tool?.rawInput?.path,tool?.rawInput?.file].filter(Boolean)];
         const allowed=params.sessionId===sessionId&&!tool?._meta&&['read','search',...(write?['edit']:[])].includes(kind)&&paths.length>0&&paths.length<=50&&paths.every(path=>scopePath(boundary.cwd,path,write&&kind!=='read'&&kind!=='search'));
         const choice=allowed&&Array.isArray(params.options)?params.options.find(option=>option.kind==='allow_once'):null;
         if(!choice){violation=true;queueMicrotask(()=>connection.fail(new AgentFailure('fatal','OpenCode permission request was denied; task stopped')));}
-        enqueue({type:'permission',status:choice?'approved-scope':'denied',action:kind||'unknown'});
+        enqueue({type:'permission',status:choice?'approved-scope':'denied',action:['read','search','edit','execute','think','fetch','other'].includes(kind)?kind:'unknown'});
         return {outcome:choice?{outcome:'selected',optionId:choice.optionId}:{outcome:'cancelled'}};
       },onUpdate:params=>{
         if(!sessionId&&!['agent_message_chunk','tool_call','tool_call_update'].includes(params?.update?.sessionUpdate))return;
