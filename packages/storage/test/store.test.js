@@ -142,3 +142,66 @@ test('prunes only bounded finished tasks in the selected repository', () => {
   assert.throws(() => store.prune({ before: future, repositoryRoot: '/a', limit: 1001 }), /Limit must be/);
   store.close();
 });
+
+test('persists queued tasks and requires an explicit claim against the original repository baseline', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'codovyn-queue-'));
+  const filename = join(directory, 'tasks.sqlite');
+  let store;
+  try {
+    store = new TaskStore(filename);
+    const config = { provider: 'codex', modelId: null, permission: 'read', routingMode: 'manual' };
+    store.enqueueTask({ id: 'queue-a', repositoryRoot: '/repo', request: 'Inspect the project', configuration: config, baselineFingerprint: 'abc1234' });
+    store.enqueueTask({ id: 'queue-b', repositoryRoot: '/repo', request: 'Add tests', configuration: config, baselineFingerprint: 'abc1234' });
+    assert.deepEqual(store.listQueuedTasks('/repo').tasks.map(task => task.id), ['queue-a', 'queue-b']);
+    assert.equal(store.getQueuedTask('queue-a').schemaVersion, 1);
+    store.close();
+    store = new TaskStore(filename);
+    assert.equal(store.getQueuedTask('queue-a').configuration.permission, 'read');
+    assert.throws(() => store.claimQueuedTask('queue-a', 'abc1235'), /baseline changed/);
+    store.setTaskQueuePaused('/repo', true);
+    assert.throws(() => store.claimQueuedTask('queue-a', 'abc1234'), /paused/);
+    store.setTaskQueuePaused('/repo', false);
+    const claimed = store.claimQueuedTask('queue-a', 'abc1234');
+    assert.equal(claimed.status, 'starting');
+    assert.throws(() => store.claimQueuedTask('queue-b', 'abc1234'), /requires reconciliation/);
+    assert.throws(() => store.removeQueuedTask('queue-a'), /Only undispatched/);
+    store.updateQueuedTask('queue-a', 'running');
+    store.updateQueuedTask('queue-a', 'completed');
+    assert.equal(store.claimQueuedTask('queue-b', 'abc1234').status, 'starting');
+  } finally { store?.close(); rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('queued task reorder and removal are atomic and scoped to one repository', () => {
+  const store = new TaskStore(':memory:');
+  const enqueue = (id, repositoryRoot = '/repo') => store.enqueueTask({ id, repositoryRoot,
+    request: `Task ${id}`, configuration: { provider: 'auto' }, baselineFingerprint: '9876543' });
+  enqueue('first'); enqueue('second'); enqueue('third'); enqueue('other', '/other');
+  store.reorderQueuedTask('third', 0);
+  assert.deepEqual(store.listQueuedTasks('/repo').tasks.map(task => task.id), ['third', 'first', 'second']);
+  assert.equal(store.removeQueuedTask('first'), true);
+  assert.deepEqual(store.listQueuedTasks('/repo').tasks.map(task => task.id), ['third', 'second']);
+  assert.deepEqual(store.listQueuedTasks('/other').tasks.map(task => task.id), ['other']);
+  assert.throws(() => store.enqueueTask({ id: 'bad', repositoryRoot: '/repo', request: 'x', configuration: {}, baselineFingerprint: 'not-a-hash' }), /fingerprint/);
+  assert.throws(() => store.enqueueTask({ id: 'bad-config', repositoryRoot: '/repo', request: 'x', configuration: null, baselineFingerprint: '9876543' }), /configuration/);
+  assert.equal(store.cancelQueuedTask('second').status, 'cancelled');
+  assert.equal(store.cancelQueuedTask('second'), false);
+  store.close();
+});
+
+test('a claimed queue record remains blocked after reopening instead of being replayed', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'codovyn-queue-restart-'));
+  const filename = join(directory, 'tasks.sqlite');
+  let store;
+  try {
+    store = new TaskStore(filename);
+    store.enqueueTask({ id: 'interrupted-queue', repositoryRoot: '/repo', request: 'Write a test',
+      configuration: { provider: 'codex', permission: 'read-write' }, baselineFingerprint: 'abcdef0' });
+    store.claimQueuedTask('interrupted-queue', 'abcdef0');
+    store.close();
+    store = new TaskStore(filename);
+    assert.equal(store.getQueuedTask('interrupted-queue').status, 'starting');
+    assert.throws(() => store.claimQueuedTask('interrupted-queue', 'abcdef0'), /no longer dispatchable/);
+    assert.equal(store.updateQueuedTask('interrupted-queue', 'interrupted').status, 'interrupted');
+    assert.throws(() => store.updateQueuedTask('interrupted-queue', 'starting'), /Invalid queued task state transition/);
+  } finally { store?.close(); rmSync(directory, { recursive: true, force: true }); }
+});

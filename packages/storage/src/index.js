@@ -61,6 +61,23 @@ export class TaskStore {
         acquired_at TEXT NOT NULL,
         released_at TEXT
       );
+      CREATE TABLE IF NOT EXISTS queued_tasks (
+        id TEXT PRIMARY KEY,
+        repository_root TEXT NOT NULL,
+        request TEXT NOT NULL,
+        configuration TEXT NOT NULL,
+        baseline_fingerprint TEXT NOT NULL,
+        position INTEGER NOT NULL,
+        status TEXT NOT NULL,
+        schema_version INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS queued_tasks_order ON queued_tasks(repository_root, status, position);
+      CREATE TABLE IF NOT EXISTS task_queue_settings (
+        repository_root TEXT PRIMARY KEY,
+        paused INTEGER NOT NULL DEFAULT 0
+      );
       CREATE INDEX IF NOT EXISTS events_by_task ON events(task_id, seq);
     `);
     if (!this.#db.prepare('PRAGMA table_info(tasks)').all().some((column) => column.name === 'repository_root')) {
@@ -212,6 +229,119 @@ export class TaskStore {
   listInterrupted() {
     return this.#db.prepare("SELECT id FROM tasks WHERE status IN ('running', 'interrupted') ORDER BY updated_at")
       .all().map(({ id }) => this.get(id));
+  }
+
+  /** Persist a task for explicit, serial dispatch after its repository baseline is revalidated. */
+  enqueueTask({ id, repositoryRoot, request, configuration, baselineFingerprint }) {
+    validId(id);
+    if (typeof repositoryRoot !== 'string' || !repositoryRoot || repositoryRoot.length > 4096) throw new TypeError('Invalid queue repository');
+    if (typeof request !== 'string' || !request.trim() || request.length > 10000) throw new TypeError('Invalid queued request');
+    if (typeof baselineFingerprint !== 'string' || !/^[a-f0-9]{7,128}$/i.test(baselineFingerprint)) throw new TypeError('Invalid repository baseline fingerprint');
+    if (!configuration || typeof configuration !== 'object' || Array.isArray(configuration)) throw new TypeError('Invalid queued task configuration');
+    const serialized = JSON.stringify(configuration);
+    if (serialized.length > 32768) throw new TypeError('Queued task configuration exceeds the size limit');
+    const now = new Date().toISOString();
+    this.#db.exec('BEGIN IMMEDIATE');
+    try {
+      const position = this.#db.prepare("SELECT COALESCE(MAX(position), -1) + 1 AS next FROM queued_tasks WHERE repository_root = ? AND status = 'queued'").get(repositoryRoot).next;
+      this.#db.prepare('INSERT INTO queued_tasks (id, repository_root, request, configuration, baseline_fingerprint, position, status, schema_version, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)')
+        .run(id, repositoryRoot, request, serialized, baselineFingerprint, position, 'queued', now, now);
+      this.#db.exec('COMMIT');
+      return this.getQueuedTask(id);
+    } catch (error) { this.#db.exec('ROLLBACK'); throw error; }
+  }
+
+  getQueuedTask(id) {
+    const row = this.#db.prepare('SELECT * FROM queued_tasks WHERE id = ?').get(validId(id));
+    return row && { id: row.id, repositoryRoot: row.repository_root, request: row.request,
+      configuration: JSON.parse(row.configuration), baselineFingerprint: row.baseline_fingerprint,
+      position: row.position, status: row.status, schemaVersion: row.schema_version, createdAt: row.created_at, updatedAt: row.updated_at };
+  }
+
+  listQueuedTasks(repositoryRoot) {
+    if (typeof repositoryRoot !== 'string' || !repositoryRoot) throw new TypeError('Repository root is required');
+    const paused = !!this.#db.prepare('SELECT paused FROM task_queue_settings WHERE repository_root = ?').get(repositoryRoot)?.paused;
+    const tasks = this.#db.prepare('SELECT id FROM queued_tasks WHERE repository_root = ? ORDER BY position, created_at, id').all(repositoryRoot)
+      .map(({ id }) => this.getQueuedTask(id));
+    return { paused, tasks };
+  }
+
+  setTaskQueuePaused(repositoryRoot, paused) {
+    if (typeof repositoryRoot !== 'string' || !repositoryRoot || typeof paused !== 'boolean') throw new TypeError('Invalid queue pause setting');
+    this.#db.prepare(`INSERT INTO task_queue_settings (repository_root, paused) VALUES (?, ?)
+      ON CONFLICT(repository_root) DO UPDATE SET paused = excluded.paused`).run(repositoryRoot, paused ? 1 : 0);
+    return this.listQueuedTasks(repositoryRoot);
+  }
+
+  removeQueuedTask(id) {
+    validId(id);
+    this.#db.exec('BEGIN IMMEDIATE');
+    try {
+      const row = this.#db.prepare("SELECT repository_root, status FROM queued_tasks WHERE id = ?").get(id);
+      if (!row) { this.#db.exec('COMMIT'); return false; }
+      if (row.status !== 'queued' && row.status !== 'blocked') throw new Error('Only undispatched queued tasks can be removed');
+      this.#db.prepare('DELETE FROM queued_tasks WHERE id = ?').run(id);
+      const rows = this.#db.prepare("SELECT id FROM queued_tasks WHERE repository_root = ? AND status = 'queued' ORDER BY position, created_at, id").all(row.repository_root);
+      rows.forEach(({ id: taskId }, position) => this.#db.prepare('UPDATE queued_tasks SET position = ?, updated_at = ? WHERE id = ?').run(position, new Date().toISOString(), taskId));
+      this.#db.exec('COMMIT');
+      return true;
+    } catch (error) { this.#db.exec('ROLLBACK'); throw error; }
+  }
+
+  cancelQueuedTask(id) {
+    validId(id);
+    const result = this.#db.prepare("UPDATE queued_tasks SET status = 'cancelled', updated_at = ? WHERE id = ? AND status IN ('queued', 'blocked')")
+      .run(new Date().toISOString(), id);
+    return result.changes === 1 ? this.getQueuedTask(id) : false;
+  }
+
+  reorderQueuedTask(id, position) {
+    validId(id);
+    if (!Number.isSafeInteger(position) || position < 0) throw new TypeError('Queue position must be a non-negative integer');
+    this.#db.exec('BEGIN IMMEDIATE');
+    try {
+      const task = this.#db.prepare("SELECT repository_root FROM queued_tasks WHERE id = ? AND status = 'queued'").get(id);
+      if (!task) throw new Error('Only queued tasks can be reordered');
+      const rows = this.#db.prepare("SELECT id FROM queued_tasks WHERE repository_root = ? AND status = 'queued' ORDER BY position, created_at, id").all(task.repository_root);
+      const current = rows.findIndex(row => row.id === id);
+      rows.splice(current, 1);
+      rows.splice(Math.min(position, rows.length), 0, { id });
+      const update = this.#db.prepare('UPDATE queued_tasks SET position = ?, updated_at = ? WHERE id = ?');
+      rows.forEach((row, index) => update.run(index, new Date().toISOString(), row.id));
+      this.#db.exec('COMMIT');
+      return this.getQueuedTask(id);
+    } catch (error) { this.#db.exec('ROLLBACK'); throw error; }
+  }
+
+  /** Claiming is always explicit. A stale baseline, pause, or same-repo executor prevents dispatch. */
+  claimQueuedTask(id, currentFingerprint) {
+    validId(id);
+    if (typeof currentFingerprint !== 'string' || !/^[a-f0-9]{7,128}$/i.test(currentFingerprint)) throw new TypeError('Invalid current repository fingerprint');
+    this.#db.exec('BEGIN IMMEDIATE');
+    try {
+      const task = this.getQueuedTask(id);
+      if (!task || task.status !== 'queued') throw new Error('Queued task is no longer dispatchable');
+      if (this.#db.prepare('SELECT paused FROM task_queue_settings WHERE repository_root = ? AND paused = 1').get(task.repositoryRoot)) throw new Error('Task queue is paused');
+      if (task.baselineFingerprint !== currentFingerprint) throw new Error('Repository baseline changed; queued task requires review');
+      if (this.#db.prepare("SELECT 1 FROM queued_tasks WHERE repository_root = ? AND status IN ('starting', 'running', 'interrupted', 'blocked') LIMIT 1").get(task.repositoryRoot)) throw new Error('Another queued task requires reconciliation for this repository');
+      const result = this.#db.prepare("UPDATE queued_tasks SET status = 'starting', updated_at = ? WHERE id = ? AND status = 'queued'").run(new Date().toISOString(), id);
+      if (result.changes !== 1) throw new Error('Queued task claim raced with another dispatcher');
+      this.#db.exec('COMMIT');
+      return this.getQueuedTask(id);
+    } catch (error) { this.#db.exec('ROLLBACK'); throw error; }
+  }
+
+  updateQueuedTask(id, status) {
+    validId(id);
+    const transitions = { starting: ['running', 'blocked', 'interrupted', 'failed', 'cancelled'], running: ['completed', 'blocked', 'interrupted', 'failed', 'cancelled'] };
+    this.#db.exec('BEGIN IMMEDIATE');
+    try {
+      const current = this.getQueuedTask(id);
+      if (!current || !transitions[current.status]?.includes(status)) throw new Error('Invalid queued task state transition');
+      this.#db.prepare('UPDATE queued_tasks SET status = ?, updated_at = ? WHERE id = ?').run(status, new Date().toISOString(), id);
+      this.#db.exec('COMMIT');
+      return this.getQueuedTask(id);
+    } catch (error) { this.#db.exec('ROLLBACK'); throw error; }
   }
 
   hasOpenDraft(id) {
