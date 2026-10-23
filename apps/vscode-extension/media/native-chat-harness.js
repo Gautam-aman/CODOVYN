@@ -5,7 +5,7 @@
   const text = selector => document.querySelector(selector)?.textContent || '';
   const requireValue = (condition, message) => { if (!condition) throw new Error(message); };
 
-  async function run(token) {
+  async function run(token, phase) {
     const prompt = 'Render this literally: <img src=x onerror=alert(1)>';
     const report = {};
     const stage = name => vscode.postMessage({ type: 'codovyn-native-chat-test-progress', token, stage: name });
@@ -31,8 +31,68 @@
     requireValue([...model.options].some(option => option.value === catalogueModel.id) && reasoning.disabled === false &&
       [...reasoning.options].some(option => option.value === 'low') && permission.querySelector('option[value="write"]')?.disabled === true,
       'The native picker must show only configured models and reasoning while keeping unsupported write-only permission disabled.');
+    document.querySelector('#model-chip').click();
+    const picker = document.querySelector('#model-picker');
+    requireValue(picker.matches(':popover-open'), 'Model chip did not open its top-layer popover.');
+    const search = picker.querySelector('input'); search.value = 'fixture'; search.dispatchEvent(new Event('input'));
+    const choice = picker.querySelector('[data-choice="model:native-fixture-codex"]');
+    requireValue(choice && picker.querySelectorAll('[data-choice]').length === 1, 'Model search did not filter the configured catalogue.');
+    picker.querySelector('.model-favorite').click();
+    requireValue(vscode.getState().modelPicker.favorites.includes('model:native-fixture-codex'), 'Favorite model preference was not saved.');
+    picker.querySelector('[data-choice="model:native-fixture-codex"]').click();
+    requireValue(model.value === catalogueModel.id && !picker.matches(':popover-open'), 'Model selection did not reach the actual task controls.');
+    requireValue(vscode.getState().modelPicker.recent[0] === 'model:native-fixture-codex', 'Recent model selection was not saved.');
+    document.querySelector('#model-chip').click();
+    search.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    requireValue(document.activeElement.matches('button[data-choice]'), 'Arrow navigation did not move focus into the model list.');
+    document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    requireValue(!picker.matches(':popover-open') && document.activeElement.id === 'model-chip', 'Escape did not close the model menu and restore focus.');
+    document.querySelector('#mode-chip').click(); document.querySelector('#mode-agent').click();
+    requireValue(permission.value === 'read-write', 'Agent mode did not request an isolated edit draft.');
+    document.querySelector('#mode-chip').click(); document.querySelector('#mode-plan').click();
+    requireValue(permission.value === 'read' && currentTaskConfiguration().intent === 'plan', 'Plan mode was not limited to read-only execution.');
+    document.querySelector('#mode-chip').click(); document.querySelector('#mode-ask').click();
+    requireValue(permission.value === 'read', 'Ask mode did not restore read-only permission.');
+    requireValue(!document.querySelector('.composer .task-controls') && document.querySelector('#codovyn-panel-settings .task-controls'), 'Advanced controls still clutter the primary composer.');
+    const compact = document.querySelector('.composer');
+    compact.style.width = '260px';
+    requireValue(compact.scrollWidth <= 262, 'Compact composer overflows a narrow panel.'); compact.style.width = '';
+    report.compactComposer = true;
     report.composerControls = true;
     stage('separate-composer-controls-verified');
+
+    const hostMessage = type => new Promise((resolve, reject) => {
+      const timer = setTimeout(() => { window.removeEventListener('message', listener); reject(new Error(`No native host response: ${type}`)); }, 10000);
+      const listener = event => { if (event.data?.type !== type) return; clearTimeout(timer); window.removeEventListener('message', listener); resolve(event.data); };
+      window.addEventListener('message', listener);
+    });
+    document.querySelector('#model-chip').click();
+    document.querySelector('#model-picker [data-choice="default:codex"]').click();
+    requireValue(provider.value === 'codex' && model.value === '', 'Provider Default did not select the actual CLI default.');
+    let nextState = hostMessage('queue-state'); vscode.postMessage({ type: 'queue-list' });
+    let queueState = await nextState;
+    if (phase === 'relaunch') {
+      const retained = queueState.tasks.find(task => task.request === 'Persistent native queue request' && task.status === 'queued');
+      requireValue(retained, 'Queued request did not survive an actual native restart.');
+      nextState = hostMessage('queue-state'); vscode.postMessage({ type: 'queue-cancel', id: retained.id }); await nextState;
+      report.queueRestoredAfterRestart = true;
+    }
+    const addQueued = async value => {
+      request.value = value;
+      const accepted = hostMessage('queue-accepted'); const state = hostMessage('queue-state');
+      taskQueue.enqueue(); const ack = await accepted; await state;
+      requireValue(request.value === '', 'Durable queue acknowledgement did not clear the submitted composer draft.'); return ack.taskId;
+    };
+    const firstQueued = await addQueued('First native queued request');
+    const secondQueued = await addQueued('Second native queued request');
+    nextState = hostMessage('queue-state'); vscode.postMessage({ type: 'queue-reorder', id: secondQueued, position: 0 }); queueState = await nextState;
+    requireValue(queueState.tasks.filter(task => task.status === 'queued')[0].id === secondQueued, 'Native queue reorder was not persisted.');
+    nextState = hostMessage('queue-state'); vscode.postMessage({ type: 'queue-pause' }); requireValue((await nextState).paused === true, 'Native queue did not pause.');
+    nextState = hostMessage('queue-state'); vscode.postMessage({ type: 'queue-resume' }); requireValue((await nextState).paused === false, 'Native queue did not resume.');
+    for (const id of [firstQueued, secondQueued]) { nextState = hostMessage('queue-state'); vscode.postMessage({ type: 'queue-cancel', id }); await nextState; }
+    if (phase === 'first-launch') await addQueued('Persistent native queue request');
+    report.queueManagement = true;
+    stage('durable-native-queue-verified');
 
     request.value = prompt;
     pendingChatRequest = prompt;
@@ -157,7 +217,7 @@
   window.addEventListener('message', async ({ data }) => {
     if (data?.type !== 'codovyn-native-chat-test' || typeof data.token !== 'string' || !/^[a-f0-9]{32}$/.test(data.token)) return;
     let report;
-    try { report = { passed: true, checks: await run(data.token) }; }
+    try { report = { passed: true, checks: await run(data.token, data.phase) }; }
     catch (error) { report = { passed: false, error: String(error?.message || error) }; }
     vscode.postMessage({ type: 'codovyn-native-chat-test-result', token: data.token, report });
   });

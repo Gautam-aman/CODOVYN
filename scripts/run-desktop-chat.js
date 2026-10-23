@@ -19,6 +19,8 @@ try {
   await mkdir(fixture);
   await writeFile(join(fixture, 'chat-smoke.txt'), 'Disposable native Chat fixture.\n');
   execFileSync('git', ['init', '-q', fixture]);
+  execFileSync('git', ['-C', fixture, 'add', '.']);
+  execFileSync('git', ['-C', fixture, '-c', 'user.name=CODOVYN Test', '-c', 'user.email=test@example.invalid', 'commit', '-qm', 'native fixture']);
   const reports = [];
   for (const phase of ['first-launch', 'relaunch']) {
     const phaseDirectory = join(temporary, phase);
@@ -28,12 +30,13 @@ try {
       phase: `chat-${phase}`, args: [fixture, ...nativeProfileArgs(temporary),
         '--extensionDevelopmentPath', join(app, 'Resources/app/extensions/codovyn-desktop'),
         '--extensionTestsPath', join(root, 'apps/desktop/host/chat-runner.cjs'),
-        '--disable-workspace-trust', '--skip-welcome', '--skip-release-notes'],
+        '--disable-workspace-trust', '--skip-welcome', '--skip-release-notes',
+        ...(process.env.CODOVYN_HOST_DEBUG_PORT ? [`--remote-debugging-port=${process.env.CODOVYN_HOST_DEBUG_PORT}`] : [])],
       env: { ...process.env, PATH: '/usr/bin:/bin:/usr/sbin:/sbin', CODOVYN_NATIVE_CHAT_TEST: '1',
         CODOVYN_NATIVE_CHAT_PHASE: phase, CODOVYN_NATIVE_CHAT_DATA_DIR: dataDirectory,
         CODOVYN_NATIVE_CHAT_REPORT: output,
         CODOVYN_NATIVE_CHAT_SCREENSHOT: phase === 'first-launch'
-          ? join(root, 'docs/assets/desktop-phase8-native-chat.png') : '' } });
+          ? join(root, 'dist/desktop/native-chat-capture.png') : '' } });
     const report = JSON.parse(await readFile(output, 'utf8'));
     assert.equal(report.app, 'CODOVYN Desktop');
     assert.equal(report.passed, true);
@@ -41,6 +44,7 @@ try {
     reports.push(report);
     await copyFile(join(phaseDirectory, `chat-${phase}-lifecycle.json`), join(root, 'dist/desktop', `chat-${phase}-lifecycle.json`));
   }
+  assert.equal(reports[1].checks.queueRestoredAfterRestart, true, 'Queued tasks remain durable and inert across native restart.');
   assert.deepEqual(reports[0].checks.transcriptMessages, reports[1].checks.transcriptMessages,
     'The same persisted task journal must reconstruct the same transcript after an application restart.');
   await mkdir(join(root, 'dist/desktop'), { recursive: true });

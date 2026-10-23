@@ -132,9 +132,10 @@ function createExtension(api, runner = runCli) {
         const media = (...segments) => panel.webview.asWebviewUri(api.Uri.joinPath(context.extensionUri, 'apps', 'vscode-extension', 'media', ...segments));
         const nativeChatTestScript = process.env.CODOVYN_NATIVE_CHAT_TEST === '1'
           ? `<script nonce="${nonce}" src="${media('native-chat-harness.js')}"></script>` : '';
-        panel.webview.html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${panel.webview.cspSource} 'nonce-${nonce}'; script-src 'nonce-${nonce}';"><link rel="stylesheet" href="${media('workspace.css')}"><style nonce="${nonce}">${themeStyles()}</style><title>CODOVYN</title></head><body data-codovyn-theme="${selectedTheme}"><main><header><div class="mark">C</div><div><h1>CODOVYN</h1><p>One IDE. Every Agent. Endless Flow.</p></div></header><section class="composer"><label class="legacy-agent-label" for="agent">Legacy agent mode</label><select class="legacy-agent-select" id="agent" aria-hidden="true" tabindex="-1"><option value="demo">Demo handoff</option><option value="codex">Codex CLI · read only</option><option value="claude">Claude Code · read only</option><option value="auto">Codex → Claude · automatic</option></select><label for="request">What would you like to work on?</label><textarea id="request" rows="5" maxlength="10000" placeholder="Describe a task in this repository"></textarea><div class="task-controls" aria-label="Task configuration"><label for="task-provider">Provider</label><select id="task-provider" aria-label="Provider"><option value="auto">Auto</option><option value="configured">Configured agents</option><option value="codex">Codex CLI</option><option value="gemini">Gemini CLI</option><option value="claude">Claude Code</option></select><label for="task-model">Model</label><select id="task-model" aria-label="Model"><option value="">Provider default / routing policy</option></select><label for="task-permission">Permissions</label><select id="task-permission" aria-label="Task permissions"><option value="read">Read only</option><option value="write" disabled>Write only — unsupported safely</option><option value="read-write">Read + Write draft</option></select><label for="task-routing">Routing</label><select id="task-routing" aria-label="Routing strategy"><option value="manual">Provider default</option><option value="auto">Auto</option><option value="economy">Economy</option><option value="balanced">Balanced</option><option value="performance">Performance</option><option value="custom">Custom model</option></select><label for="task-reasoning">Reasoning</label><select id="task-reasoning" aria-label="Reasoning effort"><option value="">Provider default</option></select></div><p id="permission-help" class="control-help">Read + Write uses an isolated draft. Changes require review before application.</p><div class="actions"><button id="run" type="button">Start task</button><button id="cancel" type="button" disabled>Cancel</button></div></section><section class="activity"><div class="section-head"><h2>Task activity</h2><span id="status" role="status" aria-live="polite">Ready</span></div><ol id="timeline" aria-label="Agent activity"></ol><p id="empty">Task steps and agent handoffs will appear here.</p></section><section class="recent"><div class="section-head"><h2>Recent tasks</h2><button id="refresh" type="button">Refresh</button></div><ul id="tasks" aria-label="Recent repository tasks"></ul></section><section class="diff"><div class="section-head"><h2>Repository diff</h2><div class="diff-actions"><button id="working-diff" type="button">Working tree</button><button id="staged-diff" type="button">Staged</button></div></div><pre id="diff-output" tabindex="0" aria-label="Git diff">Choose a diff to review.</pre></section><footer>Local task history stays on this device.</footer></main><script nonce="${nonce}" src="${media('routing-form.cjs')}"></script><script nonce="${nonce}" src="${media('workspace.js')}"></script>${nativeChatTestScript}</body></html>`;
+        panel.webview.html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${panel.webview.cspSource} 'nonce-${nonce}'; script-src 'nonce-${nonce}';"><link rel="stylesheet" href="${media('workspace.css')}"><style nonce="${nonce}">${themeStyles()}</style><title>CODOVYN</title></head><body data-codovyn-theme="${selectedTheme}"><main><header><div class="mark">C</div><div><h1>CODOVYN</h1><p>One IDE. Every Agent. Endless Flow.</p></div></header><section class="composer"><label class="legacy-agent-label" for="agent">Legacy agent mode</label><select class="legacy-agent-select" id="agent" aria-hidden="true" tabindex="-1"><option value="demo">Demo handoff</option><option value="codex">Codex CLI · read only</option><option value="claude">Claude Code · read only</option><option value="auto">Codex → Claude · automatic</option></select><label for="request">What would you like to work on?</label><textarea id="request" rows="5" maxlength="10000" placeholder="Describe a task in this repository"></textarea><div class="task-controls" aria-label="Task configuration"><label for="task-provider">Provider</label><select id="task-provider" aria-label="Provider"><option value="auto">Auto</option><option value="configured">Configured agents</option><option value="codex">Codex CLI</option><option value="gemini">Gemini CLI</option><option value="claude">Claude Code</option></select><label for="task-model">Model</label><select id="task-model" aria-label="Model"><option value="">Provider default / routing policy</option></select><label for="task-permission">Permissions</label><select id="task-permission" aria-label="Task permissions"><option value="read">Read only</option><option value="write" disabled>Write only — unsupported safely</option><option value="read-write">Read + Write draft</option></select><label for="task-routing">Routing</label><select id="task-routing" aria-label="Routing strategy"><option value="manual">Provider default</option><option value="auto">Auto</option><option value="economy">Economy</option><option value="balanced">Balanced</option><option value="performance">Performance</option><option value="custom">Custom model</option></select><label for="task-reasoning">Reasoning</label><select id="task-reasoning" aria-label="Reasoning effort"><option value="">Provider default</option></select></div><p id="permission-help" class="control-help">Read + Write uses an isolated draft. Changes require review before application.</p><div class="actions"><button id="run" type="button">Start task</button><button id="cancel" type="button" disabled>Cancel</button></div></section><section class="activity"><div class="section-head"><h2>Task activity</h2><span id="status" role="status" aria-live="polite">Ready</span></div><ol id="timeline" aria-label="Agent activity"></ol><p id="empty">Task steps and agent handoffs will appear here.</p></section><section class="recent"><div class="section-head"><h2>Recent tasks</h2><button id="refresh" type="button">Refresh</button></div><ul id="tasks" aria-label="Recent repository tasks"></ul></section><section class="diff"><div class="section-head"><h2>Repository diff</h2><div class="diff-actions"><button id="working-diff" type="button">Working tree</button><button id="staged-diff" type="button">Staged</button></div></div><pre id="diff-output" tabindex="0" aria-label="Git diff">Choose a diff to review.</pre></section><footer>Local task history stays on this device.</footer></main><script nonce="${nonce}" src="${media('routing-form.cjs')}"></script><script nonce="${nonce}" src="${media('composer.js')}"></script><script nonce="${nonce}" src="${media('workspace.js')}"></script>${nativeChatTestScript}</body></html>`;
         let active = null;
         let starting = false;
+        let queueBusy = false;
         const seenRequestIds = new Set();
         let draftBusy = false;
         let disposed = false;
@@ -202,11 +203,25 @@ function createExtension(api, runner = runCli) {
             panel.webview.postMessage({ type: 'tasks', tasks: result.tasks || [] });
           } catch { panel.webview.postMessage({ type: 'tasks-error', text: 'Could not load task history.' }); }
         };
-        panel.webview.onDidReceiveMessage(async (message) => {
+        const queueCommand = async (command, args = [], env = {}) => {
+          const folder = folderForTask();
+          if (!folder || disposed || !api.workspace.isTrusted) throw new Error('Open and trust a Git project to manage its queue.');
+          return runner(runtimePath(api, context), [join(context.extensionPath, 'apps', 'cli', 'src', 'index.js'), command, ...args], {
+            cwd: folder.uri.fsPath, env: { ...providerEnvironment(api), CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM: '1', ...env }, onChild: () => {}, onEvent: () => {},
+          });
+        };
+        let queueRefreshVersion = 0;
+        const refreshQueue = async () => {
+          const version = ++queueRefreshVersion;
+          if (!folderForTask() || !api.workspace.isTrusted) { panel.webview.postMessage({ type: 'queue-state', tasks: [], paused: true }); return; }
+          try { const result = await queueCommand('queue-list', [folderForTask().uri.fsPath]); if (version === queueRefreshVersion) panel.webview.postMessage({ type: 'queue-state', tasks: result.tasks || [], paused: result.paused === true }); }
+          catch { panel.webview.postMessage({ type: 'queue-error', text: 'Could not load this project’s task queue.' }); }
+        };
+        const handleMessage = async (message, ownedQueue = null) => {
           if (!message || typeof message !== 'object') return;
           if (message.type === 'cancel') { active?.kill('SIGTERM'); return; }
           if (message.type === 'ready') {
-            sendProjects(); sendAppearance(); sendAgentPolicy(); sendRoutingPolicy(); await refreshTasks();
+            sendProjects(); sendAppearance(); sendAgentPolicy(); sendRoutingPolicy(); await refreshTasks(); await refreshQueue();
             if (!disposed && currentPanel === panel) {
               panelReady = true;
               if (pendingPanelSection) {
@@ -214,6 +229,58 @@ function createExtension(api, runner = runCli) {
                 pendingPanelSection = null;
               }
             }
+            return;
+          }
+          if (message.type === 'queue-list') { await refreshQueue(); return; }
+          if (message.type === 'queue-add') {
+            const folder = folderForTask();
+            if (!folder || !api.workspace.isTrusted || disposed || queueBusy || typeof message.request !== 'string' || !message.request.trim() || message.request.length > 10000 ||
+              typeof message.requestId !== 'string' || !/^[a-zA-Z0-9-]{16,80}$/.test(message.requestId)) {
+              panel.webview.postMessage({ type: 'queue-error', text: 'Open a trusted project and enter a request before queueing.' }); return;
+            }
+            queueBusy = true;
+            try {
+              const configuration = validateTaskConfiguration(message.taskConfiguration);
+              const result = await queueCommand('queue-add', [folder.uri.fsPath, message.request.trim(), JSON.stringify(configuration)], { CODOVYN_QUEUE_REQUEST_ID: message.requestId, CODOVYN_QUEUE_POLICY_SNAPSHOT: JSON.stringify({ agentPolicy: loadAgentPolicy(), routingPolicy: routingSnapshot(api.workspace.getConfiguration('codovyn', folder.uri).get('routingPolicy', {})) }) });
+              await refreshQueue();
+              queueBusy = false;
+              panel.webview.postMessage({ type: 'queue-accepted', requestId: message.requestId, taskId: result.task.id });
+            } catch { panel.webview.postMessage({ type: 'queue-error', text: 'The task could not be queued. Your draft is retained; check the project and task configuration.' }); }
+            finally { queueBusy = false; }
+            return;
+          }
+          if (['queue-pause', 'queue-resume', 'queue-cancel', 'queue-reorder', 'queue-start'].includes(message.type)) {
+            const folder = folderForTask();
+            if (!folder || !api.workspace.isTrusted || disposed || queueBusy) return;
+            if (message.type === 'queue-start' && (active || starting || draftBusy)) { panel.webview.postMessage({ type: 'queue-error', text: 'Wait for the active task and draft review before dispatching another task.' }); return; }
+            queueBusy = true;
+            try {
+              if (['queue-pause', 'queue-resume'].includes(message.type)) await queueCommand(message.type, [folder.uri.fsPath]);
+              else {
+                if (typeof message.id !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(message.id)) throw new Error('Invalid queued task');
+                if (message.type === 'queue-start') {
+                  const queue = await queueCommand('queue-list', [folder.uri.fsPath]);
+                  const task = queue.tasks?.find(task => task.id === message.id && task.status === 'queued');
+                  if (!task || queue.paused) throw new Error('Task is unavailable or the queue is paused');
+                  const configuration = validateTaskConfiguration(task.configuration);
+                  const currentPolicies = { agentPolicy: loadAgentPolicy(), routingPolicy: routingSnapshot(api.workspace.getConfiguration('codovyn', folder.uri).get('routingPolicy', {})) };
+                  if (!task.policySnapshot || JSON.stringify(task.policySnapshot) !== JSON.stringify(currentPolicies)) throw new Error('Queued provider policy changed; cancel and enqueue again with fresh consent.');
+                  const consent = await api.window.showWarningMessage('Run this queued task?', { modal: true, detail: `${task.request.slice(0, 500)}\nProvider: ${configuration.provider}. Permission: ${configuration.permission}. Model and write approvals will be checked again. Repository changes block dispatch.` }, 'Review and run');
+                  if (consent !== 'Review and run' || disposed || folderForTask() !== folder) return;
+                  await queueCommand('queue-claim', [task.id, folder.uri.fsPath]);
+                  await queueCommand('queue-update', [task.id, 'running', folder.uri.fsPath]);
+                  const requestId = randomBytes(16).toString('hex');
+                  panel.webview.postMessage({ type: 'queue-dispatch', requestId, request: task.request });
+                  const dispatch = { id: task.id, outcome: 'blocked' };
+                  await handleMessage({ type: 'run', requestId, request: task.request, taskConfiguration: configuration }, dispatch);
+                  await queueCommand('queue-update', [task.id, dispatch.outcome, folder.uri.fsPath]);
+                } else if (message.type === 'queue-reorder') {
+                  if (!Number.isSafeInteger(message.position) || message.position < 0 || message.position > 999) throw new Error('Invalid position');
+                  await queueCommand('queue-reorder', [message.id, String(message.position), folder.uri.fsPath]);
+                } else await queueCommand('queue-cancel', [message.id, folder.uri.fsPath]);
+              }
+            } catch { panel.webview.postMessage({ type: 'queue-error', text: 'Queue action stopped. A changed repository, pending draft, unresolved execution, or changed policy requires review. No ambiguous operation was replayed.' }); }
+            finally { queueBusy = false; await refreshQueue(); }
             return;
           }
           if (message.type === 'theme-select' && validTheme(message.id) && !disposed) {
@@ -233,7 +300,7 @@ function createExtension(api, runner = runCli) {
             return;
           }
           if (message.type === 'agent-diagnostics') { await inspectAgents(); return; }
-          if (message.type === 'agent-policy-save' && !active && !starting && !draftBusy && !disposed && folderForTask()) {
+          if (message.type === 'agent-policy-save' && !active && !starting && !draftBusy && !queueBusy && !disposed && folderForTask()) {
             try {
               const policy = validateAgentPolicy(message.policy);
               await context.globalState?.update(policyKey(), policy);
@@ -282,7 +349,7 @@ function createExtension(api, runner = runCli) {
             return;
           }
           if (message.type === 'tasks') { await refreshTasks(); return; }
-          if (message.type === 'project-select' && !active && !starting && !draftBusy && typeof message.root === 'string') {
+          if (message.type === 'project-select' && !active && !starting && !draftBusy && !queueBusy && typeof message.root === 'string') {
             if (!api.workspace.workspaceFolders?.some((folder) => folder.uri.fsPath === message.root)) return;
             selectedRoot = message.root;
             sendAgentPolicy();
@@ -293,7 +360,7 @@ function createExtension(api, runner = runCli) {
             await refreshTasks();
             return;
           }
-          if (['draft-continue', 'draft-reconcile', 'draft-abandon', 'draft-inspect', 'draft-review', 'draft-accept', 'draft-reject'].includes(message.type) && !active && !starting && !draftBusy && !disposed &&
+          if (['draft-continue', 'draft-reconcile', 'draft-abandon', 'draft-inspect', 'draft-review', 'draft-accept', 'draft-reject'].includes(message.type) && !active && !starting && !draftBusy && !queueBusy && !disposed &&
             typeof message.id === 'string' && /^[a-zA-Z0-9_-]{1,80}$/.test(message.id)) {
             const folder = folderForTask();
             if (!folder) { panel.webview.postMessage({ type: 'diff-error', text: 'Open a Git repository folder first.' }); return; }
@@ -369,7 +436,7 @@ function createExtension(api, runner = runCli) {
             finally { active=null; draftBusy = false; if (!disposed) panel.webview.postMessage({ type: 'draft-idle' }); }
             return;
           }
-          if(message.type==='resume-task'&&!active&&!starting&&!draftBusy&&!disposed&&typeof message.id==='string'&&/^[a-zA-Z0-9_-]{1,80}$/.test(message.id)) {
+          if(message.type==='resume-task'&&!active&&!starting&&!draftBusy&&!queueBusy&&!disposed&&typeof message.id==='string'&&/^[a-zA-Z0-9_-]{1,80}$/.test(message.id)) {
             const folder=folderForTask();if(!folder||!api.workspace.isTrusted)return;
             const command=runtimePath(api,context),script=join(context.extensionPath,'apps','cli','src','index.js');
             const options={cwd:folder.uri.fsPath,env:{...providerEnvironment(api),CODOVYN_DATA_DIR:taskDataDirectory,CODOVYN_EVENT_STREAM:'1'},onChild:()=>{},onEvent:()=>{}};
@@ -387,7 +454,7 @@ function createExtension(api, runner = runCli) {
             finally {active=null;draftBusy=false;if(!disposed)panel.webview.postMessage({type:'draft-idle'});}
             return;
           }
-          if (message.type === 'delete-task' && !active && !starting && !draftBusy && typeof message.id === 'string' && /^[a-zA-Z0-9_-]{1,80}$/.test(message.id)) {
+          if (message.type === 'delete-task' && !active && !starting && !draftBusy && !queueBusy && typeof message.id === 'string' && /^[a-zA-Z0-9_-]{1,80}$/.test(message.id)) {
             const folder = folderForTask();
             if (!folder) return;
             draftBusy = true;
@@ -422,7 +489,7 @@ function createExtension(api, runner = runCli) {
             } catch { panel.webview.postMessage({ type: 'diff-error', text: 'Could not load this diff.' }); }
             return;
           }
-          if (message.type === 'history' && !active && !starting && !draftBusy && typeof message.id === 'string' && /^[a-zA-Z0-9_-]{1,80}$/.test(message.id)) {
+          if (message.type === 'history' && !active && !starting && !draftBusy && !queueBusy && typeof message.id === 'string' && /^[a-zA-Z0-9_-]{1,80}$/.test(message.id)) {
             const folder = folderForTask();
             if (!folder) return;
             const nodePath = runtimePath(api, context);
@@ -441,7 +508,7 @@ function createExtension(api, runner = runCli) {
             } catch (error) { panel.webview.postMessage({ type: 'error', text: error.message }); }
             return;
           }
-          if (message.type !== 'run' || active || starting || draftBusy || disposed) return;
+          if (message.type !== 'run' || active || starting || draftBusy || disposed || (queueBusy && !ownedQueue)) return;
           if (message.requestId !== undefined && (typeof message.requestId !== 'string' || !/^[a-zA-Z0-9-]{16,80}$/.test(message.requestId))) {
             panel.webview.postMessage({ type: 'error', text: 'Invalid task submission identifier. Your prompt was retained.' });
             return;
@@ -555,7 +622,7 @@ function createExtension(api, runner = runCli) {
             const result = await runner(nodePath, [script, runMode, folder.uri.fsPath, request,
               ...(editMode ? ['--allow-writes'] : [])], {
               cwd: folder.uri.fsPath,
-              env: { ...providerEnvironment(api), CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM: '1', CODOVYN_AGENT_POLICY: JSON.stringify(taskPolicy), ...(taskRouting?{CODOVYN_ROUTING_POLICY:JSON.stringify(taskRouting),CODOVYN_SESSION_ID:routingSession}:{}) },
+              env: { ...providerEnvironment(api), CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM: '1', CODOVYN_AGENT_POLICY: JSON.stringify(taskPolicy), ...(taskConfiguration ? { CODOVYN_TASK_CONFIGURATION: JSON.stringify(taskConfiguration) } : {}), ...(ownedQueue ? { CODOVYN_TASK_ID: ownedQueue.id } : {}), ...(taskRouting?{CODOVYN_ROUTING_POLICY:JSON.stringify(taskRouting),CODOVYN_SESSION_ID:routingSession}:{}) },
               onChild: (child) => { active = child; },
               onEvent: (event, taskId) => {
                 if (!taskAccepted && event.kind === 'execution-owned') {
@@ -569,10 +636,12 @@ function createExtension(api, runner = runCli) {
               },
             });
             if (!taskAccepted) {
+              if (!result.taskId || result.budgetRejected || (result.routing && !result.routing.selected)) throw new Error('Task admission was refused. Your draft is retained. Review routing and budget settings.');
               taskAccepted = true;
               panel.webview.postMessage({ type: 'accepted', requestId: message.requestId, taskId: result.taskId });
               panel.webview.postMessage({ type: 'running', taskId: result.taskId });
             }
+            if (ownedQueue) ownedQueue.outcome = ['completed', 'failed', 'cancelled', 'interrupted'].includes(result.status) ? result.status : 'blocked';
             panel.webview.postMessage({ type: 'result', status: result.status, taskId: result.taskId,
               activeAgent: result.activeAgent, draftReviewAvailable: !!result.draftReviewAvailable,
               timeline: result.budgetRejected ? [{type:'error',text:'Local budget reservation was refused. Another task may have reserved the remaining estimate, or earlier charges are unknown. No provider started.'}] : result.routing&&!result.routing.selected ? [{type:'error',text:'No eligible routing candidate. Review the decision and budget rejection reasons.'}] : result.events ? timeline(result.events) : activity });
@@ -580,7 +649,8 @@ function createExtension(api, runner = runCli) {
             await refreshTasks();
           } catch (error) { panel.webview.postMessage({ type: 'error', text: error.message }); }
           finally { active = null; starting = false; }
-        });
+        };
+        panel.webview.onDidReceiveMessage(message => handleMessage(message));
         return panel;
       };
       const command = api.commands.registerCommand('codovyn.open', openWorkspace);

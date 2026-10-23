@@ -7,17 +7,8 @@ const taskPermission = document.getElementById('task-permission');
 const taskRouting = document.getElementById('task-routing');
 const taskReasoning = document.getElementById('task-reasoning');
 const taskControls = document.querySelector('.task-controls');
-const modelSearch = document.createElement('input');
-modelSearch.type = 'search'; modelSearch.maxLength = 256;
-modelSearch.placeholder = 'Search configured models'; modelSearch.setAttribute('aria-label', 'Search configured model IDs and names');
-const modelSearchLabel = document.createElement('label');
-modelSearchLabel.textContent = 'Find model'; modelSearchLabel.append(modelSearch);
-const modelSelectorField = document.createElement('div'); modelSelectorField.className = 'task-control-field task-model-field';
-const modelControlLabel = taskControls.querySelector('label[for="task-model"]');
-modelControlLabel.textContent = 'Model';
-modelControlLabel.before(modelSelectorField);
-modelSelectorField.append(modelControlLabel, modelSearchLabel, taskModel);
-for (const id of ['task-provider', 'task-permission', 'task-routing', 'task-reasoning']) {
+let compactComposer = null;
+for (const id of ['task-provider', 'task-model', 'task-permission', 'task-routing', 'task-reasoning']) {
   const control = document.getElementById(id);
   const label = taskControls.querySelector(`label[for="${id}"]`);
   const field = document.createElement('div'); field.className = 'task-control-field';
@@ -33,7 +24,9 @@ let unseenActivityCount = 0;
 let pendingChatRequest = '';
 let acceptedChatRequest = '';
 let taskModelCatalogue = [];
+let previousTaskProvider = null;
 let taskSubmissionId = null;
+let queueDispatching = false;
 let chatFollowsLatest = true;
 let streamedAssistantText = false;
 let assistantTextLength = 0;
@@ -265,9 +258,7 @@ let selectedProjectRoot = null;
 function updateTaskModelControls() {
   const provider = taskProvider.value;
   const selected = taskModel.value;
-  const query = modelSearch.value.trim().toLocaleLowerCase();
-  const matching = taskModelCatalogue.filter(model => (provider === 'auto' || model.provider === provider) &&
-    (!query || model.id === selected || `${model.id} ${model.model} ${model.provider}`.toLocaleLowerCase().includes(query)));
+  const matching = taskModelCatalogue.filter(model => model && (provider === 'auto' || model.provider === provider));
   taskModel.replaceChildren();
   const defaultOption = document.createElement('option');
   defaultOption.value = '';
@@ -283,20 +274,25 @@ function updateTaskModelControls() {
     option.disabled = model.availability === 'unavailable';
     group.append(option);
   }
+  if (selected && previousTaskProvider === provider && ![...taskModel.options].some(option => option.value === selected)) {
+    const missing = document.createElement('option'); missing.value = selected; missing.textContent = `Unavailable selection · ${selected}`; missing.disabled = true; taskModel.append(missing);
+  }
   if ([...taskModel.options].some(option => option.value === selected)) taskModel.value = selected;
+  previousTaskProvider = provider;
   taskModel.disabled = provider === 'configured';
   taskRouting.disabled = provider !== 'auto';
   if (provider !== 'auto') taskRouting.value = 'manual';
   else if (taskRouting.value === 'manual') taskRouting.value = 'auto';
   updateTaskReasoning();
   updateLegacyMode();
+  compactComposer?.refresh();
 }
 function updateTaskReasoning() {
   const selectedModel = taskModelCatalogue.find(model => model.id === taskModel.value);
   const previous = taskReasoning.value;
   taskReasoning.replaceChildren();
   const defaultOption = document.createElement('option'); defaultOption.value = ''; defaultOption.textContent = 'Provider default'; taskReasoning.append(defaultOption);
-  const supported = Array.isArray(selectedModel?.reasoning) ? selectedModel.reasoning : [];
+  const supported = selectedModel?.provider === 'codex' && Array.isArray(selectedModel.reasoning) ? selectedModel.reasoning : [];
   for (const effort of supported) { const option = document.createElement('option'); option.value = effort; option.textContent = effort; taskReasoning.append(option); }
   taskReasoning.disabled = !supported.length;
   if (supported.includes(previous)) taskReasoning.value = previous;
@@ -318,7 +314,7 @@ function storeTaskSelection() {
   const rootKey = selectedProjectRoot.slice(0, 1024);
   vscode.setState?.({ ...state, taskSelections: { ...selections, [rootKey]: {
     provider: taskProvider.value, modelId: taskModel.value || '', permission: taskPermission.value,
-    routingMode: taskRouting.value, reasoning: taskReasoning.value,
+    routingMode: taskRouting.value, reasoning: taskReasoning.value, intent: compactComposer?.intent || 'ask',
   } } });
 }
 function restoreTaskSelection() {
@@ -327,15 +323,22 @@ function restoreTaskSelection() {
   if (!saved || typeof saved !== 'object') { updateLegacyMode(); return; }
   if (['auto','configured','codex','gemini','claude'].includes(saved.provider)) taskProvider.value = saved.provider;
   updateTaskModelControls();
-  if (typeof saved.modelId === 'string' && [...taskModel.options].some(option => option.value === saved.modelId)) taskModel.value = saved.modelId;
+  if (typeof saved.modelId === 'string' && saved.modelId) {
+    if (![...taskModel.options].some(option => option.value === saved.modelId)) {
+      const missing = document.createElement('option'); missing.value = saved.modelId; missing.textContent = `Unavailable selection · ${saved.modelId}`; missing.disabled = true; taskModel.append(missing);
+    }
+    taskModel.value = saved.modelId;
+  }
   if (['read','read-write'].includes(saved.permission)) taskPermission.value = saved.permission;
   if (['manual','auto','economy','balanced','performance','custom'].includes(saved.routingMode)) taskRouting.value = saved.routingMode;
   updateTaskReasoning();
   if (typeof saved.reasoning === 'string' && [...taskReasoning.options].some(option => option.value === saved.reasoning)) taskReasoning.value = saved.reasoning;
+  compactComposer?.setIntent(saved.intent || (saved.permission === 'read-write' ? 'agent' : 'ask'));
   updateLegacyMode();
+  compactComposer?.refresh();
 }
 taskProvider.addEventListener('change', updateTaskModelControls);
-modelSearch.addEventListener('input', updateTaskModelControls);
+
 taskProvider.addEventListener('change', storeTaskSelection);
 taskModel.addEventListener('change', () => { updateTaskReasoning(); if (taskProvider.value === 'auto' && taskModel.value) taskRouting.value = 'custom'; updateLegacyMode(); storeTaskSelection(); });
 taskPermission.addEventListener('change', () => { updateLegacyMode(); storeTaskSelection(); });
@@ -440,6 +443,7 @@ function addModelCard(model = {}) {
 function loadRoutingPolicy(policy) {
   routingDirty = false;
   savedRoutingPolicy = policy && typeof policy === 'object' && !Array.isArray(policy) ? policy : {};
+  if (!savedRoutingPolicy.models?.length && !vscode.getState?.()?.taskSelections?.[selectedProjectRoot?.slice(0, 1024)]) taskProvider.value = 'codex';
   taskModelCatalogue = Array.isArray(savedRoutingPolicy.models) ? savedRoutingPolicy.models.slice(0, 64) : [];
   taskRouting.value = ['auto','economy','balanced','performance','custom'].includes(savedRoutingPolicy.mode) ? savedRoutingPolicy.mode : 'auto';
   updateTaskModelControls();
@@ -560,6 +564,7 @@ window.addEventListener('message', ({ data }) => {
     inspectAgents.disabled = true; policyStatus.textContent = 'Inspecting installed CLIs. No provider task is started.';
   } else if (data.type === 'agent-diagnostics') {
     inspectAgents.disabled = false; agentCards.replaceChildren(); policyStatus.textContent = 'Authentication and provider availability remain unknown until observed.';
+    compactComposer?.setProviders(data.agents || []);
     for (const entry of data.agents || []) {
       const card = document.createElement('li'); const title = document.createElement('strong'); title.textContent = entry.id;
       const role = document.createElement('p');
@@ -696,6 +701,13 @@ function renderTasks() {
 taskSearch.addEventListener('input', renderTasks);
 taskStatusFilter.addEventListener('change', renderTasks);
 
+function currentTaskConfiguration() {
+  const provider = taskProvider.value;
+  const modelId = taskModel.value || null;
+  return { provider, modelId, permission: taskPermission.value,
+    routingMode: provider === 'auto' ? (modelId ? 'custom' : taskRouting.value) : 'manual',
+    reasoning: taskReasoning.value || null, intent: compactComposer?.intent || 'ask' };
+}
 run.addEventListener('click', () => {
   if (taskSubmissionId) return;
   const value = request.value.trim();
@@ -705,12 +717,8 @@ run.addEventListener('click', () => {
   taskSubmissionId = requestId;
   run.disabled = true;
   status.textContent = 'Checking task configuration…';
-  const provider = taskProvider.value;
-  const modelId = taskModel.value || null;
-  const routingMode = provider === 'auto' ? (modelId ? 'custom' : taskRouting.value) : 'manual';
-  vscode.postMessage({ type: 'run', requestId, mode: agent.value, request: value,
-    taskConfiguration: { provider, modelId, permission: taskPermission.value, routingMode,
-      reasoning: taskReasoning.value || null } });
+  queueDispatching = false;
+  vscode.postMessage({ type: 'run', requestId, mode: agent.value, request: value, taskConfiguration: currentTaskConfiguration() });
 });
 project.addEventListener('change', () => {
   if (routingDirty) {
@@ -779,8 +787,8 @@ const header = main.querySelector('header');
 header.after(tabList, contextBar);
 const chatHeading = document.createElement('div');
 chatHeading.className = 'workspace-panel-heading';
-const chatTitle = document.createElement('h2'); chatTitle.textContent = 'Chat';
-const chatDescription = document.createElement('p'); chatDescription.textContent = 'Describe a task for the selected agent and project.';
+const chatTitle = document.createElement('h2'); chatTitle.textContent = 'Build your next idea';
+const chatDescription = document.createElement('p'); chatDescription.textContent = 'Ask a question, work through a plan, or make a change.';
 chatHeading.append(chatTitle, chatDescription);
 const chatLog = document.createElement('div');
 chatLog.id = 'chat-transcript';
@@ -792,7 +800,7 @@ chatLog.setAttribute('aria-relevant', 'additions');
 chatLog.tabIndex = 0;
 const chatEmpty = document.createElement('p');
 chatEmpty.className = 'chat-empty';
-chatEmpty.textContent = 'Your task conversation will appear here. Agent tool activity is available in Activity.';
+chatEmpty.textContent = 'Your project. Your next idea. Start a conversation below.';
 chatLog.append(chatEmpty);
 const jumpToLatestChat = document.createElement('button');
 jumpToLatestChat.type = 'button';
@@ -885,7 +893,19 @@ workspacePanels.get('chat').append(chatHeading, chatLog, jumpToLatestChat, docum
 workspacePanels.get('activity').append(document.querySelector('.activity'));
 workspacePanels.get('history').append(document.querySelector('.recent'));
 workspacePanels.get('changes').append(document.querySelector('.diff'));
-workspacePanels.get('settings').append(agentSettings, routingSettings, appearance);
+const advancedTaskSettings = document.createElement('details');
+advancedTaskSettings.className = 'advanced-task-settings';
+const advancedSummary = document.createElement('summary'); advancedSummary.textContent = 'Task preferences';
+advancedTaskSettings.append(advancedSummary, taskControls, document.getElementById('permission-help'));
+workspacePanels.get('settings').append(advancedTaskSettings, agentSettings, routingSettings, appearance);
+compactComposer = new CodovynComposer({ request, run, cancel, controls: { provider: taskProvider, model: taskModel, permission: taskPermission, routing: taskRouting, reasoning: taskReasoning },
+  getModels: () => taskModelCatalogue,
+  changed: () => { updateLegacyMode(); storeTaskSelection(); },
+  settings: () => { activateWorkspaceView('settings'); advancedTaskSettings.open = true; advancedSummary.focus(); },
+  manageModels: () => { activateWorkspaceView('settings'); routingSettings.open = true; addModel.focus(); },
+});
+const taskQueue = new CodovynQueue(compactComposer, currentTaskConfiguration);
+updateTaskModelControls();
 for (const [, panel] of workspacePanels) main.insertBefore(panel, main.querySelector('footer'));
 
 function activateWorkspaceView(id, { focusTab = false } = {}) {
@@ -967,15 +987,19 @@ window.addEventListener('message', ({ data }) => {
     status.textContent = 'Ready';
     empty.textContent = 'Task steps and agent handoffs will appear here.';
     diffOutput.textContent = 'Choose a diff to review.';
+  } else if (data.type === 'queue-dispatch') {
+    pendingChatRequest = data.request; taskSubmissionId = data.requestId; queueDispatching = true;
   } else if (data.type === 'starting') {
     status.textContent = 'Validating task and permissions…';
     run.disabled = true;
   } else if (data.type === 'accepted') {
     if (data.requestId === taskSubmissionId) {
       acceptedChatRequest = pendingChatRequest;
-      if (request.value.trim() === pendingChatRequest) request.value = '';
+      if (!queueDispatching && request.value.trim() === pendingChatRequest) request.value = '';
+      queueDispatching = false;
       taskSubmissionId = null;
       pendingChatRequest = '';
+      compactComposer?.resize();
       request.focus({ preventScroll: true });
     }
   } else if (data.type === 'approval-pending') {

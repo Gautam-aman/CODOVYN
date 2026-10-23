@@ -160,3 +160,55 @@ summary:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-of
 @media (prefers-reduced-motion: reduce) {
   .workspace-tab, button, .chat-transcript { transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* Compact CODOVYN workspace: workbench theme colors remain authoritative. */
+main { padding: 18px clamp(12px, 3vw, 28px); }
+header { padding-bottom: 14px; gap: 10px; }
+header .mark { width: 30px; height: 30px; font-size: 16px; }
+header h1 { font-size: 14px; letter-spacing: .06em; }
+header p { font-size: 10px; }
+.workspace-context { padding: 8px 10px; margin-block: 12px; }
+.workspace-panel-heading { margin-bottom: 12px; }
+.workspace-panel-heading h2 { font-size: 16px; font-weight: 600; }
+.chat-empty { border: 0; padding: 26px 10px; color: var(--vscode-descriptionForeground); font-size: 13px; }
+.chat-transcript { min-height: 80px; }
+.compact-composer { gap: 0; padding: 10px; border: 1px solid var(--vscode-input-border, var(--vscode-panel-border)); border-radius: 12px; background: var(--vscode-input-background); box-shadow: 0 3px 12px #0000000a; }
+.compact-composer:focus-within { border-color: var(--vscode-focusBorder); }
+.compact-composer textarea { border: 0; outline: none; box-shadow: none; min-height: 72px; max-height: 220px; padding: 4px 3px 10px; resize: none; border-radius: 0; background: transparent; line-height: 1.6; }
+.compact-composer textarea:focus { outline: none; }
+.composer-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; padding-top: 6px; }
+button.composer-chip { min-width: 0; padding: 5px 8px; border: 1px solid transparent; border-radius: 6px; color: var(--vscode-descriptionForeground); background: transparent; font-size: 11px; line-height: 1.5; }
+button.composer-chip:hover, button.composer-chip[aria-expanded="true"] { color: var(--vscode-foreground); background: var(--vscode-list-hoverBackground); border-color: var(--vscode-panel-border); }
+#model-chip { max-width: min(55%, 230px); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--vscode-foreground); }
+.composer-toolbar #run { margin-left: auto; padding: 3px; height: 29px; width: 29px; border-radius: 8px; font-size: 20px; line-height: 1; }
+.composer-toolbar #cancel { width: 29px; height: 29px; padding: 3px; border-radius: 8px; font-size: 12px; }
+.composer-toolbar #cancel:disabled { display: none; }
+.composer-popover { position: fixed; inset: auto; margin: 0; max-width: calc(100vw - 24px); padding: 8px; overflow: auto; border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); border-radius: 10px; background: var(--vscode-editorWidget-background, var(--vscode-editor-background)); color: var(--vscode-foreground); box-shadow: 0 12px 36px var(--vscode-widget-shadow, #0005); font: inherit; }
+.composer-popover::backdrop { background: transparent; }
+.popover-heading { display: block; padding: 6px 8px 10px; font-size: 12px; font-weight: 600; }
+.composer-popover input { width: 100%; min-width: 0; border: 1px solid var(--vscode-input-border, var(--vscode-panel-border)); border-radius: 6px; padding: 8px; background: var(--vscode-input-background); color: var(--vscode-input-foreground); font: inherit; }
+.model-results { margin-top: 6px; max-height: min(45vh, 340px); overflow: auto; }
+.model-group { margin: 12px 8px 4px; color: var(--vscode-descriptionForeground); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+.model-row { display: flex; align-items: center; gap: 3px; }
+.composer-popover button { text-align: left; display: block; width: 100%; padding: 8px; min-width: 0; border: 1px solid transparent; border-radius: 6px; color: var(--vscode-foreground); background: transparent; font: inherit; overflow-wrap: anywhere; }
+.composer-popover button:hover, .composer-popover button[aria-pressed="true"] { background: var(--vscode-list-hoverBackground); }
+.composer-popover button:disabled { opacity: .5; }
+.composer-popover small { display: block; color: var(--vscode-descriptionForeground); font-size: 10px; font-weight: 400; line-height: 1.5; }
+.model-row > button[data-choice] { flex: 1; }
+.model-row > .model-favorite { width: 28px; flex: 0 0 28px; padding: 4px; text-align: center; }
+#manage-models { margin-top: 7px; border-top: 1px solid var(--vscode-panel-border); border-radius: 0; }
+.advanced-task-settings { margin-bottom: 16px; border-bottom: 1px solid var(--vscode-panel-border); padding-bottom: 12px; }
+.advanced-task-settings .task-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-block: 12px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (max-width: 360px) { #composer-settings { padding-inline: 5px; } .composer-toolbar { gap: 3px; } #model-chip { max-width: 48%; } header p { display: none; } }
+@media (prefers-reduced-motion: no-preference) {
+  .compact-composer { transition: border-color 120ms ease, box-shadow 120ms ease; }
+  .composer-popover:popover-open { animation: codovyn-popover-in 110ms ease-out; }
+  @keyframes codovyn-popover-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+}
+.queue-help, .queue-message { margin: 6px 8px; color: var(--vscode-descriptionForeground); font-size: 11px; }
+.queue-list { padding: 0; margin: 8px 0; list-style: none; max-height: 40vh; overflow: auto; }
+.queue-list li { padding: 10px 8px; border-top: 1px solid var(--vscode-panel-border); overflow-wrap: anywhere; }
+.queue-list li > p { margin: 0 0 5px; white-space: pre-wrap; font-size: 12px; }
+.queue-list li > button { width: auto; display: inline-block; padding: 5px 7px; font-size: 10px; margin: 4px 3px 0 0; border-color: var(--vscode-panel-border); }
+#queue-draft { color: var(--vscode-button-foreground); background: var(--vscode-button-background); }

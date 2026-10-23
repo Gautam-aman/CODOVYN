@@ -84,12 +84,12 @@ exports.run = async () => {
   try {
     await withDeadline(webviewReady, 20000, 'CODOVYN Chat webview did not report ready within 20 seconds.');
     await withDeadline(harnessReady, 20000, 'Native Chat harness script did not initialize within 20 seconds.');
-    const posted = await panel.webview.postMessage({ type: 'codovyn-native-chat-test', token });
+    const posted = await panel.webview.postMessage({ type: 'codovyn-native-chat-test', token, phase: process.env.CODOVYN_NATIVE_CHAT_PHASE });
     assert.equal(posted, true, 'The trusted extension host delivered the native Chat test request to its webview.');
     trace('webview-test-requested');
     const report = await result;
     assert.equal(report?.passed, true, `Native Chat checks failed: ${report?.error || 'unknown failure'}`);
-    for (const name of ['composerControls', 'submissionAcknowledgement', 'submittedPrompt', 'streamingOrderAndTextSafety', 'navigationAndActivitySeparation',
+    for (const name of ['queueManagement', 'compactComposer', 'composerControls', 'submissionAcknowledgement', 'submittedPrompt', 'streamingOrderAndTextSafety', 'navigationAndActivitySeparation',
       'completionState', 'scrollFollowAndJump', 'sqliteJournalRestoration', 'interruptionState']) {
       assert.equal(report.checks?.[name], true, `Native Chat check did not pass: ${name}`);
     }
