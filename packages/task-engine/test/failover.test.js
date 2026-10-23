@@ -308,3 +308,15 @@ test('portable context is durable before any provider receives the request', asy
   }));
   assert.equal((await engine.run('task')).status,'completed');store.close();
 });
+
+test('Plan intent preserves the original journal request and adds read-only planning guidance to provider handoff', async () => {
+  const { store, registry, engine } = setup();
+  store.append('task', 'task-configuration', { intent: 'plan', permission: 'read' });
+  registry.register(agent('primary', async function* ({ handoff }) {
+    assert.match(handoff.request, /^Repair tests/);
+    assert.match(handoff.request, /Plan\. Produce an implementation plan/);
+    yield { type: 'completed' };
+  }));
+  assert.equal((await engine.run('task')).status, 'completed');
+  assert.equal(store.get('task').request, 'Repair tests'); store.close();
+});

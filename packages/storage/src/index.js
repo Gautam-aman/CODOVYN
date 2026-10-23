@@ -83,6 +83,9 @@ export class TaskStore {
     if (!this.#db.prepare('PRAGMA table_info(tasks)').all().some((column) => column.name === 'repository_root')) {
       this.#db.exec('ALTER TABLE tasks ADD COLUMN repository_root TEXT');
     }
+    if (!this.#db.prepare('PRAGMA table_info(queued_tasks)').all().some(column => column.name === 'policy_snapshot')) {
+      this.#db.exec('ALTER TABLE queued_tasks ADD COLUMN policy_snapshot TEXT');
+    }
   }
 
   create({ id, request, repositoryRoot = null, primaryAgent, fallbackAgents = [] }) {
@@ -232,7 +235,7 @@ export class TaskStore {
   }
 
   /** Persist a task for explicit, serial dispatch after its repository baseline is revalidated. */
-  enqueueTask({ id, repositoryRoot, request, configuration, baselineFingerprint }) {
+  enqueueTask({ id, repositoryRoot, request, configuration, baselineFingerprint, policySnapshot = null }) {
     validId(id);
     if (typeof repositoryRoot !== 'string' || !repositoryRoot || repositoryRoot.length > 4096) throw new TypeError('Invalid queue repository');
     if (typeof request !== 'string' || !request.trim() || request.length > 10000) throw new TypeError('Invalid queued request');
@@ -240,12 +243,22 @@ export class TaskStore {
     if (!configuration || typeof configuration !== 'object' || Array.isArray(configuration)) throw new TypeError('Invalid queued task configuration');
     const serialized = JSON.stringify(configuration);
     if (serialized.length > 32768) throw new TypeError('Queued task configuration exceeds the size limit');
+    const policies = JSON.stringify(policySnapshot);
+    if (policies.length > 70000) throw new TypeError('Queued policy snapshot exceeds the size limit');
     const now = new Date().toISOString();
     this.#db.exec('BEGIN IMMEDIATE');
     try {
+      const existing = this.getQueuedTask(id);
+      if (existing) {
+        if (existing.repositoryRoot !== repositoryRoot || existing.request !== request ||
+          JSON.stringify(existing.configuration) !== serialized || JSON.stringify(existing.policySnapshot) !== policies) throw new Error('Queue request identity conflicts with an accepted task');
+        this.#db.exec('COMMIT'); return existing;
+      }
+      if (this.#db.prepare("SELECT COUNT(*) AS count FROM queued_tasks WHERE repository_root = ? AND status IN ('queued','starting','running','blocked','interrupted')").get(repositoryRoot).count >= 100) throw new Error('Project queue limit reached');
       const position = this.#db.prepare("SELECT COALESCE(MAX(position), -1) + 1 AS next FROM queued_tasks WHERE repository_root = ? AND status = 'queued'").get(repositoryRoot).next;
       this.#db.prepare('INSERT INTO queued_tasks (id, repository_root, request, configuration, baseline_fingerprint, position, status, schema_version, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)')
         .run(id, repositoryRoot, request, serialized, baselineFingerprint, position, 'queued', now, now);
+      this.#db.prepare('UPDATE queued_tasks SET policy_snapshot = ? WHERE id = ?').run(policies, id);
       this.#db.exec('COMMIT');
       return this.getQueuedTask(id);
     } catch (error) { this.#db.exec('ROLLBACK'); throw error; }
@@ -255,13 +268,14 @@ export class TaskStore {
     const row = this.#db.prepare('SELECT * FROM queued_tasks WHERE id = ?').get(validId(id));
     return row && { id: row.id, repositoryRoot: row.repository_root, request: row.request,
       configuration: JSON.parse(row.configuration), baselineFingerprint: row.baseline_fingerprint,
+      policySnapshot: row.policy_snapshot ? JSON.parse(row.policy_snapshot) : null,
       position: row.position, status: row.status, schemaVersion: row.schema_version, createdAt: row.created_at, updatedAt: row.updated_at };
   }
 
   listQueuedTasks(repositoryRoot) {
     if (typeof repositoryRoot !== 'string' || !repositoryRoot) throw new TypeError('Repository root is required');
     const paused = !!this.#db.prepare('SELECT paused FROM task_queue_settings WHERE repository_root = ?').get(repositoryRoot)?.paused;
-    const tasks = this.#db.prepare('SELECT id FROM queued_tasks WHERE repository_root = ? ORDER BY position, created_at, id').all(repositoryRoot)
+    const tasks = this.#db.prepare("SELECT id FROM queued_tasks WHERE repository_root = ? ORDER BY CASE WHEN status IN ('queued','starting','running','blocked','interrupted') THEN 0 ELSE 1 END, position, created_at, id LIMIT 125").all(repositoryRoot)
       .map(({ id }) => this.getQueuedTask(id));
     return { paused, tasks };
   }
@@ -323,7 +337,12 @@ export class TaskStore {
       if (!task || task.status !== 'queued') throw new Error('Queued task is no longer dispatchable');
       if (this.#db.prepare('SELECT paused FROM task_queue_settings WHERE repository_root = ? AND paused = 1').get(task.repositoryRoot)) throw new Error('Task queue is paused');
       if (task.baselineFingerprint !== currentFingerprint) throw new Error('Repository baseline changed; queued task requires review');
+      const first = this.#db.prepare("SELECT id FROM queued_tasks WHERE repository_root = ? AND status = 'queued' ORDER BY position, created_at, id LIMIT 1").get(task.repositoryRoot);
+      if (first?.id !== id) throw new Error('Reorder the queue before dispatching a later task');
       if (this.#db.prepare("SELECT 1 FROM queued_tasks WHERE repository_root = ? AND status IN ('starting', 'running', 'interrupted', 'blocked') LIMIT 1").get(task.repositoryRoot)) throw new Error('Another queued task requires reconciliation for this repository');
+      if (this.#db.prepare("SELECT 1 FROM tasks WHERE repository_root = ? AND (status IN ('pending','running') OR EXISTS (SELECT 1 FROM execution_leases WHERE task_id = tasks.id AND released_at IS NULL)) LIMIT 1").get(task.repositoryRoot)) throw new Error('Reconcile active repository tasks before queue dispatch');
+      const drafts = this.#db.prepare('SELECT id FROM tasks WHERE repository_root = ?').all(task.repositoryRoot);
+      if (drafts.some(task => this.hasOpenDraft(task.id))) throw new Error('Review or discard pending drafts before queue dispatch');
       const result = this.#db.prepare("UPDATE queued_tasks SET status = 'starting', updated_at = ? WHERE id = ? AND status = 'queued'").run(new Date().toISOString(), id);
       if (result.changes !== 1) throw new Error('Queued task claim raced with another dispatcher');
       this.#db.exec('COMMIT');

@@ -191,7 +191,8 @@ export class TaskEngine {
         }
         if (previous) this.#record(task.id, 'handoff', { from: previous, to: id });
         this.#record(task.id, 'agent-started', { agent: id, repository: baseline });
-        const handoff = { request: task.request, step: task.step, history: this.store.events(task.id), snapshot: baseline };
+        const planning = this.store.events(task.id).findLast(event => event.kind === 'task-configuration')?.data.intent === 'plan';
+        const handoff = { request: planning ? `${task.request}\n\nCODOVYN task mode: Plan. Produce an implementation plan and verification steps only. Do not modify files or execute write-capable actions.` : task.request, step: task.step, history: this.store.events(task.id), snapshot: baseline };
         this.#record(task.id, 'handoff-prepared', { agent: id, packet: createHandoffPacket(handoff) });
         for await (const event of agent.run({ taskId: task.id, handoff, signal, execution: {
           starting: () => this.#record(task.id, 'provider-starting', { agent: id }),

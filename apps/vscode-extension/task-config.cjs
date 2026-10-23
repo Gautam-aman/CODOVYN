@@ -6,13 +6,17 @@ const identifier = value => typeof value === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9
 
 function validateTaskConfiguration(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value) ||
-    Object.keys(value).some(key => !['provider', 'modelId', 'permission', 'routingMode', 'reasoning'].includes(key)) ||
+    Object.keys(value).some(key => !['provider', 'modelId', 'permission', 'routingMode', 'reasoning', 'intent'].includes(key)) ||
     !providers.has(value.provider) ||
     (value.modelId !== null && !identifier(value.modelId)) ||
     !['read', 'read-write'].includes(value.permission) ||
     !routingModes.has(value.routingMode) ||
     (value.reasoning !== null && !identifier(value.reasoning))) {
     throw new TypeError('Invalid task configuration. Choose a supported provider, model, permission and routing mode.');
+  }
+  if (value.intent !== undefined && (!['ask', 'agent', 'plan'].includes(value.intent) ||
+    value.permission !== (value.intent === 'agent' ? 'read-write' : 'read'))) {
+    throw new TypeError('Ask and Plan require read-only permission; Agent requires explicit draft-write permission.');
   }
   if (value.provider === 'configured' && (value.modelId !== null || value.routingMode !== 'manual')) {
     throw new TypeError('Configured agent preferences do not accept a model or routing override.');
@@ -35,6 +39,7 @@ function validateTaskConfiguration(value) {
     permission: value.permission,
     routingMode: value.routingMode,
     reasoning: value.reasoning,
+    ...(value.intent !== undefined ? { intent: value.intent } : {}),
   });
 }
 

@@ -114,6 +114,10 @@ export async function main(args = process.argv.slice(2), output = console, signa
   };
   const dataDirectory = process.env.CODOVYN_DATA_DIR || join(homedir(), '.codovyn');
   const routingSession=process.env.CODOVYN_SESSION_ID||'cli-default';
+  if ((process.env.CODOVYN_TASK_CONFIGURATION?.length || 0) > 32768 || (process.env.CODOVYN_QUEUE_POLICY_SNAPSHOT?.length || 0) > 70000) throw new TypeError('Task policy exceeds the local size limit');
+  const taskConfiguration = process.env.CODOVYN_TASK_CONFIGURATION
+    ? taskConfigurationSchema.validateTaskConfiguration(JSON.parse(process.env.CODOVYN_TASK_CONFIGURATION)) : null;
+  if (taskConfiguration && taskConfigurationSchema.resolveTaskMode(taskConfiguration) !== mode) throw new TypeError('Task mode differs from the approved configuration');
   let routing, routingBudget;
   if (['route','routed','routed-edit'].includes(mode)) {
     const json=process.env.CODOVYN_ROUTING_POLICY||'';
@@ -262,8 +266,8 @@ export async function main(args = process.argv.slice(2), output = console, signa
         if (!value || rest.length !== 2 || rest[0].length > 10000 || rest[1].length > 32768) { output.error(usage); return 2; }
         const configuration = taskConfigurationSchema.validateTaskConfiguration(JSON.parse(rest[1]));
         const snapshot = await repositorySnapshot(value);
-        const task = store.enqueueTask({ id: randomUUID(), repositoryRoot: snapshot.root, request: rest[0], configuration,
-          baselineFingerprint: recoveryFingerprint(snapshot) });
+        const task = store.enqueueTask({ id: process.env.CODOVYN_QUEUE_REQUEST_ID || randomUUID(), repositoryRoot: snapshot.root, request: rest[0], configuration,
+          baselineFingerprint: recoveryFingerprint(snapshot), policySnapshot: process.env.CODOVYN_QUEUE_POLICY_SNAPSHOT ? JSON.parse(process.env.CODOVYN_QUEUE_POLICY_SNAPSHOT) : null });
         emit({ task }); return 0;
       }
       if (mode === 'queue-list') {
@@ -450,7 +454,8 @@ export async function main(args = process.argv.slice(2), output = console, signa
     const registry = new AgentRegistry();
     let primaryAgent;
     let fallbackAgents = [];
-    const id = randomUUID();
+    const id = process.env.CODOVYN_TASK_ID || randomUUID();
+    if (!/^[a-zA-Z0-9_-]{1,80}$/.test(id)) throw new TypeError('Invalid accepted task identity');
     if(routing) {
       store.create({id,request,repositoryRoot:repository,primaryAgent:routing.selected.provider,fallbackAgents:[]});
       store.append(id,'routing-decision',routing);
@@ -491,6 +496,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
     }
     }catch(error){if(routing)store.voidUnstartedRoute(id);throw error;}
     if(!routing)store.create({ id, request, repositoryRoot: repository, primaryAgent, fallbackAgents });
+    if (taskConfiguration) store.append(id, 'task-configuration', taskConfiguration);
     if (policy) store.append(id, 'agent-policy', policy);
     if (draft&&!routing) store.append(id, 'draft-created', { baseCommit: draft.baseCommit, branch: draft.branch });
     const engine = new TaskEngine({ store, registry, restoration:{enabled:policy?.restorePrimary===true}, snapshot: () => repositorySnapshot(draft?.path || repository),

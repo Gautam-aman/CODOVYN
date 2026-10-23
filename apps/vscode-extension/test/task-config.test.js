@@ -32,3 +32,13 @@ test('task configuration rejects write-only, unknown providers, arbitrary fields
     { ...valid, modelId: null, reasoning: 'high' },
   ]) assert.throws(() => validateTaskConfiguration(value), TypeError);
 });
+
+test('Ask and Plan cannot acquire write permission and Agent requires an explicit draft scope', () => {
+  const base = { provider: 'codex', modelId: null, routingMode: 'manual', reasoning: null };
+  for (const intent of ['ask', 'plan']) {
+    assert.equal(resolveTaskMode({ ...base, intent, permission: 'read' }), 'codex');
+    assert.throws(() => validateTaskConfiguration({ ...base, intent, permission: 'read-write' }), /read-only/);
+  }
+  assert.equal(resolveTaskMode({ ...base, intent: 'agent', permission: 'read-write' }), 'codex-edit');
+  assert.throws(() => validateTaskConfiguration({ ...base, intent: 'agent', permission: 'read' }), /draft-write/);
+});

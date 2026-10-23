@@ -205,3 +205,22 @@ test('a claimed queue record remains blocked after reopening instead of being re
     assert.throws(() => store.updateQueuedTask('interrupted-queue', 'starting'), /Invalid queued task state transition/);
   } finally { store?.close(); rmSync(directory, { recursive: true, force: true }); }
 });
+
+test('queue admission is idempotent and ownership gates protect dispatch across connections', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'codovyn-queue-fence-'));
+  const filename = join(directory, 'tasks.sqlite'); const a = new TaskStore(filename); const b = new TaskStore(filename);
+  try {
+    const input = { id: 'same-request', repositoryRoot: '/repo', request: 'Inspect', configuration: { provider: 'codex' }, baselineFingerprint: 'abcdef0', policySnapshot: { version: 1 } };
+    a.enqueueTask(input); b.enqueueTask(input);
+    assert.equal(a.listQueuedTasks('/repo').tasks.length, 1);
+    assert.throws(() => b.enqueueTask({ ...input, request: 'Different request' }), /identity conflicts/);
+    a.create({ id: 'active', request: 'Existing task', repositoryRoot: '/repo', primaryAgent: 'codex' });
+    assert.throws(() => b.claimQueuedTask(input.id, 'abcdef0'), /Reconcile active/);
+    a.update('active', { status: 'completed', activeAgent: 'codex', step: 1 });
+    a.append('active', 'draft-created');
+    assert.throws(() => b.claimQueuedTask(input.id, 'abcdef0'), /pending drafts/);
+    a.append('active', 'draft-rejected');
+    a.claimQueuedTask(input.id, 'abcdef0');
+    assert.throws(() => b.claimQueuedTask(input.id, 'abcdef0'), /no longer dispatchable/);
+  } finally { a.close(); b.close(); rmSync(directory, { recursive: true, force: true }); }
+});
