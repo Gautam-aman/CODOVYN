@@ -363,6 +363,9 @@ function restoreTaskSelection() {
   if (['manual','auto','economy','balanced','performance','custom'].includes(saved.routingMode)) taskRouting.value = saved.routingMode;
   updateTaskReasoning();
   if (typeof saved.reasoning === 'string' && [...taskReasoning.options].some(option => option.value === saved.reasoning)) taskReasoning.value = saved.reasoning;
+  else if(saved.reasoning && saved.modelSource==='discovered' && !providerCatalogues.has(saved.provider)) {
+    const pending=document.createElement('option');pending.value=saved.reasoning;pending.textContent=saved.reasoning+' · checking';pending.disabled=true;taskReasoning.append(pending);taskReasoning.value=saved.reasoning;taskReasoning.disabled=true;
+  }
   if(saved.modelSource==='discovered')requestProviderModels(saved.provider,saved.modelId);
   compactComposer?.setIntent(saved.intent || (saved.permission === 'read-write' ? 'agent' : 'ask'));
   updateLegacyMode();
@@ -1045,9 +1048,10 @@ window.addEventListener('message', ({ data }) => {
     if(metadata.defaultModel===null&&metadata.selectedModel)metadata.defaultModel=previous?.defaultModel||null;
     providerCatalogues.set(data.provider,metadata);
     const card=agentCards.querySelector(`[data-provider="${data.provider}"]`);if(card){const info=card.querySelector('.provider-source')?.nextElementSibling;if(info)info.textContent=`Default model: ${metadata.defaultModel || 'unknown'}`;}
+    const previousEffort=taskReasoning.value;
     const selected=taskModel.value;updateTaskModelControls();if([...taskModel.options].some(option=>option.value===selected))taskModel.value=selected;updateTaskReasoning();
     if(compactComposer?.modelMenu.matches(':popover-open'))compactComposer.renderModels();
-    policyStatus.textContent=data.text||`${data.provider}: ${metadata.models.length} catalogue entries. Authentication and access remain unverified.`;
+    policyStatus.textContent=previousEffort&&!taskReasoning.value?'Previous effort is not advertised for this model; reset to Auto. Review provider setup before running.':data.text||`${data.provider}: ${metadata.models.length} catalogue entries. Authentication and access remain unverified.`;
   } else if (data.type === 'reasoning-capabilities') {
     codexReasoningMetadata = data.metadata || { models: [], defaultModel: null };
     const previous = taskReasoning.value; updateTaskReasoning();

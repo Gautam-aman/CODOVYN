@@ -33,6 +33,12 @@
     const permission = document.querySelector('#task-permission');
     const routing = document.querySelector('#task-routing');
     const reasoning = document.querySelector('#task-reasoning');
+    if(phase==='relaunch') {
+      requireValue(reasoning.value==='deep' && reasoning.disabled,'Saved OpenCode variant was lost before refreshed metadata was available.');
+      send({type:'provider-models',provider:'opencode',metadata:{source:'native-opencode-fixture',defaultModel:'fixture/native-model',models:[{id:'discovered-opencode-nativefixture',provider:'opencode',model:'fixture/native-model',source:'discovered',reasoning:['deep'],availability:'unknown'}]}});
+      requireValue(reasoning.value==='deep'&&!reasoning.disabled,'Refreshed OpenCode capabilities did not restore the saved exact variant.');
+      report.openCodeEffectiveVariantRestored=true;
+    }
     requireValue(provider && model && permission && routing && reasoning && getComputedStyle(legacyMode).display === 'none',
       'The combined legacy selector must be replaced by separate provider, model, permission and routing controls.');
     const catalogueModel = { id: 'native-fixture-codex', provider: 'codex', model: 'Configured CODOVYN fixture model',
@@ -46,7 +52,7 @@
     document.querySelector('#model-chip').click();
     const picker = document.querySelector('#model-picker');
     requireValue(picker.matches(':popover-open'), 'Model chip did not open its top-layer popover.');
-    const search = picker.querySelector('input'); search.value = 'fixture'; search.dispatchEvent(new Event('input'));
+    const search = picker.querySelector('input'); search.value = 'Configured CODOVYN'; search.dispatchEvent(new Event('input'));
     const choice = picker.querySelector('[data-choice="model:native-fixture-codex"]');
     requireValue(choice && picker.querySelectorAll('[data-choice]').length === 1, 'Model search did not filter the configured catalogue.');
     if (picker.querySelector('.model-favorite').getAttribute('aria-pressed') !== 'true') picker.querySelector('.model-favorite').click();
