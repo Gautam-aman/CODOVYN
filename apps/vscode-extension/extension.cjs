@@ -243,6 +243,7 @@ function createExtension(api, runner = runCli) {
           }
           if (message.type === 'queue-list') { await refreshQueue(); return; }
           if (message.type === 'queue-add') {
+            if (queueBusy) { panel.webview.postMessage({ type: 'queue-error', text: 'A queue update is finishing. Your draft is retained; try again when it completes.' }); return; }
             const folder = folderForTask();
             if (!folder || !api.workspace.isTrusted || disposed || queueBusy || typeof message.request !== 'string' || !message.request.trim() || message.request.length > 10000 ||
               typeof message.requestId !== 'string' || !/^[a-zA-Z0-9-]{16,80}$/.test(message.requestId)) {

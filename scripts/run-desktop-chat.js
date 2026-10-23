@@ -42,6 +42,7 @@ try {
         CODOVYN_NATIVE_CHAT_SCREENSHOT: phase === 'first-launch'
           ? join(root, 'dist/desktop/native-chat-capture.png') : '' } });
     const report = JSON.parse(await readFile(output, 'utf8'));
+    assert.equal(report.passed, true, report.error || 'The native Chat probe did not complete.');
     assert.equal(report.app, 'CODOVYN Desktop');
     assert.equal(report.passed, true);
     assert.equal(report.checks.sqliteJournalRestoration, true);

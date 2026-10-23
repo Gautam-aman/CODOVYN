@@ -63,9 +63,9 @@
     report.composerControls = true;
     stage('separate-composer-controls-verified');
 
-    const hostMessage = type => new Promise((resolve, reject) => {
+    const hostMessage = (type, predicate = () => true) => new Promise((resolve, reject) => {
       const timer = setTimeout(() => { window.removeEventListener('message', listener); reject(new Error(`No native host response: ${type}`)); }, 10000);
-      const listener = event => { if (event.data?.type !== type) return; clearTimeout(timer); window.removeEventListener('message', listener); resolve(event.data); };
+      const listener = event => { if (event.data?.type !== type || !predicate(event.data)) return; clearTimeout(timer); window.removeEventListener('message', listener); resolve(event.data); };
       window.addEventListener('message', listener);
     });
     document.querySelector('#model-chip').click();
@@ -76,22 +76,22 @@
     if (phase === 'relaunch') {
       const retained = queueState.tasks.find(task => task.request === 'Persistent native queue request' && task.status === 'queued');
       requireValue(retained, 'Queued request did not survive an actual native restart.');
-      nextState = hostMessage('queue-state'); vscode.postMessage({ type: 'queue-cancel', id: retained.id }); await nextState;
+      nextState = hostMessage('queue-state', state => state.tasks.some(task => task.id === retained.id && task.status === 'cancelled')); vscode.postMessage({ type: 'queue-cancel', id: retained.id }); await nextState;
       report.queueRestoredAfterRestart = true;
     }
     const addQueued = async value => {
       request.value = value;
-      const accepted = hostMessage('queue-accepted'); const state = hostMessage('queue-state');
+      const accepted = hostMessage('queue-accepted'); const state = hostMessage('queue-state', data => data.tasks.some(task => task.request === value && task.status === 'queued'));
       taskQueue.enqueue(); const ack = await accepted; await state;
       requireValue(request.value === '', 'Durable queue acknowledgement did not clear the submitted composer draft.'); return ack.taskId;
     };
     const firstQueued = await addQueued('First native queued request');
     const secondQueued = await addQueued('Second native queued request');
-    nextState = hostMessage('queue-state'); vscode.postMessage({ type: 'queue-reorder', id: secondQueued, position: 0 }); queueState = await nextState;
+    nextState = hostMessage('queue-state', state => state.tasks.filter(task => task.status === 'queued')[0]?.id === secondQueued); vscode.postMessage({ type: 'queue-reorder', id: secondQueued, position: 0 }); queueState = await nextState;
     requireValue(queueState.tasks.filter(task => task.status === 'queued')[0].id === secondQueued, 'Native queue reorder was not persisted.');
-    nextState = hostMessage('queue-state'); vscode.postMessage({ type: 'queue-pause' }); requireValue((await nextState).paused === true, 'Native queue did not pause.');
-    nextState = hostMessage('queue-state'); vscode.postMessage({ type: 'queue-resume' }); requireValue((await nextState).paused === false, 'Native queue did not resume.');
-    for (const id of [firstQueued, secondQueued]) { nextState = hostMessage('queue-state'); vscode.postMessage({ type: 'queue-cancel', id }); await nextState; }
+    nextState = hostMessage('queue-state', state => state.paused === true); vscode.postMessage({ type: 'queue-pause' }); requireValue((await nextState).paused === true, 'Native queue did not pause.');
+    nextState = hostMessage('queue-state', state => state.paused === false); vscode.postMessage({ type: 'queue-resume' }); requireValue((await nextState).paused === false, 'Native queue did not resume.');
+    for (const id of [firstQueued, secondQueued]) { nextState = hostMessage('queue-state', state => state.tasks.some(task => task.id === id && task.status === 'cancelled')); vscode.postMessage({ type: 'queue-cancel', id }); await nextState; }
     if (phase === 'first-launch') await addQueued('Persistent native queue request');
     report.queueManagement = true;
     stage('durable-native-queue-verified');
@@ -117,7 +117,7 @@
     request.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
     const activeAck = await activeQueued;
     requireValue(request.value === '' && chat.textContent.includes(prompt), 'Queueing the next instruction disrupted the active conversation.');
-    nextState = hostMessage('queue-state'); vscode.postMessage({ type: 'queue-cancel', id: activeAck.taskId }); await nextState;
+    nextState = hostMessage('queue-state', state => state.tasks.some(task => task.id === activeAck.taskId && task.status === 'cancelled')); vscode.postMessage({ type: 'queue-cancel', id: activeAck.taskId }); await nextState;
     compactComposer.close(taskQueue.menu);
     send({ type: 'progress', entries: [
       { type: 'tool', text: 'Reading the disposable project' },
