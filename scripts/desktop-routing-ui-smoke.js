@@ -13,7 +13,7 @@ const port = 9400 + Math.floor(Math.random() * 500);
 const child = spawn(process.execPath, [join(root, 'scripts/run-desktop-host.js')], {
   cwd: root, stdio: ['ignore', 'pipe', 'pipe'],
   env: { ...process.env, CODOVYN_DESKTOP_APP: app, CODOVYN_HOST_DEBUG_PORT: String(port),
-    CODOVYN_HOST_INSPECTION_HOLD_MS: '20000', CODOVYN_HOST_WORKSPACE_FILE: workspaceFile },
+    CODOVYN_HOST_INSPECTION_HOLD_MS: process.env.CODOVYN_CAPTURE_DIR ? '30000' : '20000', CODOVYN_HOST_WORKSPACE_FILE: workspaceFile },
 });
 const childExited = new Promise(resolve => child.once('exit', (code, signal) => resolve({ code, signal })));
 let output = '';
@@ -143,7 +143,7 @@ try {
       if (await evaluate(expression)) return;
       await new Promise(resolve => setTimeout(resolve, 100));
     }
-    throw new Error(`${message} target=${target.url}; contexts=${JSON.stringify(contexts.map(({ id, name, origin, auxData }) => ({ id, name, origin, frameId: auxData?.frameId })))}; document=${JSON.stringify(await evaluate("({ title: document.title, ready: document.readyState, body: document.body?.innerText?.slice(0, 2000), html: document.documentElement?.innerHTML?.slice(0, 1000) })"))}`);
+    throw new Error(`${message} target=${target.url}; contexts=${JSON.stringify(contexts.map(({ id, name, origin, auxData }) => ({ id, name, origin, frameId: auxData?.frameId })))}; document=${JSON.stringify(await evaluate("({ title: document.title, ready: document.readyState, taskConfiguration: typeof currentTaskConfiguration === 'function' ? currentTaskConfiguration() : null, body: document.body?.innerText?.slice(0, 2000), html: document.documentElement?.innerHTML?.slice(0, 1000) })"))}`);
   };
   const click = label => evaluate(`(() => { const button = [...document.querySelectorAll('button')].find(item => item.textContent.trim() === ${JSON.stringify(label)}); if (!button) return false; button.click(); return true; })()`);
   const selectTab = view => evaluate(`document.querySelector('[data-workspace-view=${JSON.stringify(view)}]').click()`);
@@ -230,6 +230,32 @@ try {
     error: 'Use 1–128 letters, numbers, dots, underscores, slashes or hyphens; start with a letter or number.' });
   await click('Discard unsaved edits');
   assert.equal(await evaluate("document.querySelector('[aria-label=\"Catalogue ID\"]').value"), 'phase6-fixture');
+  if (process.env.CODOVYN_CAPTURE_DIR) {
+    const captureDirectory = resolve(process.env.CODOVYN_CAPTURE_DIR);
+    await mkdir(captureDirectory, { recursive: true });
+    const snapshot = async name => { const capture = await captureApplication(); await writeFile(join(captureDirectory, name), Buffer.from(capture.data, 'base64')); };
+    await selectTab('chat');
+    await evaluate("document.querySelector('#model-chip').scrollIntoView({ block: 'center', behavior: 'instant' })");
+    await snapshot('composer-dark.png');
+    await evaluate("document.querySelector('#model-chip').click()");
+    await snapshot('model-picker.png');
+    await evaluate("compactComposer.close(compactComposer.modelMenu); document.querySelector('#mode-chip').click()");
+    await snapshot('task-modes.png');
+    await evaluate("compactComposer.close(compactComposer.modeMenu); document.body.dataset.codovynTheme = 'light'");
+    await snapshot('composer-light-panel.png');
+    await evaluate("document.body.dataset.codovynTheme = 'high-contrast'");
+    await snapshot('composer-high-contrast-panel.png');
+    await evaluate("document.body.dataset.codovynTheme = 'inherit'; compactComposer.openModels(); compactComposer.select(compactComposer.entries().find(entry => entry.key === 'default:codex')); request.value = 'Document the disposable native fixture'; document.querySelector('#queue-chip').click(); taskQueue.enqueue()");
+    await waitFor("taskQueue.tasks.some(task => task.request === 'Document the disposable native fixture' && task.status === 'queued')", 'Native task queue did not persist the screenshot fixture.');
+    await snapshot('task-queue.png');
+    await evaluate("vscode.postMessage({ type: 'queue-cancel', id: taskQueue.tasks.find(task => task.request === 'Document the disposable native fixture').id })");
+    await waitFor("taskQueue.tasks.some(task => task.request === 'Document the disposable native fixture' && task.status === 'cancelled')", 'Queued screenshot fixture did not cancel safely.');
+    await evaluate("compactComposer.close(taskQueue.menu)");
+  }
+  // From this point onward use synthetic UI fixtures only. Capture blocks late
+  // browser-posted host messages while dispatchEvent fixtures remain untrusted.
+  // Persistence above still used the actual host transport and workspace settings.
+  await evaluate("window.addEventListener('message', event => { if (event.isTrusted) event.stopImmediatePropagation(); }, true)");
   await evaluate("window.dispatchEvent(new MessageEvent('message', { data: { type: 'running' } }))");
   const runningBeforeSwitch = await evaluate("({ status: document.querySelector('#status').textContent, cancelDisabled: document.querySelector('#cancel').disabled })");
   await selectTab('history');
@@ -261,7 +287,7 @@ try {
     'Saved user and agent messages are reconstructed from the local journal as text.');
   assert.equal(restoredChat.imageCount, 0, 'Untrusted agent text is never interpreted as HTML.');
   assert.deepEqual(restoredChat.activity, ['Read package.json'], 'Saved tool events remain in Activity rather than cluttering Chat.');
-  await evaluate("document.querySelector('#request').value = 'Review streamed output'; document.querySelector('#run').click(); window.dispatchEvent(new MessageEvent('message', { data: { type: 'running' } })); window.dispatchEvent(new MessageEvent('message', { data: { type: 'progress', entries: [{ type: 'message', text: 'Safe streamed response' }, { type: 'tool', text: 'Checked tests' }] } }))");
+  await evaluate("pendingChatRequest = 'Review streamed output'; taskSubmissionId = 'native-routing-fixture-001'; window.dispatchEvent(new MessageEvent('message', { data: { type: 'accepted', requestId: taskSubmissionId, taskId: 'fixture-chat' } })); window.dispatchEvent(new MessageEvent('message', { data: { type: 'running' } })); window.dispatchEvent(new MessageEvent('message', { data: { type: 'progress', entries: [{ type: 'message', text: 'Safe streamed response' }, { type: 'tool', text: 'Checked tests' }] } }))");
   const streamedChat = await evaluate("({ messages: [...document.querySelectorAll('#chat-transcript .chat-message')].map(item => item.textContent), activity: [...document.querySelectorAll('#timeline > li')].map(item => item.textContent), unread: document.querySelector('[data-workspace-view=activity]').getAttribute('aria-label') })");
   assert.deepEqual(streamedChat.messages, ['YouReview streamed output', 'AgentSafe streamed response'], 'Live provider text appears in the conversation as it arrives.');
   assert.deepEqual(streamedChat.activity, ['Checked tests'], 'Tool progress remains available in Activity.');
@@ -272,6 +298,7 @@ try {
     await writeFile(join(resolve(process.env.CODOVYN_CAPTURE_DIR), 'desktop-phase8-chat-transcript.png'), Buffer.from(capture.data, 'base64'));
   }
   await evaluate("window.dispatchEvent(new MessageEvent('message', { data: { type: 'running' } }))");
+  await selectTab('activity');
   await evaluate("document.querySelector('#timeline').scrollTop = document.querySelector('#timeline').scrollHeight");
   await evaluate("window.dispatchEvent(new MessageEvent('message', { data: { type: 'progress', entries: Array.from({ length: 48 }, (_, index) => ({ type: 'tool', text: `Fixture activity ${index}` })) } }))");
   await new Promise(resolve => setTimeout(resolve, 100));

@@ -16,6 +16,8 @@ try {
   if (process.env.CODOVYN_HOST_WORKSPACE_FILE) await writeFile(process.env.CODOVYN_HOST_WORKSPACE_FILE, fixture, 'utf8');
   await writeFile(join(fixture, 'desktop-smoke.txt'), '');
   execFileSync('git', ['init', '-q', fixture]);
+  execFileSync('git', ['-C', fixture, 'add', '.']);
+  execFileSync('git', ['-C', fixture, '-c', 'user.name=CODOVYN Test', '-c', 'user.email=test@example.invalid', 'commit', '-qm', 'native fixture']);
   const profileMode = process.env.CODOVYN_HOST_PROFILE_MODE || 'fresh';
   if (!['fresh', 'warm'].includes(profileMode)) throw new Error('CODOVYN_HOST_PROFILE_MODE must be fresh or warm.');
   const phases = profileMode === 'warm' ? ['fresh-profile', 'warm-profile'] : ['fresh-profile'];
