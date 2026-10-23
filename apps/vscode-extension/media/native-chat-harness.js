@@ -81,7 +81,11 @@
     document.querySelector('#model-chip').click();
     document.querySelector('#model-picker [data-choice="default:codex"]').click();
     requireValue(provider.value === 'codex' && model.value === '', 'Provider Default did not select the actual CLI default.');
-    for (let attempt = 0; attempt < 60 && ![...reasoning.options].some(option => option.value === 'high'); attempt++) await pause(50);
+    if (codexReasoningMetadata?.defaultModel !== 'native-default') {
+      const capabilities = hostMessage('reasoning-capabilities');
+      vscode.postMessage({ type: 'reasoning-capabilities' });
+      await capabilities;
+    }
     requireValue(codexReasoningMetadata?.defaultModel === 'native-default', 'Native metadata did not come from the isolated CLI fixture: ' + codexReasoningMetadata?.defaultModel);
     const effortChip = document.querySelector('#effort-chip'); effortChip.click();
     const effortPicker = document.querySelector('#effort-picker');
