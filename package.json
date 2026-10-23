@@ -70,6 +70,12 @@
           "scope": "resource",
           "restricted": true,
           "description": "Explicit local model catalogue and routing policy. Edit in the CODOVYN agent workspace or Settings JSON; no prices or model access are inferred. See docs/agents/routing.md."
+        },
+        "codovyn.opencodeCliPath": {
+          "type": "string",
+          "default": "",
+          "scope": "application",
+          "description": "Optional absolute path to the official OpenCode 2.1.2 executable. CODOVYN uses an isolated provider context and never imports global credentials or plugins."
         }
       }
     },

@@ -14,6 +14,7 @@ async function ownedOutput(command,args,options) {
   const controller=new AbortController();
   const child=spawn(command,args,{cwd:options.cwd,env:options.env,shell:false,detached:process.platform!=='win32',stdio:['pipe','pipe','pipe']});
   const lifecycle=manageAgentProcess(child,controller.signal);child.stdin.end();
+  const abort=()=>controller.abort();options.signal?.addEventListener('abort',abort,{once:true});if(options.signal?.aborted)abort();
   const timer=setTimeout(()=>controller.abort(),15000);let chunks=[],size=0,stderr=0;
   child.stderr.on('data',chunk=>{stderr+=chunk.length;if(stderr>1048576)controller.abort();});
   try{
@@ -21,7 +22,7 @@ async function ownedOutput(command,args,options) {
     const code=await lifecycle.closed;
     if(controller.signal.aborted||lifecycle.error()||code!==0)throw new AgentFailure('fatal','OpenCode metadata inspection failed or timed out');
     return Buffer.concat(chunks).toString('utf8');
-  }finally{clearTimeout(timer);await lifecycle.dispose();}
+  }finally{clearTimeout(timer);options.signal?.removeEventListener('abort',abort);await lifecycle.dispose();}
 }
 export const openCodeVersion = '2.1.2';
 const modelName = value => typeof value === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,255}$/.test(value) && value.includes('/');
@@ -70,7 +71,8 @@ async function begin(connection,cwd,model,variant,write) {
   }
   const mode=write?'build':'plan';
   if(!optionValues(configOption(session,'mode')).some(entry=>entry.value===mode))throw new AgentFailure('fatal','OpenCode cannot enforce the requested task mode');
-  await connection.request('session/set_config_option',{sessionId:session.sessionId,configId:'mode',value:mode});
+  const selectedMode=await connection.request('session/set_config_option',{sessionId:session.sessionId,configId:'mode',value:mode});
+  if(configOption(selectedMode,'mode')?.currentValue!==mode)throw new AgentFailure('fatal','OpenCode did not confirm the requested task mode');
   return session;
 }
 function scopePath(cwd,path,write) {
@@ -80,13 +82,14 @@ function scopePath(cwd,path,write) {
   try { const existing=write&&!statExists(candidate)?realpathSync(dirname(candidate)):realpathSync(candidate);const actual=relative(cwd,existing);return actual!== '..'&&!actual.startsWith('../')&&!isAbsolute(actual); }catch{return false;}
 }
 function statExists(path){try{lstatSync(path);return true;}catch{return false;}}
-export async function discoverOpenCode({cwd,stateDirectory,configured,model}={}) {
+export async function discoverOpenCode({cwd,stateDirectory,configured,model,modelId,signal}={}) {
   const started=performance.now(),installation=await inspectOpenCodeInstallation(configured);
   if(!installation.compatible)throw new AgentFailure('fatal',`OpenCode ${installation.version} is unverified; supported version is ${openCodeVersion}`);
   const boundary=openCodeBoundary({cwd,stateDirectory,command:installation.command});
-  const stdout=await ownedOutput(boundary.command,[...boundary.prefixArgs,'models','--standalone'],boundary);
+  const stdout=await ownedOutput(boundary.command,[...boundary.prefixArgs,'models','--standalone'],{...boundary,signal});
   const models=parseOpenCodeModels(stdout);
-  const connection=new AcpConnection({...boundary,args:[...boundary.prefixArgs,'acp']});
+  if(modelId){const selected=models.find(entry=>entry.id===modelId);if(!selected)throw new AgentFailure('fatal','Selected OpenCode model is no longer in the discovered catalogue');model=selected.model;}
+  const connection=new AcpConnection({...boundary,args:[...boundary.prefixArgs,'acp'],signal});
   try{
     const session=await begin(connection,boundary.cwd,model,undefined,false);
     const selected=configOption(session,'model')?.currentValue;
@@ -96,6 +99,7 @@ export async function discoverOpenCode({cwd,stateDirectory,configured,model}={})
   }finally{await connection.dispose();}
 }
 export function createOpenCodeAdapter({cwd,stateDirectory,command,write=false,model,reasoning}={},runtime={inspect:inspectOpenCodeInstallation,boundary:openCodeBoundary}) {
+  if(typeof write !== 'boolean')throw new TypeError('OpenCode write scope must be explicit');
   if(model!==undefined&&!modelName(model))throw new TypeError('Invalid OpenCode model');
   if(reasoning!==undefined&&!/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/.test(reasoning))throw new TypeError('Invalid OpenCode variant');
   if(write&&!lstatSync(join(cwd,'.git')).isFile())throw new AgentFailure('fatal','OpenCode writes require an isolated Git draft worktree');
@@ -111,9 +115,9 @@ export function createOpenCodeAdapter({cwd,stateDirectory,command,write=false,mo
         if(method!=='session/request_permission')return null;
         const tool=params?.toolCall,kind=tool?.kind;
         const paths=[...(Array.isArray(tool?.locations)?tool.locations.map(entry=>entry.path):[]),...[tool?.rawInput?.filePath,tool?.rawInput?.path,tool?.rawInput?.file].filter(Boolean)];
-        const allowed=params.sessionId===sessionId&&!tool?._meta&&['read','search',...(write?['edit','delete','move']:[])].includes(kind)&&paths.length>0&&paths.length<=50&&paths.every(path=>scopePath(boundary.cwd,path,write&&kind!=='read'&&kind!=='search'));
+        const allowed=params.sessionId===sessionId&&!tool?._meta&&['read','search',...(write?['edit']:[])].includes(kind)&&paths.length>0&&paths.length<=50&&paths.every(path=>scopePath(boundary.cwd,path,write&&kind!=='read'&&kind!=='search'));
         const choice=allowed&&Array.isArray(params.options)?params.options.find(option=>option.kind==='allow_once'):null;
-        if(!choice)violation=true;
+        if(!choice){violation=true;queueMicrotask(()=>connection.fail(new AgentFailure('fatal','OpenCode permission request was denied; task stopped')));}
         enqueue({type:'permission',status:choice?'approved-scope':'denied',action:kind||'unknown'});
         return {outcome:choice?{outcome:'selected',optionId:choice.optionId}:{outcome:'cancelled'}};
       },onUpdate:params=>{
@@ -125,7 +129,7 @@ export function createOpenCodeAdapter({cwd,stateDirectory,command,write=false,mo
           if(update.content.text)enqueue({type:'text',text:update.content.text});
         }else if(['tool_call','tool_call_update'].includes(update?.sessionUpdate)){
           const id=update.toolCallId;if(typeof id!=='string'||id.length>128)throw new AgentFailure('fatal','Invalid OpenCode tool identity');
-          if(update.sessionUpdate==='tool_call'){if(actions.has(id)||actions.size>=256)throw new AgentFailure('fatal','Repeated or excessive OpenCode tool action');actions.add(id);enqueue({type:'tool-start',actionId:id,action:write&&update.kind==='edit'?'file_change':update.kind||'tool'});}
+          if(update.sessionUpdate==='tool_call'){if(actions.has(id)||actions.size>=256)throw new AgentFailure('fatal','Repeated or excessive OpenCode tool action');actions.add(id);enqueue({type:'tool-start',actionId:id,action:write&&update.kind==='edit'?'file_change':update.kind||'tool'});if(!['read','search','think',...(write?['edit']:[])].includes(update.kind)){violation=true;throw new AgentFailure('fatal','OpenCode requested an unsupported tool capability');}}
           if(['completed','failed'].includes(update.status)){if(!actions.has(id))throw new AgentFailure('fatal','OpenCode completed an unknown tool action');actions.delete(id);enqueue({type:'tool-complete',actionId:id,action:update.kind||'tool'});}
         }
       }});

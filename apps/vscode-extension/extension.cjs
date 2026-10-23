@@ -22,7 +22,8 @@ function runtimePath(api, context) {
 
 function providerEnvironment(api) {
   const command = api.workspace.getConfiguration('codovyn').get('geminiCliPath', '');
-  return { ...process.env, ...(command ? { CODOVYN_GEMINI_COMMAND: command } : {}) };
+  const openCode = api.workspace.getConfiguration('codovyn').get('opencodeCliPath', '');
+  return { ...process.env, ...(openCode ? { CODOVYN_OPENCODE_COMMAND: openCode } : {}), ...(command ? { CODOVYN_GEMINI_COMMAND: command } : {}) };
 }
 
 function dataDirectory(globalStoragePath) {
@@ -43,8 +44,9 @@ function timeline(events) {
       return [{ type: 'message', text: entry.data.event.text }];
     }
     if (entry.kind === 'agent-event' && entry.data.event.type === 'session') {
-      return [{ type: 'agent', text: `${entry.data.agent}: selected model ${entry.data.event.model}` }];
+      return [{ type: 'agent', text: `${entry.data.agent}: selected model ${entry.data.event.model || 'unknown'}${entry.data.event.reasoning ? ' · variant/effort '+entry.data.event.reasoning : ''}` }];
     }
+    if (entry.kind === 'agent-event' && entry.data.event.type === 'permission') return [{type:'checkpoint',text:`Provider permission: ${entry.data.event.status} (${entry.data.event.action})`}];
     if (entry.kind === 'task-configuration') return [{ type: 'checkpoint', text: `Reasoning effort: ${entry.data.reasoning || 'Auto / provider default'} · requested task setting` }];
     if (entry.kind === 'agent-started') return [{ type: 'agent', text: `Started ${entry.data.agent}` }];
     if (entry.kind === 'agent-event' && entry.data.event.type === 'tool-start') {
@@ -133,13 +135,16 @@ function createExtension(api, runner = runCli) {
         const media = (...segments) => panel.webview.asWebviewUri(api.Uri.joinPath(context.extensionUri, 'apps', 'vscode-extension', 'media', ...segments));
         const nativeChatTestScript = process.env.CODOVYN_NATIVE_CHAT_TEST === '1'
           ? `<script nonce="${nonce}" src="${media('native-chat-harness.js')}"></script>` : '';
-        panel.webview.html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${panel.webview.cspSource} 'nonce-${nonce}'; script-src 'nonce-${nonce}';"><link rel="stylesheet" href="${media('workspace.css')}"><style nonce="${nonce}">${themeStyles()}</style><title>CODOVYN</title></head><body data-codovyn-theme="${selectedTheme}"><main><header><div class="mark">C</div><div><h1>CODOVYN</h1><p>One IDE. Every Agent. Endless Flow.</p></div></header><section class="composer"><label class="legacy-agent-label" for="agent">Legacy agent mode</label><select class="legacy-agent-select" id="agent" aria-hidden="true" tabindex="-1"><option value="demo">Demo handoff</option><option value="codex">Codex CLI · read only</option><option value="claude">Claude Code · read only</option><option value="auto">Codex → Claude · automatic</option></select><label for="request">What would you like to work on?</label><textarea id="request" rows="5" maxlength="10000" placeholder="Describe a task in this repository"></textarea><div class="task-controls" aria-label="Task configuration"><label for="task-provider">Provider</label><select id="task-provider" aria-label="Provider"><option value="auto">Auto</option><option value="configured">Configured agents</option><option value="codex">Codex CLI</option><option value="gemini">Gemini CLI</option><option value="claude">Claude Code</option></select><label for="task-model">Model</label><select id="task-model" aria-label="Model"><option value="">Provider default / routing policy</option></select><label for="task-permission">Permissions</label><select id="task-permission" aria-label="Task permissions"><option value="read">Read only</option><option value="write" disabled>Write only — unsupported safely</option><option value="read-write">Read + Write draft</option></select><label for="task-routing">Routing</label><select id="task-routing" aria-label="Routing strategy"><option value="manual">Provider default</option><option value="auto">Auto</option><option value="economy">Economy</option><option value="balanced">Balanced</option><option value="performance">Performance</option><option value="custom">Custom model</option></select><label for="task-reasoning">Reasoning</label><select id="task-reasoning" aria-label="Reasoning effort"><option value="">Provider default</option></select></div><p id="permission-help" class="control-help">Read + Write uses an isolated draft. Changes require review before application.</p><div class="actions"><button id="run" type="button">Start task</button><button id="cancel" type="button" disabled>Cancel</button></div></section><section class="activity"><div class="section-head"><h2>Task activity</h2><span id="status" role="status" aria-live="polite">Ready</span></div><ol id="timeline" aria-label="Agent activity"></ol><p id="empty">Task steps and agent handoffs will appear here.</p></section><section class="recent"><div class="section-head"><h2>Recent tasks</h2><button id="refresh" type="button">Refresh</button></div><ul id="tasks" aria-label="Recent repository tasks"></ul></section><section class="diff"><div class="section-head"><h2>Repository diff</h2><div class="diff-actions"><button id="working-diff" type="button">Working tree</button><button id="staged-diff" type="button">Staged</button></div></div><pre id="diff-output" tabindex="0" aria-label="Git diff">Choose a diff to review.</pre></section><footer>Local task history stays on this device.</footer></main><script nonce="${nonce}" src="${media('routing-form.cjs')}"></script><script nonce="${nonce}" src="${media('composer.js')}"></script><script nonce="${nonce}" src="${media('workspace.js')}"></script>${nativeChatTestScript}</body></html>`;
+        panel.webview.html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${panel.webview.cspSource} 'nonce-${nonce}'; script-src 'nonce-${nonce}';"><link rel="stylesheet" href="${media('workspace.css')}"><style nonce="${nonce}">${themeStyles()}</style><title>CODOVYN</title></head><body data-codovyn-theme="${selectedTheme}"><main><header><div class="mark">C</div><div><h1>CODOVYN</h1><p>One IDE. Every Agent. Endless Flow.</p></div></header><section class="composer"><label class="legacy-agent-label" for="agent">Legacy agent mode</label><select class="legacy-agent-select" id="agent" aria-hidden="true" tabindex="-1"><option value="demo">Demo handoff</option><option value="codex">Codex CLI · read only</option><option value="claude">Claude Code · read only</option><option value="auto">Codex → Claude · automatic</option></select><label for="request">What would you like to work on?</label><textarea id="request" rows="5" maxlength="10000" placeholder="Describe a task in this repository"></textarea><div class="task-controls" aria-label="Task configuration"><label for="task-provider">Provider</label><select id="task-provider" aria-label="Provider"><option value="auto">Auto</option><option value="configured">Configured agents</option><option value="codex">Codex CLI</option><option value="gemini">Gemini CLI</option><option value="claude">Claude Code</option><option value="opencode">OpenCode</option></select><label for="task-model">Model</label><select id="task-model" aria-label="Model"><option value="">Provider default / routing policy</option></select><label for="task-permission">Permissions</label><select id="task-permission" aria-label="Task permissions"><option value="read">Read only</option><option value="write" disabled>Write only — unsupported safely</option><option value="read-write">Read + Write draft</option></select><label for="task-routing">Routing</label><select id="task-routing" aria-label="Routing strategy"><option value="manual">Provider default</option><option value="auto">Auto</option><option value="economy">Economy</option><option value="balanced">Balanced</option><option value="performance">Performance</option><option value="custom">Custom model</option></select><label for="task-reasoning">Reasoning</label><select id="task-reasoning" aria-label="Reasoning effort"><option value="">Provider default</option></select></div><p id="permission-help" class="control-help">Read + Write uses an isolated draft. Changes require review before application.</p><div class="actions"><button id="run" type="button">Start task</button><button id="cancel" type="button" disabled>Cancel</button></div></section><section class="activity"><div class="section-head"><h2>Task activity</h2><span id="status" role="status" aria-live="polite">Ready</span></div><ol id="timeline" aria-label="Agent activity"></ol><p id="empty">Task steps and agent handoffs will appear here.</p></section><section class="recent"><div class="section-head"><h2>Recent tasks</h2><button id="refresh" type="button">Refresh</button></div><ul id="tasks" aria-label="Recent repository tasks"></ul></section><section class="diff"><div class="section-head"><h2>Repository diff</h2><div class="diff-actions"><button id="working-diff" type="button">Working tree</button><button id="staged-diff" type="button">Staged</button></div></div><pre id="diff-output" tabindex="0" aria-label="Git diff">Choose a diff to review.</pre></section><footer>Local task history stays on this device.</footer></main><script nonce="${nonce}" src="${media('routing-form.cjs')}"></script><script nonce="${nonce}" src="${media('composer.js')}"></script><script nonce="${nonce}" src="${media('workspace.js')}"></script>${nativeChatTestScript}</body></html>`;
         let active = null;
         let starting = false;
         let queueBusy = false;
         const seenRequestIds = new Set();
         let draftBusy = false;
         let disposed = false;
+        const diagnosticChildren=new Set();
+        const trackDiagnostic=child=>{diagnosticChildren.add(child);child.once?.('close',()=>diagnosticChildren.delete(child));};
+        const stopDiagnostics=()=>{for(const child of diagnosticChildren)child.kill('SIGTERM');};
         let reviewedDraft = null;
         let recoveryInspection = null;
         let selectedRoot = api.workspace.workspaceFolders?.[0]?.uri.fsPath || null;
@@ -167,7 +172,7 @@ function createExtension(api, runner = runCli) {
           panel.webview.postMessage({ type: 'agent-diagnostics-loading' });
           try {
             const result = await runner(runtimePath(api, context), [join(context.extensionPath, 'apps', 'cli', 'src', 'index.js'), 'agents', folder.uri.fsPath], {
-              cwd: folder.uri.fsPath, env: { ...providerEnvironment(api), CODOVYN_EVENT_STREAM: '1' }, onChild: () => {}, onEvent: () => {},
+              cwd: folder.uri.fsPath, env: { ...providerEnvironment(api), CODOVYN_EVENT_STREAM: '1' }, onChild: trackDiagnostic, onEvent: () => {},
             });
             if (!disposed && folderForTask() === folder) panel.webview.postMessage({ type: 'agent-diagnostics', agents: result.agents || [] });
           } catch { panel.webview.postMessage({ type: 'agent-diagnostics-error', text: 'Could not inspect agent CLIs. Check the local runtime and CLI installation.' }); }
@@ -176,15 +181,38 @@ function createExtension(api, runner = runCli) {
           const folder = folderForTask();
           if (!folder || !api.workspace.isTrusted) return;
           try {
-            const result = await runner(runtimePath(api, context), [join(context.extensionPath, 'apps', 'cli', 'src', 'index.js'), 'reasoning', folder.uri.fsPath], { cwd: folder.uri.fsPath, env: { ...providerEnvironment(api), CODOVYN_EVENT_STREAM: '1' }, onChild: () => {}, onEvent: () => {} });
+            const result = await runner(runtimePath(api, context), [join(context.extensionPath, 'apps', 'cli', 'src', 'index.js'), 'reasoning', folder.uri.fsPath], { cwd: folder.uri.fsPath, env: { ...providerEnvironment(api), CODOVYN_EVENT_STREAM: '1' }, onChild: trackDiagnostic, onEvent: () => {} });
             if (!disposed && folderForTask() === folder) panel.webview.postMessage({ type: 'reasoning-capabilities', metadata: result.reasoning });
           } catch { if (!disposed && folderForTask() === folder) panel.webview.postMessage({ type: 'reasoning-capabilities', metadata: { models: [], defaultModel: null }, text: 'Codex effort metadata unavailable. Use Auto or inspect your Codex installation.' }); }
+        };
+        const providerCache = new Map();
+        const providerPending = new Map();
+        const inspectProvider = async (provider, modelId, refresh = false) => {
+          const folder = folderForTask();
+          if (!folder || !api.workspace.isTrusted || active || starting || draftBusy || !['codex','opencode'].includes(provider)) return;
+          if (modelId !== undefined && (typeof modelId !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,127}$/.test(modelId))) return;
+          const key = JSON.stringify([folder.uri.fsPath,provider,modelId,providerEnvironment(api).CODOVYN_OPENCODE_COMMAND]);
+          if (providerPending.has(key) || providerPending.size >= 2) return;
+          const cached = providerCache.get(key);
+          if (!refresh && cached && Date.now()-cached.at < 300000) { panel.webview.postMessage({type:'provider-models',provider,metadata:cached.metadata}); return; }
+          providerPending.set(key,true);
+          panel.webview.postMessage({type:'provider-models-loading',provider});
+          try {
+            const result = await runner(runtimePath(api,context),[join(context.extensionPath,'apps','cli','src','index.js'),'provider-models',folder.uri.fsPath,provider,...(modelId?[modelId]:[])],{
+              cwd:folder.uri.fsPath,env:{...providerEnvironment(api),CODOVYN_DATA_DIR:taskDataDirectory,CODOVYN_EVENT_STREAM:'1'},onChild:trackDiagnostic,onEvent:()=>{},
+            });
+            if (disposed || folderForTask()!==folder) return;
+            providerCache.set(key,{at:Date.now(),metadata:result.metadata}); if(providerCache.size>64)providerCache.delete(providerCache.keys().next().value);
+            panel.webview.postMessage({type:'provider-models',provider,metadata:result.metadata});
+          } catch { if (!disposed && folderForTask()===folder) panel.webview.postMessage({type:'provider-models',provider,metadata:{models:[],defaultModel:null},text:'Model discovery failed. Check the installed CLI/version and provider setup. No inference was started.'}); }
+          finally { providerPending.delete(key); }
         };
         const sendProjects = () => panel.webview.postMessage({ type: 'projects', selectedRoot,
           projects: (api.workspace.workspaceFolders || []).map((folder) => ({
             root: folder.uri.fsPath, name: folder.name || folder.uri.fsPath.split(/[\\/]/).at(-1),
           })) });
         const folderListener = api.workspace.onDidChangeWorkspaceFolders?.(() => {
+          stopDiagnostics();
           if (!folderForTask()) {
             active?.kill('SIGTERM');
             selectedRoot = api.workspace.workspaceFolders?.[0]?.uri.fsPath || null;
@@ -196,7 +224,7 @@ function createExtension(api, runner = runCli) {
           sendRoutingPolicy();
           refreshTasks();
         });
-        panel.onDidDispose?.(() => { if (currentPanel === panel) { currentPanel = null; panelReady = false; } disposed = true; active?.kill('SIGTERM'); folderListener?.dispose(); });
+        panel.onDidDispose?.(() => { if (currentPanel === panel) { currentPanel = null; panelReady = false; } disposed = true; active?.kill('SIGTERM'); stopDiagnostics(); folderListener?.dispose(); });
         const taskDataDirectory = dataDirectory(context.globalStorageUri.fsPath);
         const refreshTasks = async () => {
           const folder = folderForTask();
@@ -319,6 +347,23 @@ function createExtension(api, runner = runCli) {
             await api.commands.executeCommand('workbench.action.openSettings', 'codovyn.geminiCliPath');
             return;
           }
+          if (message.type === 'provider-models') { await inspectProvider(message.provider,message.modelId,message.refresh===true); return; }
+          if (message.type === 'provider-configure' && message.provider === 'opencode') { await api.commands.executeCommand('workbench.action.openSettings','codovyn.opencodeCliPath'); return; }
+          if (message.type === 'provider-help' && ['codex','gemini','claude'].includes(message.provider)) {
+            const help={codex:'https://developers.openai.com/codex/auth/',gemini:'https://geminicli.com/docs/get-started/authentication/',claude:'https://code.claude.com/docs/en/authentication'};
+            await api.env.openExternal(api.Uri.parse(help[message.provider]));return;
+          }
+          if (message.type === 'provider-setup' && message.provider === 'opencode') {
+            const folder=folderForTask(); if (!folder || !api.workspace.isTrusted || active || starting || draftBusy) return;
+            const approval=await api.window.showWarningMessage('Open official OpenCode authentication in CODOVYN’s isolated provider context?',{modal:true,detail:'Your global OpenCode configuration and credentials are not imported. Complete the CLI authentication yourself; no key is sent to Chat.'},'Open provider setup');
+            if(approval!=='Open provider setup')return;
+            try {
+              const result=await runner(runtimePath(api,context),[join(context.extensionPath,'apps','cli','src','index.js'),'provider-context',folder.uri.fsPath,'opencode'],{cwd:folder.uri.fsPath,env:{...providerEnvironment(api),CODOVYN_DATA_DIR:taskDataDirectory,CODOVYN_EVENT_STREAM:'1'},onChild:()=>{},onEvent:()=>{}});
+              const terminal=api.window.createTerminal({name:'CODOVYN · OpenCode setup',cwd:result.context.stateDirectory,env:result.context.environment,strictEnv:true});
+              terminal.show(); const quoted="'"+result.context.command.split("'").join("'\"'\"'")+"'"; terminal.sendText(quoted+' auth login --standalone');
+            } catch {panel.webview.postMessage({type:'agent-diagnostics-error',text:'Could not open OpenCode setup. Inspect the executable path and supported version.'});}
+            return;
+          }
           if (message.type === 'reasoning-capabilities') { await inspectReasoning(); return; }
           if (message.type === 'agent-diagnostics') { await inspectAgents(); return; }
           if (message.type === 'agent-policy-save' && !active && !starting && !draftBusy && !queueBusy && !disposed && folderForTask()) {
@@ -372,6 +417,7 @@ function createExtension(api, runner = runCli) {
           if (message.type === 'tasks') { await refreshTasks(); return; }
           if (message.type === 'project-select' && !active && !starting && !draftBusy && !queueBusy && typeof message.root === 'string') {
             if (!api.workspace.workspaceFolders?.some((folder) => folder.uri.fsPath === message.root)) return;
+            stopDiagnostics();
             selectedRoot = message.root;
             sendAgentPolicy();
             sendRoutingPolicy(); sendComposerPreferences();
@@ -546,7 +592,7 @@ function createExtension(api, runner = runCli) {
               return;
             }
           }
-          if (!['routed','routed-edit','configured', 'configured-edit', 'demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit'].includes(runMode) || typeof message.request !== 'string') return;
+          if (!['opencode','opencode-edit','routed','routed-edit','configured', 'configured-edit', 'demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit'].includes(runMode) || typeof message.request !== 'string') return;
           const request = message.request.trim();
           if (!request || request.length > 10000) return;
           const folder = folderForTask();
@@ -561,7 +607,7 @@ function createExtension(api, runner = runCli) {
             if (seenRequestIds.size > 256) seenRequestIds.delete(seenRequestIds.values().next().value);
           }
           panel.webview.postMessage({ type: 'starting' });
-          const editMode = ['routed-edit','configured-edit', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit'].includes(runMode);
+          const editMode = ['opencode-edit','routed-edit','configured-edit', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit'].includes(runMode);
           let taskRouting;
           let routeSummary='';
           if (['routed','routed-edit'].includes(runMode)) {
@@ -605,8 +651,8 @@ function createExtension(api, runner = runCli) {
           }
           if (editMode) {
             panel.webview.postMessage({ type: 'approval-pending' });
-            const agentName = runMode==='routed-edit'?'the selected model':runMode === 'configured-edit' ? [taskPolicy.primary, ...(taskPolicy.automatic ? taskPolicy.fallbacks : [])].join(' and ') : runMode === 'gemini-edit' ? 'Gemini CLI' : runMode === 'auto-gemini-edit' ? 'Codex and Gemini CLI' : runMode === 'claude-edit' ? 'Claude Code' : runMode === 'auto-edit' ? 'Codex and Claude Code' : 'Codex';
-            const detail = runMode==='routed-edit'?`${routeSummary} Only this provider receives the task. Codex may execute local draft commands; Gemini uses restricted file tools. Review is required before applying edits.`:runMode === 'configured-edit'
+            const agentName = runMode==='opencode-edit'?'OpenCode':runMode==='routed-edit'?'the selected model':runMode === 'configured-edit' ? [taskPolicy.primary, ...(taskPolicy.automatic ? taskPolicy.fallbacks : [])].join(' and ') : runMode === 'gemini-edit' ? 'Gemini CLI' : runMode === 'auto-gemini-edit' ? 'Codex and Gemini CLI' : runMode === 'claude-edit' ? 'Claude Code' : runMode === 'auto-edit' ? 'Codex and Claude Code' : 'Codex';
+            const detail = runMode==='opencode-edit'?'OpenCode may request scoped edits inside an isolated worktree. Shell commands, nested agents and external tools are blocked. Authentication uses a separate provider context; review the patch before application.':runMode==='routed-edit'?`${routeSummary} Only this provider receives the task. Codex may execute local draft commands; Gemini uses restricted file tools. Review is required before applying edits.`:runMode === 'configured-edit'
               ? 'The configured providers may receive this task and repository context. Codex may run local draft commands; Gemini and Claude use restricted file tools. Automatic handoff stops after write-capable actions. You will review the patch before applying it.'
               : runMode === 'gemini-edit'
               ? 'Gemini may edit files inside a separate Git worktree using restricted file tools. Shell commands are unavailable. You will review a patch before changes reach the open repository.'

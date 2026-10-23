@@ -68,3 +68,12 @@ test('per-model effort preferences remain bounded, validate values, and migrate 
  assert.throws(()=>validateComposerPreferences({...input,efforts:{'default:codex':'invented'}}),/saved reasoning/);
  assert.throws(()=>validateComposerPreferences({...input,efforts:{'command:execute':'high'}}),/model list/);
 });
+
+test('discovered Codex/OpenCode models resolve directly without invented catalogue entries',()=>{
+ const base={provider:'opencode',modelId:'discovered-opencode-fixture',modelSource:'discovered',permission:'read',routingMode:'manual',reasoning:'provider-variant',intent:'ask'};
+ assert.equal(resolveTaskMode(base),'opencode');assert.equal(resolveTaskMode({...base,intent:'agent',permission:'read-write'}),'opencode-edit');
+ assert.equal(resolveTaskMode({...base,provider:'codex',reasoning:'high'}),'codex');
+ assert.throws(()=>validateTaskConfiguration({...base,provider:'gemini'}),/discovered model source/);
+ assert.throws(()=>validateTaskConfiguration({...base,modelSource:undefined}),/discovered catalogue/);
+ assert.throws(()=>validateTaskConfiguration({...base,routingMode:'auto'}),/Routing strategies/);
+});

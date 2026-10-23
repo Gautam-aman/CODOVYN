@@ -32,8 +32,9 @@ class CodovynComposer {
     this.results = document.createElement('div'); this.results.className = 'model-results';
     this.results.setAttribute('role', 'group'); this.results.setAttribute('aria-label', 'Models');
     const manage = chip('manage-models', 'Manage models…', () => { this.close(this.modelMenu); manageModels(); });
-    const providerSetup = chip('provider-setup', 'Provider setup…', () => { this.close(this.modelMenu); setup(); });
-    this.modelMenu.append(this.search, this.results, manage, providerSetup);
+    const providerSetup = chip('provider-setup', 'Manage Providers…', () => { this.close(this.modelMenu); setup(); });
+    const refresh = chip('refresh-provider-models', 'Refresh models', () => { const provider=this.controls.provider.value; if(['codex','opencode'].includes(provider))vscode.postMessage({type:'provider-models',provider,refresh:true,...(this.controls.model.value?{modelId:this.controls.model.value}:{})}); else vscode.postMessage({type:'agent-diagnostics'}); });
+    this.modelMenu.append(this.search, this.results, refresh, manage, providerSetup);
     this.search.addEventListener('input', () => this.renderModels());
     this.modeMenu = this.menu('mode-picker', 'Task mode', this.modeChip);
     for (const [intent, label, help] of [['ask', 'Ask', 'Read and explain. No file writes.'], ['agent', 'Agent', 'Propose edits in an isolated, reviewed draft.'], ['plan', 'Plan', 'Plan the work with file writes disabled.']]) {
@@ -111,16 +112,16 @@ class CodovynComposer {
   }
   setProviders(providers) { this.providers = providers; this.refresh(); }
   entries() {
-    const defaults = ['codex', 'gemini', 'claude'].map(provider => {
+    const defaults = ['codex', 'opencode', 'gemini', 'claude'].map(provider => {
       const state = this.providers.find(entry => entry.id === provider);
-      return { key: `default:${provider}`, provider, label: `${provider === 'codex' ? 'Codex' : provider === 'gemini' ? 'Gemini' : 'Claude'} · Provider Default`,
+      return { key: `default:${provider}`, provider, label: `${provider === 'codex' ? 'Codex' : provider === 'gemini' ? 'Gemini' : provider === 'opencode' ? 'OpenCode' : 'Claude'} · Provider Default`,
         detail: state?.installation === 'detected' ? 'CLI detected · Authentication unknown' : state ? 'CLI setup required' : 'Installation and authentication unverified',
-        disabled: state && state.installation !== 'detected' };
+        disabled: state && (state.installation !== 'detected' || state.executionSupported === false) };
     });
     return [{ key: 'auto', label: 'Auto · Smart Routing', detail: 'Uses your configured routing policy', provider: 'auto' }, ...defaults,
-      ...this.getModels().filter(model => model && ['codex', 'gemini', 'claude'].includes(model.provider)).map(model => ({
+      ...this.getModels().filter(model => model && ['codex', 'gemini', 'claude','opencode'].includes(model.provider)).map(model => ({
         key: `model:${model.id}`, provider: model.provider, id: model.id, label: model.model,
-        detail: model.provider === 'claude' ? 'Model override unsupported by this adapter' : `Configured model · ${model.availability === 'unavailable' ? 'Unavailable' : 'Access unverified'}`,
+        detail: model.provider === 'claude' ? 'Model override unsupported by this adapter' : `${model.source==='discovered'?'Discovered catalogue':'Configured model'} · ${model.availability === 'unavailable' ? 'Unavailable' : 'Access unverified'}`,
         disabled: model.availability === 'unavailable' || model.provider === 'claude',
       }))];
   }
@@ -148,7 +149,7 @@ class CodovynComposer {
     group('Recommended', entries.filter(entry => entry.key === 'auto'));
     group('Favorites', entries.filter(entry => this.favorites.includes(entry.key)));
     group('Recent', this.recent.map(key => entries.find(entry => entry.key === key)).filter(Boolean));
-    for (const provider of ['codex', 'gemini', 'claude']) group(provider === 'codex' ? 'Codex' : provider === 'gemini' ? 'Gemini' : 'Claude', entries.filter(entry => entry.provider === provider));
+    for (const provider of ['codex', 'opencode', 'gemini', 'claude']) group(provider === 'codex' ? 'Codex' : provider === 'gemini' ? 'Gemini' : provider === 'opencode' ? 'OpenCode' : 'Claude', entries.filter(entry => entry.provider === provider));
     if (!entries.length) { const empty = document.createElement('p'); empty.textContent = 'No models match. Try a provider name.'; this.results.append(empty); }
   }
   selectedKey() { return this.controls.model.value ? `model:${this.controls.model.value}` : this.controls.provider.value === 'auto' ? 'auto' : `default:${this.controls.provider.value}`; }
@@ -167,9 +168,9 @@ class CodovynComposer {
   }
   save() { vscode.setState?.({ ...(vscode.getState?.() || {}), modelPicker: { favorites: this.favorites, recent: this.recent } }); this.changed(); }
   refresh() {
-    this.effortChip.textContent = `${(this.controls.reasoning.value ? this.effortLabels[this.controls.reasoning.value] : 'Effort · Auto') || 'Auto'} ⌄`;
+    this.effortChip.textContent = `${(this.controls.reasoning.value ? (this.effortLabels[this.controls.reasoning.value] || this.controls.reasoning.value) : 'Effort · Auto') || 'Auto'} ⌄`;
     this.effortChip.title = this.controls.reasoning.title || 'Reasoning effort · provider default';
-    this.effortChip.setAttribute('aria-label', `Reasoning effort: ${this.effortLabels[this.controls.reasoning.value] || 'Auto'}`);
+    this.effortChip.setAttribute('aria-label', `Reasoning effort: ${this.effortLabels[this.controls.reasoning.value] || this.controls.reasoning.value || 'Auto'}`);
     const entry = this.entries().find(entry => entry.key === this.selectedKey());
     this.modelChip.textContent = `${entry?.label?.replace(' · Provider Default', '').replace(' · Smart Routing', '') || (this.controls.model.value ? `${this.controls.model.value} · unavailable` : 'Select model')} ⌄`; this.modelChip.title = entry?.detail || 'Model selection needs review';
   }

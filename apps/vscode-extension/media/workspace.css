@@ -220,3 +220,7 @@ button.composer-chip:hover, button.composer-chip[aria-expanded="true"] { color: 
 #effort-chip { white-space: nowrap; }
 #effort-picker { max-width: min(300px, calc(100vw - 24px)); }
 #effort-picker button:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
+.provider-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.provider-actions button { padding: 5px 8px; font-size: 11px; }
+.provider-source, .provider-diagnostic { overflow-wrap: anywhere; color: var(--vscode-descriptionForeground); }
+.agent-cards > li { border: 1px solid var(--vscode-panel-border); border-radius: 8px; padding: 12px; }

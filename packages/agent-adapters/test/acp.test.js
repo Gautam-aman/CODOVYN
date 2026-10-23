@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { AcpConnection } from '../src/acp.js';
 const peer = body => `const rl=require('readline').createInterface({input:process.stdin});const send=m=>console.log(JSON.stringify({jsonrpc:'2.0',...m}));${body}`;
-const connect = (script, options={}) => new AcpConnection({command:process.execPath,args:['-e',script],cwd:process.cwd(),env:process.env,timeoutMs:300,...options});
+const connect = (script, options={}) => new AcpConnection({command:process.execPath,args:['-e',script],cwd:process.cwd(),env:process.env,timeoutMs:2000,...options});
 
 test('ACP correlates out-of-order replies and dispatches typed notifications', async()=>{
  const updates=[];const client=connect(peer(`const list=[];rl.on('line',l=>{const m=JSON.parse(l);if(m.id){list.push(m);if(list.length===2){send({method:'session/update',params:{sessionId:'s',update:{sessionUpdate:'agent_message_chunk',content:{type:'text',text:'hello'}}}});for(const n of list.reverse())send({id:n.id,result:n.params});}}});`),{onUpdate:u=>updates.push(u)});
@@ -20,7 +20,7 @@ test('ACP malformed, uncorrelated and oversized messages fail closed',async()=>{
  }
 });
 test('ACP timeouts reap an owned process and reject unresolved calls without replay',async()=>{
- let pid,stopped=false;const client=connect(peer(`rl.on('line',()=>{});`),{execution:{starting(){},spawned:p=>{pid=p.pid;},stopped(){stopped=true;}}});
+ let pid,stopped=false;const client=connect(peer(`rl.on('line',()=>{});`),{timeoutMs:300,execution:{starting(){},spawned:p=>{pid=p.pid;},stopped(){stopped=true;}}});
  try{await assert.rejects(client.request('session/prompt',{}),/deadline/);}finally{await client.dispose();}
  assert.equal(stopped,true);assert.throws(()=>process.kill(pid,0));
 });

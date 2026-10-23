@@ -1,12 +1,12 @@
 'use strict';
 
-const providers = new Set(['auto', 'configured', 'codex', 'claude', 'gemini']);
+const providers = new Set(['auto', 'configured', 'codex', 'claude', 'gemini', 'opencode']);
 const routingModes = new Set(['manual', 'auto', 'economy', 'balanced', 'performance', 'custom']);
 const identifier = value => typeof value === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,127}$/.test(value);
 
 function validateTaskConfiguration(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value) ||
-    Object.keys(value).some(key => !['provider', 'modelId', 'permission', 'routingMode', 'reasoning', 'intent'].includes(key)) ||
+    Object.keys(value).some(key => !['provider', 'modelId', 'permission', 'routingMode', 'reasoning', 'intent', 'modelSource'].includes(key)) ||
     !providers.has(value.provider) ||
     (value.modelId !== null && !identifier(value.modelId)) ||
     !['read', 'read-write'].includes(value.permission) ||
@@ -30,7 +30,9 @@ function validateTaskConfiguration(value) {
   if (value.provider === 'auto' && value.routingMode !== 'custom' && value.modelId !== null) {
     throw new TypeError('A directly selected model requires custom routing.');
   }
-  if (value.reasoning !== null && (!['none','minimal','low','medium','high','xhigh','max','ultra'].includes(value.reasoning) ||
+  if (value.modelSource !== undefined && (value.modelSource !== 'discovered' || value.modelId === null || !['codex','opencode'].includes(value.provider))) throw new TypeError('Invalid discovered model source');
+  if (value.provider === 'opencode' && value.modelId && value.modelSource !== 'discovered') throw new TypeError('Choose an OpenCode model from its discovered catalogue');
+  if (value.provider !== 'opencode' && value.reasoning !== null && (!['none','minimal','low','medium','high','xhigh','max','ultra'].includes(value.reasoning) ||
     !['codex', 'auto'].includes(value.provider) || (value.provider === 'auto' && value.modelId === null))) {
     throw new TypeError('Reasoning effort requires Codex or an explicitly selected compatible catalogue model.');
   }
@@ -40,6 +42,7 @@ function validateTaskConfiguration(value) {
     permission: value.permission,
     routingMode: value.routingMode,
     reasoning: value.reasoning,
+    ...(value.modelSource !== undefined ? { modelSource: value.modelSource } : {}),
     ...(value.intent !== undefined ? { intent: value.intent } : {}),
   });
 }
@@ -49,6 +52,7 @@ function resolveTaskMode(configuration) {
   const suffix = task.permission === 'read-write' ? '-edit' : '';
   if (task.provider === 'auto') return `routed${suffix}`;
   if (task.provider === 'configured') return `configured${suffix}`;
+  if (task.provider === 'opencode' || task.modelSource === 'discovered') return `${task.provider}${suffix}`;
   if (task.modelId) return `routed${suffix}`;
   return `${task.provider}${suffix}`;
 }
@@ -57,14 +61,14 @@ function validateComposerPreferences(value) {
   if (!value || value.version !== 1 || Object.keys(value).some(key => !['version','selection','favorites','recent','efforts'].includes(key))) throw new TypeError('Invalid composer preferences');
   const selection = validateTaskConfiguration(value.selection);
   const keys = list => {
-    if (!Array.isArray(list) || list.length > 32 || list.some(key => typeof key !== 'string' || !/^(auto|default:(codex|gemini|claude)|model:[a-zA-Z0-9][a-zA-Z0-9._/-]{0,127})$/.test(key))) throw new TypeError('Invalid saved model list');
+    if (!Array.isArray(list) || list.length > 32 || list.some(key => typeof key !== 'string' || !/^(auto|default:(codex|gemini|claude|opencode)|model:[a-zA-Z0-9][a-zA-Z0-9._/-]{0,127})$/.test(key))) throw new TypeError('Invalid saved model list');
     return [...new Set(list)];
   };
   const efforts = value.efforts || {};
   if (typeof efforts !== 'object' || Array.isArray(efforts) || Object.keys(efforts).length > 32) throw new TypeError('Invalid effort preferences');
   for (const [key, effort] of Object.entries(efforts)) {
     keys([key]);
-    if (effort !== null && !['none','minimal','low','medium','high','xhigh','max','ultra'].includes(effort)) throw new TypeError('Invalid saved reasoning effort');
+    if (effort !== null && (!(key === 'default:opencode' || key.startsWith('model:discovered-opencode-')) ? !['none','minimal','low','medium','high','xhigh','max','ultra'].includes(effort) : !identifier(effort))) throw new TypeError('Invalid saved reasoning effort');
   }
   return { version: 1, selection, ...(value.efforts ? { efforts: { ...efforts } } : {}), favorites: keys(value.favorites), recent: keys(value.recent).slice(0, 8) };
 }

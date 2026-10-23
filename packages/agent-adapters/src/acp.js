@@ -5,7 +5,7 @@ import { AgentFailure } from '../../agent-core/src/index.js';
 
 /** One owned ACP transport; no reconnect/replay and no arbitrary client methods. */
 export class AcpConnection {
-  constructor({ command, args = [], cwd, env, onUpdate = () => {}, onRequest = () => null, timeoutMs = 10000, execution }) {
+  constructor({ command, args = [], cwd, env, onUpdate = () => {}, onRequest = () => null, timeoutMs = 10000, execution, signal }) {
     this.incomingIds = new Set();
     this.pending = new Map(); this.nextId = 1; this.closed = false; this.timeoutMs = timeoutMs;
     execution?.starting();
@@ -15,9 +15,10 @@ export class AcpConnection {
     this.execution = execution;
     let stderrBytes = 0;
     this.child.stderr.on('data', data => { stderrBytes += data.length; if (stderrBytes > 1048576) this.fail(new AgentFailure('fatal','ACP diagnostic output exceeded its bound')); });
+    const boundedOutput=async function* (stream) {let bytes=0;for await(const chunk of stream){bytes+=chunk.length;if(bytes>8388608)throw new AgentFailure('fatal','ACP session output exceeded total byte limit');yield chunk;}};
     this.pump = (async () => {
       try {
-        for await (const message of boundedJsonLines(this.child.stdout, 1048576)) {
+        for await (const message of boundedJsonLines(boundedOutput(this.child.stdout), 1048576)) {
           if (!message || message.jsonrpc !== '2.0') throw new AgentFailure('fatal','Invalid ACP envelope');
           if (typeof message.method === 'string') {
             if (message.id !== undefined) {
@@ -45,6 +46,8 @@ export class AcpConnection {
       } catch (error) { this.fail(error); }
     })();
     this.child.once('error', () => this.fail(new AgentFailure('fatal','ACP executable could not start')));
+    this.signal=signal;this.abort=()=>this.fail(new AgentFailure('cancelled','ACP inspection cancelled'));
+    signal?.addEventListener('abort',this.abort,{once:true});if(signal?.aborted)this.abort();
   }
   send(message) {
     if (this.closed) throw new AgentFailure('fatal','ACP connection is closed');
@@ -70,6 +73,7 @@ export class AcpConnection {
     this.lifecycle.dispose().catch(() => {});
   }
   async dispose() {
+    this.signal?.removeEventListener('abort',this.abort);
     this.fail(new AgentFailure('cancelled','ACP connection disposed'));
     try { await this.lifecycle.dispose(); await this.pump; } finally { this.execution?.stopped(); }
   }

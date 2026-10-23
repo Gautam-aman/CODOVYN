@@ -24,6 +24,15 @@ let unseenActivityCount = 0;
 let pendingChatRequest = '';
 let acceptedChatRequest = '';
 let taskModelCatalogue = [];
+const providerCatalogues = new Map();
+const requestedCatalogues = new Set();
+const allTaskModels = () => [...taskModelCatalogue,...[...providerCatalogues.values()].flatMap(metadata => metadata.models || [])];
+function requestProviderModels(provider,modelId,refresh=false) {
+  if(!['codex','opencode'].includes(provider))return;
+  const key=provider+':'+(modelId||'');
+  if(!refresh&&requestedCatalogues.has(key))return;
+  requestedCatalogues.add(key);vscode.postMessage({type:'provider-models',provider,...(modelId?{modelId}:{}),refresh});
+}
 let codexReasoningMetadata = null;
 let reasoningInspectionRequested = false;
 let previousTaskProvider = null;
@@ -167,7 +176,7 @@ for (const [value, label] of [
 
 const agentSettings = document.createElement('details');
 agentSettings.className = 'agent-settings';
-const agentSummary = document.createElement('summary'); agentSummary.textContent = 'Project agents';
+const agentSummary = document.createElement('summary'); agentSummary.textContent = 'AI Providers and backups';
 const agentHelp = document.createElement('p');
 agentHelp.textContent = 'Choose Project agents above to use these preferences. Enabling automatic switching authorizes sending this task and context to the selected backup providers. No quota or connection status is inferred from installation.';
 agentSettings.append(agentSummary, agentHelp);
@@ -260,7 +269,8 @@ let selectedProjectRoot = null;
 function updateTaskModelControls() {
   const provider = taskProvider.value;
   const selected = taskModel.value;
-  const matching = taskModelCatalogue.filter(model => model && (provider === 'auto' || model.provider === provider));
+  const selectedSource = taskModel.selectedOptions[0]?.dataset.source;
+  const matching = (provider === 'auto' ? taskModelCatalogue : allTaskModels()).filter(model => model && (provider === 'auto' || model.provider === provider));
   taskModel.replaceChildren();
   const defaultOption = document.createElement('option');
   defaultOption.value = '';
@@ -268,16 +278,16 @@ function updateTaskModelControls() {
   taskModel.append(defaultOption);
   const groups = new Map();
   for (const model of matching) {
-    if (!model || typeof model.id !== 'string' || typeof model.model !== 'string' || !['codex','gemini','claude'].includes(model.provider)) continue;
+    if (!model || typeof model.id !== 'string' || typeof model.model !== 'string' || !['codex','gemini','claude','opencode'].includes(model.provider)) continue;
     let group = groups.get(model.provider);
     if (!group) { group = document.createElement('optgroup'); group.label = model.provider.toUpperCase(); groups.set(model.provider, group); taskModel.append(group); }
-    const option = document.createElement('option'); option.value = model.id;
+    const option = document.createElement('option'); option.value = model.id; if(model.source)option.dataset.source=model.source;
     option.textContent = `${model.model}${model.availability === 'unavailable' ? ' · unavailable' : model.availability === 'unknown' ? ' · availability unknown' : ''}`;
     option.disabled = model.availability === 'unavailable';
     group.append(option);
   }
   if (selected && previousTaskProvider === provider && ![...taskModel.options].some(option => option.value === selected)) {
-    const missing = document.createElement('option'); missing.value = selected; missing.textContent = `Unavailable selection · ${selected}`; missing.disabled = true; taskModel.append(missing);
+    const missing = document.createElement('option'); missing.value = selected; if(selectedSource)missing.dataset.source=selectedSource; missing.textContent = `Unavailable selection · ${selected}`; missing.disabled = true; taskModel.append(missing);
   }
   if ([...taskModel.options].some(option => option.value === selected)) taskModel.value = selected;
   previousTaskProvider = provider;
@@ -290,24 +300,26 @@ function updateTaskModelControls() {
   compactComposer?.refresh();
 }
 function updateTaskReasoning() {
-  const selectedModel = taskModelCatalogue.find(model => model.id === taskModel.value);
+  const selectedModel = allTaskModels().find(model => model.id === taskModel.value);
   const previous = taskReasoning.value;
   taskReasoning.replaceChildren();
   const defaultOption = document.createElement('option'); defaultOption.value = ''; defaultOption.textContent = 'Provider default'; taskReasoning.append(defaultOption);
   if (taskProvider.value === 'codex' && !taskModel.value && !reasoningInspectionRequested) {
     reasoningInspectionRequested = true; vscode.postMessage({ type: 'reasoning-capabilities' });
   }
+  if(taskProvider.value === 'opencode') requestProviderModels('opencode',taskModel.value||undefined);
   const knownEfforts = ['none','minimal','low','medium','high','xhigh','max','ultra'];
-  const advertised = selectedModel?.provider === 'codex' ? selectedModel.reasoning :
+  const advertised = ['codex','opencode'].includes(selectedModel?.provider) ? selectedModel.reasoning :
+    taskProvider.value === 'opencode' && !taskModel.value ? providerCatalogues.get('opencode')?.models?.find(entry => entry.model === providerCatalogues.get('opencode').defaultModel)?.reasoning :
     taskProvider.value === 'codex' && !taskModel.value ? codexReasoningMetadata?.models?.find(entry => entry.model === codexReasoningMetadata.defaultModel)?.reasoning : [];
-  const supported = Array.isArray(advertised) ? knownEfforts.filter(value => advertised.includes(value)) : [];
+  const supported = Array.isArray(advertised) ? taskProvider.value === 'opencode' ? advertised.filter(value => /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/.test(value)) : knownEfforts.filter(value => advertised.includes(value)) : [];
   for (const effort of supported) { const option = document.createElement('option'); option.value = effort; option.textContent = effort; taskReasoning.append(option); }
   taskReasoning.disabled = !supported.length;
   if (supported.includes(previous)) taskReasoning.value = previous;
   if (!codexReasoningMetadata && taskProvider.value === 'codex' && !taskModel.value && previous) {
     const pending = document.createElement('option'); pending.value = previous; pending.textContent = previous + ' · checking'; pending.disabled = true; taskReasoning.append(pending); taskReasoning.value = previous;
   }
-  taskReasoning.title = supported.length ? (selectedModel ? 'Efforts declared for this catalogue model. Access remains unverified.' : 'Efforts advertised by the installed Codex CLI for its configured default model. Access remains unverified.') : taskProvider.value === 'codex' && !taskModel.value && !codexReasoningMetadata ? 'Checking installed Codex reasoning capabilities…' : 'No enforceable reasoning override is known for this selection. Auto preserves provider defaults.';
+  taskReasoning.title = supported.length ? taskProvider.value === 'opencode' ? 'Provider-specific variants advertised for this OpenCode model. IDs are preserved exactly.' : (selectedModel ? 'Efforts declared for this catalogue model. Access remains unverified.' : 'Efforts advertised by the installed Codex CLI for its configured default model. Access remains unverified.') : taskProvider.value === 'codex' && !taskModel.value && !codexReasoningMetadata ? 'Checking installed Codex reasoning capabilities…' : 'No enforceable reasoning override is known for this selection. Auto preserves provider defaults.';
   compactComposer?.refresh();
 }
 function updateLegacyMode() {
@@ -315,6 +327,7 @@ function updateLegacyMode() {
   const editable = taskPermission.value === 'read-write';
   if (provider === 'auto') agent.value = 'routed' + (editable ? '-edit' : '');
   else if (provider === 'configured') agent.value = 'configured' + (editable ? '-edit' : '');
+  else if (provider === 'opencode' || taskModel.selectedOptions[0]?.dataset.source === 'discovered') agent.value = provider + (editable ? '-edit' : '');
   else if (taskModel.value) agent.value = 'routed' + (editable ? '-edit' : '');
   else agent.value = provider + (editable ? '-edit' : '');
 }
@@ -326,7 +339,7 @@ function storeTaskSelection() {
   const selections = state.taskSelections && typeof state.taskSelections === 'object' ? state.taskSelections : {};
   const rootKey = selectedProjectRoot.slice(0, 1024);
   vscode.setState?.({ ...state, taskSelections: { ...selections, [rootKey]: {
-    provider: taskProvider.value, modelId: taskModel.value || '', permission: taskPermission.value,
+    provider: taskProvider.value, modelId: taskModel.value || '', ...(taskModel.selectedOptions[0]?.dataset.source === 'discovered' ? {modelSource:'discovered'} : {}), permission: taskPermission.value,
     routingMode: taskRouting.value, reasoning: taskReasoning.value, intent: compactComposer?.intent || 'ask',
   } } });
   if (!restoringComposerPreferences) {
@@ -338,11 +351,11 @@ function restoreTaskSelection() {
   if (!selectedProjectRoot) return;
   const saved = vscode.getState?.()?.taskSelections?.[selectedProjectRoot.slice(0, 1024)];
   if (!saved || typeof saved !== 'object') { updateLegacyMode(); return; }
-  if (['auto','configured','codex','gemini','claude'].includes(saved.provider)) taskProvider.value = saved.provider;
+  if (['auto','configured','codex','gemini','claude','opencode'].includes(saved.provider)) taskProvider.value = saved.provider;
   updateTaskModelControls();
   if (typeof saved.modelId === 'string' && saved.modelId) {
     if (![...taskModel.options].some(option => option.value === saved.modelId)) {
-      const missing = document.createElement('option'); missing.value = saved.modelId; missing.textContent = `Unavailable selection · ${saved.modelId}`; missing.disabled = true; taskModel.append(missing);
+      const missing = document.createElement('option'); missing.value = saved.modelId; if(saved.modelSource)missing.dataset.source=saved.modelSource; missing.textContent = `Unavailable selection · ${saved.modelId}`; missing.disabled = true; taskModel.append(missing);
     }
     taskModel.value = saved.modelId;
   }
@@ -350,6 +363,7 @@ function restoreTaskSelection() {
   if (['manual','auto','economy','balanced','performance','custom'].includes(saved.routingMode)) taskRouting.value = saved.routingMode;
   updateTaskReasoning();
   if (typeof saved.reasoning === 'string' && [...taskReasoning.options].some(option => option.value === saved.reasoning)) taskReasoning.value = saved.reasoning;
+  if(saved.modelSource==='discovered')requestProviderModels(saved.provider,saved.modelId);
   compactComposer?.setIntent(saved.intent || (saved.permission === 'read-write' ? 'agent' : 'ask'));
   updateLegacyMode();
   compactComposer?.refresh();
@@ -580,7 +594,7 @@ window.addEventListener('message', ({ data }) => {
   } else if (data.type === 'agent-diagnostics-loading') {
     inspectAgents.disabled = true; policyStatus.textContent = 'Inspecting installed CLIs. No provider task is started.';
   } else if (data.type === 'agent-diagnostics') {
-    inspectAgents.disabled = false; agentCards.replaceChildren(); policyStatus.textContent = 'Authentication and provider availability remain unknown until observed.';
+    inspectAgents.disabled = false; agentCards.replaceChildren(); policyStatus.textContent = 'Installed does not mean authenticated or available. OpenCode uses an isolated provider context.';
     compactComposer?.setProviders(data.agents || []);
     for (const entry of data.agents || []) {
       const card = document.createElement('li'); const title = document.createElement('strong'); title.textContent = entry.id;
@@ -589,7 +603,18 @@ window.addEventListener('message', ({ data }) => {
       role.textContent = savedAgentPolicy?.primary === entry.id ? 'Saved primary agent' : backupIndex >= 0 ? `Saved backup ${backupIndex + 1} · automatic switching ${savedAgentPolicy.automatic ? 'enabled' : 'disabled'}` : 'Not in saved project policy';
       const description = document.createElement('p'); description.textContent = `${entry.installation}. Authentication: ${entry.authentication}. Availability: ${entry.availability}.`;
       const capabilities = document.createElement('p'); capabilities.textContent = `Capabilities: ${Object.entries(entry.capabilities || {}).filter(([, enabled]) => enabled === true).map(([name]) => name).join(', ')}`;
-      card.append(title, role, description, capabilities); agentCards.append(card);
+      if(entry.id === 'opencode')role.textContent='Manual tasks only · automatic handoff disabled';
+      const source=document.createElement('p');source.className='provider-source';source.textContent=`Executable: ${entry.command || 'runtime PATH'} · Version: ${entry.version || 'unknown'}`;
+      const defaultModel=document.createElement('p');defaultModel.textContent=`Default model: ${providerCatalogues.get(entry.id)?.defaultModel || 'not yet discovered'}`;
+      card.append(title, role, description, source, defaultModel, capabilities);
+      if(entry.diagnostic){const diagnostic=document.createElement('p');diagnostic.className='provider-diagnostic';diagnostic.textContent=entry.diagnostic;card.append(diagnostic);}
+      const controls=document.createElement('div');controls.className='provider-actions';
+      const action=(label,callback)=>{const button=document.createElement('button');button.type='button';button.textContent=label;button.setAttribute('aria-label',`${label} ${entry.id}`);button.addEventListener('click',callback);controls.append(button);};
+      action('Inspect',()=>vscode.postMessage({type:'agent-diagnostics'}));
+      if(['codex','opencode'].includes(entry.id))action('Models',()=>requestProviderModels(entry.id,undefined,true));
+      if(entry.id==='opencode'){action('Configure path',()=>vscode.postMessage({type:'provider-configure',provider:'opencode'}));action('Setup',()=>vscode.postMessage({type:'provider-setup',provider:'opencode'}));}
+      else action('Setup help',()=>vscode.postMessage({type:'provider-help',provider:entry.id}));
+      card.dataset.provider=entry.id;card.append(controls);agentCards.append(card);
       if (entry.id === 'gemini' && entry.installation !== 'detected') {
         const setup = document.createElement('p');
         setup.textContent = entry.diagnostic || 'Gemini CLI was not found in CODOVYN’s runtime PATH, or this version lacks required headless flags. Install the official CLI or set its absolute executable path in user settings.';
@@ -691,7 +716,7 @@ function renderTasks() {
       inspect.addEventListener('click', () => vscode.postMessage({ type: 'draft-inspect', id: task.id }));
       row.append(draftLabel, inspect);
     } else if (task.status !== 'running') {
-      if (task.status === 'interrupted') {
+      if (task.status === 'interrupted' && task.primaryAgent !== 'opencode') {
         const resume = document.createElement('button'); resume.type = 'button'; resume.textContent = 'Resume safe read task';
         resume.addEventListener('click', () => vscode.postMessage({ type: 'resume-task', id: task.id })); row.append(resume);
       }
@@ -723,7 +748,7 @@ function currentTaskConfiguration() {
   const modelId = taskModel.value || null;
   return { provider, modelId, permission: taskPermission.value,
     routingMode: provider === 'auto' ? (modelId ? 'custom' : taskRouting.value) : 'manual',
-    reasoning: taskReasoning.value || null, intent: compactComposer?.intent || 'ask' };
+    ...(taskModel.selectedOptions[0]?.dataset.source === 'discovered' ? {modelSource:'discovered'} : {}), reasoning: taskReasoning.value || null, intent: compactComposer?.intent || 'ask' };
 }
 run.addEventListener('click', () => {
   if (taskSubmissionId) return;
@@ -917,8 +942,8 @@ const advancedSummary = document.createElement('summary'); advancedSummary.textC
 advancedTaskSettings.append(advancedSummary, taskControls, request.closest('.composer').querySelector('#permission-help'));
 workspacePanels.get('settings').append(advancedTaskSettings, agentSettings, routingSettings, appearance);
 compactComposer = new CodovynComposer({ request, run, cancel, controls: { provider: taskProvider, model: taskModel, permission: taskPermission, routing: taskRouting, reasoning: taskReasoning },
-  getModels: () => taskModelCatalogue,
-  changed: () => { updateLegacyMode(); storeTaskSelection(); },
+  getModels: () => allTaskModels(),
+  changed: () => { updateLegacyMode(); storeTaskSelection(); requestProviderModels(taskProvider.value,taskModel.selectedOptions[0]?.dataset.source==='discovered'?taskModel.value:undefined); },
   settings: () => { activateWorkspaceView('settings'); advancedTaskSettings.open = true; advancedSummary.focus(); },
   setup: () => { activateWorkspaceView('settings'); agentSettings.open = true; inspectAgents.focus(); vscode.postMessage({ type: 'agent-diagnostics' }); },
   manageModels: () => { activateWorkspaceView('settings'); routingSettings.open = true; addModel.focus(); },
@@ -997,7 +1022,7 @@ window.addEventListener('message', ({ data }) => {
     if (data.selectedRoot) { project.value = data.selectedRoot; selectedProjectRoot = data.selectedRoot; }
     project.disabled = !data.projects?.length;
   } else if (data.type === 'project-selected') {
-    codexReasoningMetadata = null; reasoningInspectionRequested = false;
+    codexReasoningMetadata = null; reasoningInspectionRequested = false; providerCatalogues.clear(); requestedCatalogues.clear();
     if (compactComposer) compactComposer.efforts = {};
     taskProvider.value = 'codex'; taskModel.value = ''; taskPermission.value = 'read'; taskRouting.value = 'manual'; taskReasoning.value = '';
     compactComposer?.setIntent('ask');
@@ -1010,6 +1035,19 @@ window.addEventListener('message', ({ data }) => {
     status.textContent = 'Ready';
     empty.textContent = 'Task steps and agent handoffs will appear here.';
     diffOutput.textContent = 'Choose a diff to review.';
+  } else if (data.type === 'provider-models-loading') {
+    policyStatus.textContent = `Inspecting ${data.provider} models. No inference request is started.`;
+  } else if (data.type === 'provider-models') {
+    if(!['codex','opencode'].includes(data.provider))return;
+    const previous=providerCatalogues.get(data.provider);
+    const metadata={...(data.metadata||{})};
+    metadata.models=(Array.isArray(metadata.models)?metadata.models:[]).slice(0,512).map(model=>({...model,reasoning:metadata.selectedModel&&model.model!==metadata.selectedModel?(previous?.models?.find(old=>old.id===model.id)?.reasoning||model.reasoning):model.reasoning}));
+    if(metadata.defaultModel===null&&metadata.selectedModel)metadata.defaultModel=previous?.defaultModel||null;
+    providerCatalogues.set(data.provider,metadata);
+    const card=agentCards.querySelector(`[data-provider="${data.provider}"]`);if(card){const info=card.querySelector('.provider-source')?.nextElementSibling;if(info)info.textContent=`Default model: ${metadata.defaultModel || 'unknown'}`;}
+    const selected=taskModel.value;updateTaskModelControls();if([...taskModel.options].some(option=>option.value===selected))taskModel.value=selected;updateTaskReasoning();
+    if(compactComposer?.modelMenu.matches(':popover-open'))compactComposer.renderModels();
+    policyStatus.textContent=data.text||`${data.provider}: ${metadata.models.length} catalogue entries. Authentication and access remain unverified.`;
   } else if (data.type === 'reasoning-capabilities') {
     codexReasoningMetadata = data.metadata || { models: [], defaultModel: null };
     const previous = taskReasoning.value; updateTaskReasoning();

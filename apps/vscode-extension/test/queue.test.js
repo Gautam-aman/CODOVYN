@@ -9,7 +9,7 @@ import { main } from '../../cli/src/index.js';
 import { TaskStore } from '../../../packages/storage/src/index.js';
 const { createExtension } = createRequire(import.meta.url)('../extension.cjs');
 
-test('host queue persists, revalidates, and dispatches through the existing engine with one durable task identity', async () => {
+for (const provider of ['codex','opencode']) test(`${provider} host queue persists, revalidates, and dispatches through the existing engine with one durable task identity`, async () => {
   const directory = mkdtempSync(join(tmpdir(), 'codovyn-host-queue-'));
   const repository = join(directory, 'repo'); let handler, open; const sent = []; let runs = 0; let routingPolicy = {};
   try {
@@ -25,20 +25,20 @@ test('host queue persists, revalidates, and dispatches through the existing engi
         cspSource: 'x', asWebviewUri: x => x, onDidReceiveMessage: cb => { handler = cb; }, postMessage: message => sent.push(message),
       } }) },
     };
-    const adapter = { id: 'codex', capabilities: { tools: true, streaming: true, writes: false }, availability: async () => 'available',
+    const adapter = { id: provider, capabilities: { tools: true, streaming: true, writes: false }, availability: async () => 'available',
       async *run({ handoff }) { runs++; assert.match(handoff.request, /CODOVYN task mode: Plan/); yield { type: 'text', text: 'A fixture plan' }; yield { type: 'completed' }; } };
     const runner = async (_, args, options) => {
       const saved = {};
       for (const [key, value] of Object.entries(options.env)) { saved[key] = process.env[key]; process.env[key] = value; }
       let result;
       try {
-        await main(args.slice(1), { log: line => { const data = JSON.parse(line); if (data.type === 'event') options.onEvent(data.event, data.taskId); if (data.type === 'result') result = data; }, error: () => {} }, undefined, undefined, { inspectCodexReasoning: async () => ({ defaultModel: 'fixture', models: [{ model: 'fixture', reasoning: ['high'] }] }), createCodexAdapter: options => { assert.equal(options.reasoning, 'high'); return adapter; } });
+        await main(args.slice(1), { log: line => { const data = JSON.parse(line); if (data.type === 'event') options.onEvent(data.event, data.taskId); if (data.type === 'result') result = data; }, error: () => {} }, undefined, undefined, { inspectCodexReasoning: async () => ({ defaultModel: 'fixture', models: [{ model: 'fixture', reasoning: ['high'] }] }), discoverProvider: async () => ({models:[{id:'discovered-opencode-queue',model:'fixture/model',reasoning:['deep']}],defaultModel:'fixture/model'}), createOpenCodeAdapter: options => { assert.equal(options.reasoning,'deep'); assert.equal(options.model,'fixture/model'); return adapter; }, createCodexAdapter: options => { assert.equal(options.reasoning, 'high'); return adapter; } });
         return result;
       } finally { for (const [key, value] of Object.entries(saved)) { if (value === undefined) delete process.env[key]; else process.env[key] = value; } }
     };
     createExtension(api, runner).activate({ extensionUri: 'root', extensionPath: resolve('.'), globalStorageUri: { fsPath: join(directory, 'data') }, subscriptions: [] }); open();
     const requestId = 'queued-host-request-123456';
-    const configuration = { provider: 'codex', modelId: null, permission: 'read', routingMode: 'manual', reasoning: 'high', intent: 'plan' };
+    const configuration = { provider, modelId: provider==='opencode'?'discovered-opencode-queue':null, ...(provider==='opencode'?{modelSource:'discovered'}:{}), permission: 'read', routingMode: 'manual', reasoning: provider==='opencode'?'deep':'high', intent: 'plan' };
     await handler({ type: 'queue-add', requestId, request: 'Plan a test', taskConfiguration: configuration });
     await handler({ type: 'queue-add', requestId, request: 'Plan a test', taskConfiguration: configuration });
     const queue = sent.findLast(message => message.type === 'queue-state'); assert.equal(queue.tasks.length, 1);
@@ -55,6 +55,6 @@ test('host queue persists, revalidates, and dispatches through the existing engi
     const db = new TaskStore(join(directory, 'data', 'private', 'tasks.sqlite'));
     assert.equal(db.get(requestId).request, 'Plan a test');
     assert.equal(db.events(requestId).find(event => event.kind === 'task-configuration').data.intent, 'plan');
-    assert.equal(db.events(requestId).find(event => event.kind === 'task-configuration').data.reasoning, 'high'); db.close();
+    assert.equal(db.events(requestId).find(event => event.kind === 'task-configuration').data.reasoning, configuration.reasoning); db.close();
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });

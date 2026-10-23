@@ -16,6 +16,9 @@ import { TaskEngine } from '../../../packages/task-engine/src/index.js';
 import { commitStaged, createBranch, fetchRemote, pullFastForward, pushCurrentBranch, repositoryDiff, repositorySnapshot, stagePaths } from '../../../packages/git-engine/src/index.js';
 import { createClaudeAdapter, createCodexAdapter, createGeminiAdapter } from '../../../packages/agent-adapters/src/index.js';
 import { validateDraftWorkspace, createDraftWorkspace, reviewDraftWorkspace, acceptDraftWorkspace, rejectDraftWorkspace } from '../../../packages/git-engine/src/draft-workspace.js';
+import { openCodeBoundary } from '../../../packages/agent-adapters/src/opencode-sandbox.js';
+import { discoverProvider, openCodeStateDirectory } from '../../../packages/agent-adapters/src/discovery.js';
+import { createOpenCodeAdapter, inspectOpenCodeInstallation, resolveOpenCodeCommand } from '../../../packages/agent-adapters/src/opencode.js';
 import { inspectCodexReasoning } from '../../../packages/agent-adapters/src/codex-models.js';
 import taskConfigurationSchema from '../../../apps/vscode-extension/task-config.cjs';
 import { createIssue, createPullRequest, issueDetails, listIssues, listPullRequests, listWorkflowRuns, previewPullRequest, pullRequestDetails, pullRequestDiff } from '../../../packages/github-integration/src/index.js';
@@ -107,7 +110,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
   github = { createIssue, createPullRequest, issueDetails, listIssues, listPullRequests, listWorkflowRuns, previewPullRequest, pullRequestDetails, pullRequestDiff },
   adapters = { createCodexAdapter, createClaudeAdapter, createGeminiAdapter }, confirm = confirmAction) {
   const [mode, value, ...rest] = args;
-  if (!['reasoning', 'resume', 'route', 'routed', 'routed-edit', 'agents', 'configured', 'configured-edit', 'demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit', 'draft-continue', 'draft-reconcile', 'draft-abandon', 'draft-inspect', 'draft-review', 'draft-accept', 'draft-reject', 'tasks', 'history', 'task-delete', 'task-prune', 'queue-add', 'queue-list', 'queue-cancel', 'queue-remove', 'queue-reorder', 'queue-pause', 'queue-resume', 'queue-claim', 'queue-update', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'pr-preview', 'pr-create', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
+  if (!['provider-models', 'provider-context', 'opencode', 'opencode-edit', 'reasoning', 'resume', 'route', 'routed', 'routed-edit', 'agents', 'configured', 'configured-edit', 'demo', 'codex', 'claude', 'gemini', 'auto-gemini', 'auto', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit', 'draft-continue', 'draft-reconcile', 'draft-abandon', 'draft-inspect', 'draft-review', 'draft-accept', 'draft-reject', 'tasks', 'history', 'task-delete', 'task-prune', 'queue-add', 'queue-list', 'queue-cancel', 'queue-remove', 'queue-reorder', 'queue-pause', 'queue-resume', 'queue-claim', 'queue-update', 'diff', 'status', 'stage', 'commit', 'branch', 'fetch', 'pull', 'push', 'issues', 'issue', 'prs', 'pr', 'pr-diff', 'pr-preview', 'pr-create', 'runs', 'issue-create'].includes(mode)) { output.error(usage); return 2; }
   const stream = process.env.CODOVYN_EVENT_STREAM === '1';
   const geminiAdapter = options => {
     const command = configuredGeminiCommand();
@@ -119,6 +122,14 @@ export async function main(args = process.argv.slice(2), output = console, signa
   const taskConfiguration = process.env.CODOVYN_TASK_CONFIGURATION
     ? taskConfigurationSchema.validateTaskConfiguration(JSON.parse(process.env.CODOVYN_TASK_CONFIGURATION)) : null;
   if (taskConfiguration && taskConfigurationSchema.resolveTaskMode(taskConfiguration) !== mode) throw new TypeError('Task mode differs from the approved configuration');
+  let providerSelection;
+  if (taskConfiguration?.provider === 'opencode' || taskConfiguration?.modelSource === 'discovered') {
+    const catalogue=await (adapters.discoverProvider || discoverProvider)(taskConfiguration.provider,{cwd:value,dataDirectory,modelId:taskConfiguration.modelId,signal});
+    const selected=catalogue.models.find(entry=>taskConfiguration.modelId ? entry.id===taskConfiguration.modelId : entry.model===catalogue.defaultModel);
+    if (!selected) throw new TypeError('Selected provider model is unavailable in the current catalogue');
+    if (taskConfiguration.reasoning && !selected.reasoning.includes(taskConfiguration.reasoning)) throw new TypeError('Selected provider variant or reasoning setting is unsupported');
+    providerSelection={model:taskConfiguration.modelId?selected.model:undefined,reasoning:taskConfiguration.reasoning||undefined};
+  }
   if (taskConfiguration?.provider === 'codex' && !taskConfiguration.modelId && taskConfiguration.reasoning) {
     const metadata = await (adapters.inspectCodexReasoning || inspectCodexReasoning)({ cwd: value });
     const selected = metadata.models.find(entry => entry.model === metadata.defaultModel);
@@ -151,6 +162,18 @@ export async function main(args = process.argv.slice(2), output = console, signa
     if (json.length > 4096) throw new TypeError('Agent policy exceeds size limit');
     policy = agentPolicy.validateAgentPolicy(JSON.parse(json));
   }
+  if (mode === 'provider-context') {
+    if(!value||rest.length!==1||rest[0]!=='opencode')throw new TypeError('Unsupported provider context');
+    const installation=await inspectOpenCodeInstallation();
+    const stateDirectory=openCodeStateDirectory(dataDirectory,value);
+    const context={...installation,stateDirectory,environment:openCodeBoundary({cwd:value,stateDirectory,command:installation.command}).env};
+    output.log(JSON.stringify(stream?{type:'result',context}:{context}));return 0;
+  }
+  if (mode === 'provider-models') {
+    if(!value||rest.length<1||rest.length>2||!['codex','opencode'].includes(rest[0]))throw new TypeError('Unsupported provider catalogue');
+    const metadata=await discoverProvider(rest[0],{cwd:value,dataDirectory,modelId:rest[1],signal});
+    output.log(JSON.stringify(stream?{type:'result',metadata}:{metadata}));return 0;
+  }
   if (mode === 'reasoning') {
     if (!value || rest.length) { output.error(usage); return 2; }
     const reasoning = await inspectCodexReasoning({ cwd: value });
@@ -171,6 +194,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
             ? error.message : 'CLI inspection failed.' };
       }
     }));
+    try { const installation=await inspectOpenCodeInstallation(); agents.push({id:'opencode',installation:installation.compatible?'detected':'unsupported-version',authentication:'unknown',availability:'unknown',version:installation.version,command:installation.command,executionSupported:process.platform==='darwin',capabilities:{streaming:true,tools:true,writes:process.platform==='darwin',shell:false},diagnostic:process.platform!=='darwin'?'Execution disabled: no verified OS boundary for this platform':!installation.compatible?'Only OpenCode 2.1.2 is verified':'Uses a separate CODOVYN-owned provider context; global authentication is not imported'}); } catch { agents.push({id:'opencode',installation:'not-detected-or-unsupported',authentication:'unknown',availability:'unknown',capabilities:{},diagnostic:'Install OpenCode 2.1.2 or configure its absolute executable path.'}); }
     output.log(JSON.stringify(stream ? { type: 'result', agents } : { agents })); return 0;
   }
   if (mode === 'issue') {
@@ -451,7 +475,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
         : { task, events: store.events(value) }, null, stream ? 0 : 2));
       return 0;
     }
-    const editMode = ['routed-edit', 'configured-edit', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit'].includes(mode);
+    const editMode = ['opencode-edit','routed-edit', 'configured-edit', 'codex-edit', 'claude-edit', 'gemini-edit', 'auto-gemini-edit', 'auto-edit'].includes(mode);
     const allowWrites = editMode && rest.at(-1) === '--allow-writes';
     const request = (allowWrites ? rest.slice(0, -1) : rest).join(' ').trim();
     if (editMode && !allowWrites) { output.error(`${mode} requires --allow-writes`); return 2; }
@@ -494,7 +518,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
       registry.register({ id: 'simulated-backup', capabilities: { writes: false }, availability: async () => 'available',
         async *run({ handoff }) { yield { type: 'completed', text: `Simulated continuation: ${handoff.request}` }; } });
     } else {
-      primaryAgent = mode.startsWith('claude') ? 'claude' : mode.startsWith('gemini') ? 'gemini' : 'codex';
+      primaryAgent = mode.startsWith('opencode') ? 'opencode' : mode.startsWith('claude') ? 'claude' : mode.startsWith('gemini') ? 'gemini' : 'codex';
       if (mode === 'auto' || mode === 'auto-edit') fallbackAgents = ['claude'];
       if (mode === 'auto-gemini' || mode === 'auto-gemini-edit') fallbackAgents = ['gemini'];
       if(routing)primaryAgent=routing.selected.provider;
@@ -502,9 +526,9 @@ export async function main(args = process.argv.slice(2), output = console, signa
         const candidates = agentPolicy.policyCandidates(policy);
         primaryAgent = candidates[0]; fallbackAgents = candidates.slice(1);
       }
-      const factories = { codex: adapters.createCodexAdapter, claude: adapters.createClaudeAdapter, gemini: geminiAdapter };
+      const factories = { opencode: options => (adapters.createOpenCodeAdapter || createOpenCodeAdapter)({...options,stateDirectory:openCodeStateDirectory(dataDirectory,repository),command:process.env.CODOVYN_OPENCODE_COMMAND}), codex: adapters.createCodexAdapter, claude: adapters.createClaudeAdapter, gemini: geminiAdapter };
       for (const provider of [primaryAgent, ...fallbackAgents]) {
-        registry.register(factories[provider]({ cwd: draft?.path || repository, write: !!draft, ...(routing?{model:routing.selected.model,...(routing.selected.reasoning?{reasoning:routing.selected.reasoning}:{})}:{}), ...(provider === 'codex' && !routing && taskConfiguration?.reasoning ? { reasoning: taskConfiguration.reasoning } : {}), ...(provider === 'gemini' && policy?.geminiModel ? { model: policy.geminiModel } : {}) }));
+        registry.register(factories[provider]({ cwd: draft?.path || repository, write: !!draft, ...(providerSelection||{}), ...(routing?{model:routing.selected.model,...(routing.selected.reasoning?{reasoning:routing.selected.reasoning}:{})}:{}), ...(provider === 'codex' && !routing && taskConfiguration?.reasoning ? { reasoning: taskConfiguration.reasoning } : {}), ...(provider === 'gemini' && policy?.geminiModel ? { model: policy.geminiModel } : {}) }));
       }
     }
     }catch(error){if(routing)store.voidUnstartedRoute(id);throw error;}
