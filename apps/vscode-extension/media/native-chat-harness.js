@@ -44,6 +44,10 @@
     picker.querySelector('[data-choice="model:native-fixture-codex"]').click();
     requireValue(model.value === catalogueModel.id && !picker.matches(':popover-open'), 'Model selection did not reach the actual task controls.');
     requireValue(vscode.getState().modelPicker.recent[0] === 'model:native-fixture-codex', 'Recent model selection was not saved.');
+    document.querySelector('#effort-chip').click();
+    requireValue(!document.querySelector('#effort-picker [data-choice=high]'), 'Configured model exposes an undeclared effort.');
+    document.querySelector('#effort-picker [data-choice=low]').click();
+    requireValue(currentTaskConfiguration().modelId === catalogueModel.id && currentTaskConfiguration().reasoning === 'low', 'Manual model effort was not included in its task snapshot.');
     document.querySelector('#model-chip').click();
     search.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
     requireValue(document.activeElement.matches('button[data-choice]'), 'Arrow navigation did not move focus into the model list.');
@@ -78,6 +82,7 @@
     document.querySelector('#model-picker [data-choice="default:codex"]').click();
     requireValue(provider.value === 'codex' && model.value === '', 'Provider Default did not select the actual CLI default.');
     for (let attempt = 0; attempt < 60 && ![...reasoning.options].some(option => option.value === 'high'); attempt++) await pause(50);
+    requireValue(codexReasoningMetadata?.defaultModel === 'native-default', 'Native metadata did not come from the isolated CLI fixture: ' + codexReasoningMetadata?.defaultModel);
     const effortChip = document.querySelector('#effort-chip'); effortChip.click();
     const effortPicker = document.querySelector('#effort-picker');
     requireValue(effortPicker.matches(':popover-open'), 'Inline Effort menu did not open.');
@@ -87,7 +92,7 @@
     requireValue(!effortPicker.matches(':popover-open') && document.activeElement === effortChip, 'Effort selection did not restore focus.');
     effortChip.click();
     effortPicker.querySelector('button').dispatchEvent(new KeyboardEvent('keydown', {key:'End',bubbles:true}));
-    requireValue(document.activeElement.dataset.choice === 'xhigh', 'Effort End navigation failed.');
+    requireValue(document.activeElement.dataset.choice === 'xhigh', 'Effort End navigation failed: ' + document.activeElement?.dataset.choice);
     document.activeElement.dispatchEvent(new KeyboardEvent('keydown', {key:'Escape',bubbles:true}));
     requireValue(!effortPicker.matches(':popover-open') && document.activeElement === effortChip, 'Effort Escape/focus behavior failed.');
     compactComposer.rememberEffort(); provider.value = 'gemini'; provider.dispatchEvent(new Event('change'));

@@ -32,13 +32,13 @@ test('host queue persists, revalidates, and dispatches through the existing engi
       for (const [key, value] of Object.entries(options.env)) { saved[key] = process.env[key]; process.env[key] = value; }
       let result;
       try {
-        await main(args.slice(1), { log: line => { const data = JSON.parse(line); if (data.type === 'event') options.onEvent(data.event, data.taskId); if (data.type === 'result') result = data; }, error: () => {} }, undefined, undefined, { createCodexAdapter: () => adapter });
+        await main(args.slice(1), { log: line => { const data = JSON.parse(line); if (data.type === 'event') options.onEvent(data.event, data.taskId); if (data.type === 'result') result = data; }, error: () => {} }, undefined, undefined, { inspectCodexReasoning: async () => ({ defaultModel: 'fixture', models: [{ model: 'fixture', reasoning: ['high'] }] }), createCodexAdapter: options => { assert.equal(options.reasoning, 'high'); return adapter; } });
         return result;
       } finally { for (const [key, value] of Object.entries(saved)) { if (value === undefined) delete process.env[key]; else process.env[key] = value; } }
     };
     createExtension(api, runner).activate({ extensionUri: 'root', extensionPath: resolve('.'), globalStorageUri: { fsPath: join(directory, 'data') }, subscriptions: [] }); open();
     const requestId = 'queued-host-request-123456';
-    const configuration = { provider: 'codex', modelId: null, permission: 'read', routingMode: 'manual', reasoning: null, intent: 'plan' };
+    const configuration = { provider: 'codex', modelId: null, permission: 'read', routingMode: 'manual', reasoning: 'high', intent: 'plan' };
     await handler({ type: 'queue-add', requestId, request: 'Plan a test', taskConfiguration: configuration });
     await handler({ type: 'queue-add', requestId, request: 'Plan a test', taskConfiguration: configuration });
     const queue = sent.findLast(message => message.type === 'queue-state'); assert.equal(queue.tasks.length, 1);
@@ -54,6 +54,7 @@ test('host queue persists, revalidates, and dispatches through the existing engi
     assert.equal(sent.findLast(message => message.type === 'queue-state').tasks.find(task => task.id === 'changed-policy-request-123').status, 'queued');
     const db = new TaskStore(join(directory, 'data', 'private', 'tasks.sqlite'));
     assert.equal(db.get(requestId).request, 'Plan a test');
-    assert.equal(db.events(requestId).find(event => event.kind === 'task-configuration').data.intent, 'plan'); db.close();
+    assert.equal(db.events(requestId).find(event => event.kind === 'task-configuration').data.intent, 'plan');
+    assert.equal(db.events(requestId).find(event => event.kind === 'task-configuration').data.reasoning, 'high'); db.close();
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });

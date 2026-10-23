@@ -39,7 +39,7 @@ try {
       phase: `chat-${phase}`, args: [fixture, ...nativeProfileArgs(temporary),
         '--disable-workspace-trust', '--skip-welcome', '--skip-release-notes',
         ...(process.env.CODOVYN_HOST_DEBUG_PORT ? [`--remote-debugging-port=${process.env.CODOVYN_HOST_DEBUG_PORT}`] : [])],
-      env: { ...process.env, PATH: `${fixtureBin}:/usr/bin:/bin:/usr/sbin:/sbin`, CODOVYN_NATIVE_CHAT_TEST: '1',
+      env: { ...process.env, VSCODE_CLI: '1', PATH: `${fixtureBin}:/usr/bin:/bin:/usr/sbin:/sbin`, CODOVYN_NATIVE_CHAT_TEST: '1',
         CODOVYN_NATIVE_CHAT_PHASE: phase, CODOVYN_NATIVE_CHAT_DATA_DIR: dataDirectory,
         CODOVYN_NATIVE_CHAT_REPORT: output,
         CODOVYN_NATIVE_CHAT_SCREENSHOT: phase === 'first-launch'

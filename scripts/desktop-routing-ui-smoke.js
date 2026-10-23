@@ -297,6 +297,16 @@ try {
     await mkdir(resolve(process.env.CODOVYN_CAPTURE_DIR), { recursive: true });
     await writeFile(join(resolve(process.env.CODOVYN_CAPTURE_DIR), 'desktop-phase8-chat-transcript.png'), Buffer.from(capture.data, 'base64'));
   }
+  if (process.env.CODOVYN_CAPTURE_DIR) {
+    await selectTab('chat');
+    await evaluate("taskProvider.value = 'codex'; taskModel.value = ''; taskProvider.dispatchEvent(new Event('change')); window.dispatchEvent(new MessageEvent('message', { data: { type: 'reasoning-capabilities', metadata: { source: 'native-screenshot-fixture', defaultModel: 'fixture-default', models: [{ model: 'fixture-default', reasoning: ['low','medium','high','xhigh'] }] } } })); document.querySelector('#effort-chip').click(); document.querySelector('#effort-picker [data-choice=high]').click(); request.value = 'Explain this project with High reasoning'; document.querySelector('#effort-chip').scrollIntoView({ block: 'center', behavior: 'instant' })");
+    assert.equal(await evaluate('currentTaskConfiguration().reasoning'), 'high');
+    const directory = resolve(process.env.CODOVYN_CAPTURE_DIR);
+    await writeFile(join(directory, 'composer-effort-high.png'), Buffer.from((await captureApplication()).data, 'base64'));
+    await evaluate("document.querySelector('#effort-chip').click()");
+    await writeFile(join(directory, 'reasoning-effort-menu.png'), Buffer.from((await captureApplication()).data, 'base64'));
+    await evaluate('compactComposer.close(compactComposer.effortMenu)');
+  }
   await evaluate("window.dispatchEvent(new MessageEvent('message', { data: { type: 'running' } }))");
   await selectTab('activity');
   await evaluate("document.querySelector('#timeline').scrollTop = document.querySelector('#timeline').scrollHeight");
