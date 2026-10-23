@@ -21,7 +21,10 @@ function signalGroup(group, signal) {
 /** Include upstream shared storage: --user-data-dir alone does not isolate it. */
 export function nativeProfileArgs(directory) {
   return ['--user-data-dir', join(directory, 'profile'), '--extensions-dir', join(directory, 'extensions'),
-    '--shared-data-dir', join(directory, 'shared-data')];
+    '--shared-data-dir', join(directory, 'shared-data'),
+    // Test-only Chromium store: never request the user's real Keychain secrets.
+    // Electron uses the same switch for spawned macOS test apps (PR #53790).
+    ...(process.platform === 'darwin' ? ['--use-mock-keychain'] : [])];
 }
 
 /** Keep Ctrl-C/termination inside the same owned cleanup path. */

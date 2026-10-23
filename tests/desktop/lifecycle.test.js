@@ -67,7 +67,7 @@ test('native profiles isolate shared storage as well as settings and extensions'
   const directory = join(tmpdir(), 'owned-profile');
   const args = nativeProfileArgs(directory);
   assert.deepEqual(args, ['--user-data-dir', join(directory, 'profile'), '--extensions-dir', join(directory, 'extensions'),
-    '--shared-data-dir', join(directory, 'shared-data')]);
+    '--shared-data-dir', join(directory, 'shared-data'), ...(process.platform === 'darwin' ? ['--use-mock-keychain'] : [])]);
 });
 
 test('native test cancellation follows verified group cleanup and pre-cancel never spawns', { skip: !posix }, async () => {
