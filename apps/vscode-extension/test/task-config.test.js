@@ -42,3 +42,12 @@ test('Ask and Plan cannot acquire write permission and Agent requires an explici
   assert.equal(resolveTaskMode({ ...base, intent: 'agent', permission: 'read-write' }), 'codex-edit');
   assert.throws(() => validateTaskConfiguration({ ...base, intent: 'agent', permission: 'read' }), /draft-write/);
 });
+
+test('saved composer preferences validate bounded favorites and keep permissions host-validated', () => {
+  const { validateComposerPreferences } = createRequire(import.meta.url)('../task-config.cjs');
+  const input = { version: 1, selection: { provider: 'codex', modelId: null, permission: 'read', routingMode: 'manual', reasoning: null, intent: 'ask' }, favorites: ['default:codex'], recent: ['auto'] };
+  assert.deepEqual(validateComposerPreferences(input).favorites, ['default:codex']);
+  assert.throws(() => validateComposerPreferences({ ...input, favorites: ['command:execute'] }), TypeError);
+  assert.throws(() => validateComposerPreferences({ ...input, selection: { ...input.selection, permission: 'read-write' } }), TypeError);
+  assert.throws(() => validateComposerPreferences({ ...input, recent: Array(100).fill('auto') }), TypeError);
+});

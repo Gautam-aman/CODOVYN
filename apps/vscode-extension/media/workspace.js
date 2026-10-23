@@ -306,6 +306,7 @@ function updateLegacyMode() {
   else if (taskModel.value) agent.value = 'routed' + (editable ? '-edit' : '');
   else agent.value = provider + (editable ? '-edit' : '');
 }
+let restoringComposerPreferences = false;
 function storeTaskSelection() {
   if (!selectedProjectRoot) return;
   const previous = vscode.getState?.();
@@ -316,6 +317,10 @@ function storeTaskSelection() {
     provider: taskProvider.value, modelId: taskModel.value || '', permission: taskPermission.value,
     routingMode: taskRouting.value, reasoning: taskReasoning.value, intent: compactComposer?.intent || 'ask',
   } } });
+  if (!restoringComposerPreferences) {
+    const picker = vscode.getState?.()?.modelPicker || {};
+    vscode.postMessage({ type: 'composer-preferences-save', preferences: { version: 1, selection: currentTaskConfiguration(), favorites: picker.favorites || [], recent: picker.recent || [] } });
+  }
 }
 function restoreTaskSelection() {
   if (!selectedProjectRoot) return;
@@ -800,7 +805,7 @@ chatLog.setAttribute('aria-relevant', 'additions');
 chatLog.tabIndex = 0;
 const chatEmpty = document.createElement('p');
 chatEmpty.className = 'chat-empty';
-chatEmpty.textContent = 'Your project. Your next idea. Start a conversation below.';
+chatEmpty.textContent = 'Ask about this project, or choose Agent to propose edits.';
 chatLog.append(chatEmpty);
 const jumpToLatestChat = document.createElement('button');
 jumpToLatestChat.type = 'button';
@@ -896,7 +901,7 @@ workspacePanels.get('changes').append(document.querySelector('.diff'));
 const advancedTaskSettings = document.createElement('details');
 advancedTaskSettings.className = 'advanced-task-settings';
 const advancedSummary = document.createElement('summary'); advancedSummary.textContent = 'Task preferences';
-advancedTaskSettings.append(advancedSummary, taskControls, document.getElementById('permission-help'));
+advancedTaskSettings.append(advancedSummary, taskControls, request.closest('.composer').querySelector('#permission-help'));
 workspacePanels.get('settings').append(advancedTaskSettings, agentSettings, routingSettings, appearance);
 compactComposer = new CodovynComposer({ request, run, cancel, controls: { provider: taskProvider, model: taskModel, permission: taskPermission, routing: taskRouting, reasoning: taskReasoning },
   getModels: () => taskModelCatalogue,
@@ -978,6 +983,8 @@ window.addEventListener('message', ({ data }) => {
     if (data.selectedRoot) { project.value = data.selectedRoot; selectedProjectRoot = data.selectedRoot; }
     project.disabled = !data.projects?.length;
   } else if (data.type === 'project-selected') {
+    taskProvider.value = 'codex'; taskModel.value = ''; taskPermission.value = 'read'; taskRouting.value = 'manual'; taskReasoning.value = '';
+    compactComposer?.setIntent('ask');
     selectedProjectRoot = project.value;
     currentTaskId = null;
     draftAvailable = false;
@@ -987,6 +994,15 @@ window.addEventListener('message', ({ data }) => {
     status.textContent = 'Ready';
     empty.textContent = 'Task steps and agent handoffs will appear here.';
     diffOutput.textContent = 'Choose a diff to review.';
+  } else if (data.type === 'composer-preferences') {
+    const saved = data.preferences;
+    if (!saved?.selection || !compactComposer || !selectedProjectRoot) return;
+    restoringComposerPreferences = true;
+    const state = vscode.getState?.() || {};
+    const selection = saved.selection;
+    vscode.setState?.({ ...state, modelPicker: { favorites: saved.favorites, recent: saved.recent }, taskSelections: { ...(state.taskSelections || {}), [selectedProjectRoot.slice(0, 1024)]: { ...selection, modelId: selection.modelId || '', reasoning: selection.reasoning || '' } } });
+    compactComposer.favorites = saved.favorites; compactComposer.recent = saved.recent;
+    restoreTaskSelection(); restoringComposerPreferences = false;
   } else if (data.type === 'queue-dispatch') {
     pendingChatRequest = data.request; taskSubmissionId = data.requestId; queueDispatching = true;
   } else if (data.type === 'starting') {

@@ -445,7 +445,9 @@ export async function main(args = process.argv.slice(2), output = console, signa
     const request = (allowWrites ? rest.slice(0, -1) : rest).join(' ').trim();
     if (editMode && !allowWrites) { output.error(`${mode} requires --allow-writes`); return 2; }
     if (!value || !request) { output.error(usage); return 2; }
-    const repository = (await repositorySnapshot(value)).root;
+    const dispatchSnapshot = await repositorySnapshot(value);
+    const repository = dispatchSnapshot.root;
+    if (process.env.CODOVYN_EXPECTED_BASELINE && recoveryFingerprint(dispatchSnapshot) !== process.env.CODOVYN_EXPECTED_BASELINE) throw new Error('Queued repository baseline changed before provider dispatch');
     if (routing && !routing.selected) {
       const id=randomUUID();store.create({id,request,repositoryRoot:repository,primaryAgent:'unselected'});
       store.append(id,'routing-decision',routing);store.update(id,{status:'failed',activeAgent:null,step:0});

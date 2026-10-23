@@ -14,6 +14,7 @@
     const tabs = view => document.querySelector(`[data-workspace-view="${view}"]`);
     requireValue(request && chat && tabs('chat') && tabs('activity'), 'The actual CODOVYN Chat workspace did not initialize.');
     stage('webview-dom-ready');
+    if (phase === 'relaunch') requireValue(compactComposer.favorites.includes('model:native-fixture-codex'), 'Favorite models did not restore from host storage after restart.');
 
     const legacyMode = document.querySelector('#agent');
     const provider = document.querySelector('#task-provider');
@@ -37,7 +38,7 @@
     const search = picker.querySelector('input'); search.value = 'fixture'; search.dispatchEvent(new Event('input'));
     const choice = picker.querySelector('[data-choice="model:native-fixture-codex"]');
     requireValue(choice && picker.querySelectorAll('[data-choice]').length === 1, 'Model search did not filter the configured catalogue.');
-    picker.querySelector('.model-favorite').click();
+    if (picker.querySelector('.model-favorite').getAttribute('aria-pressed') !== 'true') picker.querySelector('.model-favorite').click();
     requireValue(vscode.getState().modelPicker.favorites.includes('model:native-fixture-codex'), 'Favorite model preference was not saved.');
     picker.querySelector('[data-choice="model:native-fixture-codex"]').click();
     requireValue(model.value === catalogueModel.id && !picker.matches(':popover-open'), 'Model selection did not reach the actual task controls.');
@@ -57,6 +58,7 @@
     const compact = document.querySelector('.composer');
     compact.style.width = '260px';
     requireValue(compact.scrollWidth <= 262, 'Compact composer overflows a narrow panel.'); compact.style.width = '';
+    requireValue(!document.querySelector('.composer #permission-help'), 'Advanced permission help still clutters the compact composer.');
     report.compactComposer = true;
     report.composerControls = true;
     stage('separate-composer-controls-verified');

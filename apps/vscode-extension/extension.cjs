@@ -4,7 +4,7 @@ const { lstatSync, statSync } = require('node:fs');
 const { join, resolve } = require('node:path');
 const { StringDecoder } = require('node:string_decoder');
 const { defaultPolicy, validateAgentPolicy } = require('../../packages/agent-core/src/policy.cjs');
-const { validateTaskConfiguration, resolveTaskMode } = require('./task-config.cjs');
+const { validateTaskConfiguration, resolveTaskMode, validateComposerPreferences } = require('./task-config.cjs');
 const { themes, validTheme, themeStyles } = require('./themes.cjs');
 const routingModule = import('../../packages/agent-router/src/index.js');
 
@@ -210,6 +210,11 @@ function createExtension(api, runner = runCli) {
             cwd: folder.uri.fsPath, env: { ...providerEnvironment(api), CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM: '1', ...env }, onChild: () => {}, onEvent: () => {},
           });
         };
+        const composerPreferencesKey = () => `codovyn.composer:${folderForTask()?.uri.fsPath || ''}`;
+        const sendComposerPreferences = () => {
+          try { const saved = context.globalState?.get(composerPreferencesKey()); if (saved) panel.webview.postMessage({ type: 'composer-preferences', preferences: validateComposerPreferences(saved) }); }
+          catch { /* Invalid old preferences never authorize a task. */ }
+        };
         let queueRefreshVersion = 0;
         const refreshQueue = async () => {
           const version = ++queueRefreshVersion;
@@ -221,7 +226,7 @@ function createExtension(api, runner = runCli) {
           if (!message || typeof message !== 'object') return;
           if (message.type === 'cancel') { active?.kill('SIGTERM'); return; }
           if (message.type === 'ready') {
-            sendProjects(); sendAppearance(); sendAgentPolicy(); sendRoutingPolicy(); await refreshTasks(); await refreshQueue();
+            sendProjects(); sendAppearance(); sendAgentPolicy(); sendRoutingPolicy(); sendComposerPreferences(); await refreshTasks(); await refreshQueue();
             if (!disposed && currentPanel === panel) {
               panelReady = true;
               if (pendingPanelSection) {
@@ -229,6 +234,11 @@ function createExtension(api, runner = runCli) {
                 pendingPanelSection = null;
               }
             }
+            return;
+          }
+          if (message.type === 'composer-preferences-save' && folderForTask() && !disposed) {
+            try { await context.globalState?.update(composerPreferencesKey(), validateComposerPreferences(message.preferences)); }
+            catch { panel.webview.postMessage({ type: 'composer-preferences-error', text: 'Could not save composer preferences. Current task permissions are unchanged.' }); }
             return;
           }
           if (message.type === 'queue-list') { await refreshQueue(); return; }
@@ -245,7 +255,7 @@ function createExtension(api, runner = runCli) {
               await refreshQueue();
               queueBusy = false;
               panel.webview.postMessage({ type: 'queue-accepted', requestId: message.requestId, taskId: result.task.id });
-            } catch { panel.webview.postMessage({ type: 'queue-error', text: 'The task could not be queued. Your draft is retained; check the project and task configuration.' }); }
+            } catch (error) { panel.webview.postMessage({ type: 'queue-error', text: error instanceof TypeError ? `Task configuration needs correction: ${error.message}` : 'The task could not be queued. Your draft is retained; check the project and task configuration.' }); }
             finally { queueBusy = false; }
             return;
           }
@@ -271,7 +281,7 @@ function createExtension(api, runner = runCli) {
                   await queueCommand('queue-update', [task.id, 'running', folder.uri.fsPath]);
                   const requestId = randomBytes(16).toString('hex');
                   panel.webview.postMessage({ type: 'queue-dispatch', requestId, request: task.request });
-                  const dispatch = { id: task.id, outcome: 'blocked' };
+                  const dispatch = { id: task.id, baselineFingerprint: task.baselineFingerprint, outcome: 'blocked' };
                   await handleMessage({ type: 'run', requestId, request: task.request, taskConfiguration: configuration }, dispatch);
                   await queueCommand('queue-update', [task.id, dispatch.outcome, folder.uri.fsPath]);
                 } else if (message.type === 'queue-reorder') {
@@ -353,7 +363,7 @@ function createExtension(api, runner = runCli) {
             if (!api.workspace.workspaceFolders?.some((folder) => folder.uri.fsPath === message.root)) return;
             selectedRoot = message.root;
             sendAgentPolicy();
-            sendRoutingPolicy();
+            sendRoutingPolicy(); sendComposerPreferences();
             reviewedDraft = null;
             sendProjects();
             panel.webview.postMessage({ type: 'project-selected' });
@@ -622,7 +632,7 @@ function createExtension(api, runner = runCli) {
             const result = await runner(nodePath, [script, runMode, folder.uri.fsPath, request,
               ...(editMode ? ['--allow-writes'] : [])], {
               cwd: folder.uri.fsPath,
-              env: { ...providerEnvironment(api), CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM: '1', CODOVYN_AGENT_POLICY: JSON.stringify(taskPolicy), ...(taskConfiguration ? { CODOVYN_TASK_CONFIGURATION: JSON.stringify(taskConfiguration) } : {}), ...(ownedQueue ? { CODOVYN_TASK_ID: ownedQueue.id } : {}), ...(taskRouting?{CODOVYN_ROUTING_POLICY:JSON.stringify(taskRouting),CODOVYN_SESSION_ID:routingSession}:{}) },
+              env: { ...providerEnvironment(api), CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM: '1', CODOVYN_AGENT_POLICY: JSON.stringify(taskPolicy), ...(taskConfiguration ? { CODOVYN_TASK_CONFIGURATION: JSON.stringify(taskConfiguration) } : {}), ...(ownedQueue ? { CODOVYN_TASK_ID: ownedQueue.id, CODOVYN_EXPECTED_BASELINE: ownedQueue.baselineFingerprint } : {}), ...(taskRouting?{CODOVYN_ROUTING_POLICY:JSON.stringify(taskRouting),CODOVYN_SESSION_ID:routingSession}:{}) },
               onChild: (child) => { active = child; },
               onEvent: (event, taskId) => {
                 if (!taskAccepted && event.kind === 'execution-owned') {

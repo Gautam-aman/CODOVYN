@@ -21,6 +21,12 @@ try {
   execFileSync('git', ['init', '-q', fixture]);
   execFileSync('git', ['-C', fixture, 'add', '.']);
   execFileSync('git', ['-C', fixture, '-c', 'user.name=CODOVYN Test', '-c', 'user.email=test@example.invalid', 'commit', '-qm', 'native fixture']);
+  // A real installed probe avoids the in-memory global storage forced by
+  // --extensionTestsPath and exercises actual favorite/model persistence.
+  const probe = join(temporary, 'extensions', 'codovyn-tests.native-chat-probe-0.0.0');
+  await mkdir(probe, { recursive: true });
+  await writeFile(join(probe, 'package.json'), JSON.stringify({ name: 'native-chat-probe', publisher: 'codovyn-tests', version: '0.0.0', engines: { vscode: '^1.100.0' }, main: './extension.cjs', activationEvents: ['onStartupFinished'] }));
+  await writeFile(join(probe, 'extension.cjs'), `exports.activate = async () => { try { await require(${JSON.stringify(join(root, 'apps/desktop/host/chat-runner.cjs'))}).run(); } catch (error) { console.error(error); require('node:fs').writeFileSync(process.env.CODOVYN_NATIVE_CHAT_REPORT, JSON.stringify({passed:false,error:error.message})); await require('vscode').commands.executeCommand('workbench.action.quit'); } };`);
   const reports = [];
   for (const phase of ['first-launch', 'relaunch']) {
     const phaseDirectory = join(temporary, phase);
@@ -28,8 +34,6 @@ try {
     const output = join(phaseDirectory, 'chat-result.json');
     await runDesktopProcess({ signal: cancellation.signal, executable: join(app, 'MacOS/CODOVYN'), directory: phaseDirectory,
       phase: `chat-${phase}`, args: [fixture, ...nativeProfileArgs(temporary),
-        '--extensionDevelopmentPath', join(app, 'Resources/app/extensions/codovyn-desktop'),
-        '--extensionTestsPath', join(root, 'apps/desktop/host/chat-runner.cjs'),
         '--disable-workspace-trust', '--skip-welcome', '--skip-release-notes',
         ...(process.env.CODOVYN_HOST_DEBUG_PORT ? [`--remote-debugging-port=${process.env.CODOVYN_HOST_DEBUG_PORT}`] : [])],
       env: { ...process.env, PATH: '/usr/bin:/bin:/usr/sbin:/sbin', CODOVYN_NATIVE_CHAT_TEST: '1',

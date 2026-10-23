@@ -10,6 +10,7 @@ test('CLI queue commands preserve configuration and require an unchanged reposit
   const directory = mkdtempSync(join(tmpdir(), 'codovyn-queue-cli-'));
   const repository = join(directory, 'repo');
   const previousData = process.env.CODOVYN_DATA_DIR;
+  const previousBaseline = process.env.CODOVYN_EXPECTED_BASELINE;
   const data = join(directory, 'data');
   try {
     execFileSync('git', ['init', '-q', '-b', 'main', repository]);
@@ -34,6 +35,12 @@ test('CLI queue commands preserve configuration and require an unchanged reposit
     await call(['queue-resume', repository]);
     writeFileSync(join(repository, 'readme.md'), 'changed after enqueue');
     await assert.rejects(call(['queue-claim', first.value.task.id, repository]), /baseline changed/);
+    process.env.CODOVYN_EXPECTED_BASELINE = first.value.task.baselineFingerprint;
+    let providerConstructed = false;
+    await assert.rejects(main(['codex', repository, 'Do not start against a changed baseline'], { log: () => {}, error: () => {} }, undefined, undefined,
+      { createCodexAdapter: () => { providerConstructed = true; throw new Error('must not launch'); } }), /baseline changed before provider dispatch/);
+    assert.equal(providerConstructed, false);
+    if (previousBaseline === undefined) delete process.env.CODOVYN_EXPECTED_BASELINE; else process.env.CODOVYN_EXPECTED_BASELINE = previousBaseline;
     await call(['queue-reorder', second.value.task.id, '0', repository]);
     assert.equal((await call(['queue-list', repository])).value.tasks[0].id, second.value.task.id);
     await call(['queue-cancel', first.value.task.id, repository]);
@@ -42,6 +49,7 @@ test('CLI queue commands preserve configuration and require an unchanged reposit
   } finally {
     if (previousData === undefined) delete process.env.CODOVYN_DATA_DIR;
     else process.env.CODOVYN_DATA_DIR = previousData;
+    if (previousBaseline === undefined) delete process.env.CODOVYN_EXPECTED_BASELINE; else process.env.CODOVYN_EXPECTED_BASELINE = previousBaseline;
     rmSync(directory, { recursive: true, force: true });
   }
 });

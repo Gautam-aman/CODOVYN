@@ -137,10 +137,10 @@ class CodovynComposer {
     this.controls.model.dispatchEvent(new Event('change'));
     this.recent = [entry.key, ...this.recent.filter(key => key !== entry.key)].slice(0, 8); this.save(); this.refresh(); this.close(this.modelMenu); this.changed();
   }
-  save() { vscode.setState?.({ ...(vscode.getState?.() || {}), modelPicker: { favorites: this.favorites, recent: this.recent } }); }
+  save() { vscode.setState?.({ ...(vscode.getState?.() || {}), modelPicker: { favorites: this.favorites, recent: this.recent } }); this.changed(); }
   refresh() {
     const entry = this.entries().find(entry => entry.key === this.selectedKey());
-    this.modelChip.textContent = `${entry?.label || (this.controls.model.value ? `${this.controls.model.value} · unavailable` : 'Select model')} ⌄`; this.modelChip.title = entry?.detail || 'Model selection needs review';
+    this.modelChip.textContent = `${entry?.label?.replace(' · Provider Default', '').replace(' · Smart Routing', '') || (this.controls.model.value ? `${this.controls.model.value} · unavailable` : 'Select model')} ⌄`; this.modelChip.title = entry?.detail || 'Model selection needs review';
   }
   resize() { this.request.style.height = 'auto'; this.request.style.height = `${Math.min(220, Math.max(72, this.request.scrollHeight))}px`; }
 }
