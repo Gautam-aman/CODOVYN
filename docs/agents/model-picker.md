@@ -22,7 +22,19 @@ CODOVYN does not scrape a CLI's interactive model menu or extract credentials. O
 | Agent | Request a native approval for an isolated edit draft. Review a patch before applying it to the original repository. |
 | Plan | Existing adapter read-only mode plus explicit planning instructions. The original request is preserved in the journal. |
 
-Mode and permission combinations are validated in the host and CLI. Ask and Plan cannot request write permission. Agent never silently bypasses approval, repository checks, execution ownership, or patch review. Advanced reasoning, routing, provider preferences, fallback consent, and existing estimate budgets remain in Settings.
+Mode and permission combinations are validated in the host and CLI. Ask and Plan cannot request write permission. Agent never silently bypasses approval, repository checks, execution ownership, or patch review. Advanced routing, provider preferences, fallback consent, and existing estimate budgets remain in Settings. Reasoning effort is also available beside Model in Chat.
+
+## Choose reasoning effort
+
+Choose **Codex → Provider Default → High** directly in Chat. A catalogue entry is not required. The Effort chip opens a keyboard-accessible menu; Auto / Default omits the override and preserves the CLI configuration. This does not run a task classifier.
+
+For Provider Default, CODOVYN reads the installed Codex app-server's documented `model/list` and `config/read` metadata. It starts no thread or inference turn. Only model IDs and advertised effort levels leave the inspector; raw configuration and credentials are never sent to the webview. This catalogue is not proof of authentication, access or quota. If inspection fails or the configured model is absent, only Auto remains available. Restart Chat's application session after changing an external CLI installation/configuration to refresh this metadata.
+
+Configured Codex models use their declared catalogue effort list. Minimal and Extra High (`xhigh`) appear only when supported metadata lists them; other advertised levels retain their actual names. Gemini and Claude expose only Auto because these adapters cannot enforce an effort override. OpenCode/OpenRouter remain unimplemented.
+
+Selections are saved per project/model. Switching to an unsupported provider resets the active effort to Auto; returning to a supported model restores its saved choice. Accepted and queued tasks keep their original settings. Changing the picker affects future requests. Default-model capabilities are checked again at dispatch; a changed or unsupported explicit choice fails before inference rather than being silently ignored. The Codex adapter passes `--config model_reasoning_effort="high"` independently of `--model`, while preserving the existing sandbox and approvals. Task Activity/history labels this as the requested effort, not provider-reported reasoning usage.
+
+See the [native validation report](../development/reasoning-effort-validation.md) and [real application menu capture](../assets/reasoning-effort/reasoning-effort-menu.png).
 
 ## Send and keep working
 
