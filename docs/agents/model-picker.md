@@ -6,13 +6,13 @@ Open **CODOVYN: Open Chat** from the command palette or the Chat icon in the nat
 
 The model chip opens a searchable, keyboard-accessible popover. Arrow keys move between choices, Enter selects, and Escape closes the menu and returns focus. Favorite and recent choices are stored by the host for the project and restored after restart.
 
-- **Provider Default** delegates model choice to the installed Codex, Gemini, or Claude CLI. No model override is supplied.
+- **Provider Default** delegates model choice to the installed Codex, OpenCode, Gemini, or Claude CLI. No model override is supplied.
 - **Auto** uses the project's saved routing policy. It requires eligible catalogue entries and does not invent model access, pricing, or quality evidence.
 - **Configured models** come from the saved local catalogue in **Manage models…**. Codex and Gemini overrides reach their existing CLI selectors. Explicit Claude model overrides remain disabled because this adapter does not implement them.
 - A detected CLI is not proof of authentication or quota. Opening the picker can inspect CLI installation through the existing bounded diagnostics; it does not issue an inference request.
 - Missing or unavailable selections are shown explicitly. The host validates every task and rejects unsupported combinations.
 
-CODOVYN does not scrape a CLI's interactive model menu or extract credentials. OpenCode and OpenRouter are not integrated in this build, so they are not presented as connected providers. Manually entered catalogue IDs remain an advanced option, not a prerequisite for Provider Default.
+CODOVYN does not scrape a CLI's interactive model menu or extract credentials. Codex metadata and the guarded OpenCode catalogue can populate discovered entries. OpenCode requires its separate provider context; see the [setup and safety guide](opencode.md). OpenRouter is not integrated. Manually entered catalogue IDs remain an advanced option, not a prerequisite for Provider Default.
 
 ## Choose a mode
 
@@ -30,7 +30,7 @@ Choose **Codex → Provider Default → High** directly in Chat. A catalogue ent
 
 For Provider Default, CODOVYN reads the installed Codex app-server's documented `model/list` and `config/read` metadata. It starts no thread or inference turn. Only model IDs and advertised effort levels leave the inspector; raw configuration and credentials are never sent to the webview. This catalogue is not proof of authentication, access or quota. If inspection fails or the configured model is absent, only Auto remains available. Restart Chat's application session after changing an external CLI installation/configuration to refresh this metadata.
 
-Configured Codex models use their declared catalogue effort list. Minimal and Extra High (`xhigh`) appear only when supported metadata lists them; other advertised levels retain their actual names. Gemini and Claude expose only Auto because these adapters cannot enforce an effort override. OpenCode/OpenRouter remain unimplemented.
+Configured Codex models use their declared catalogue effort list. Minimal and Extra High (`xhigh`) appear only when supported metadata lists them; other advertised levels retain their actual names. Gemini and Claude expose only Auto because these adapters cannot enforce an effort override. OpenCode exposes only its selected model’s advertised provider-specific variants, confirmed through ACP; OpenRouter remains unimplemented.
 
 Selections are saved per project/model. Switching to an unsupported provider resets the active effort to Auto; returning to a supported model restores its saved choice. Accepted and queued tasks keep their original settings. Changing the picker affects future requests. Default-model capabilities are checked again at dispatch; a changed or unsupported explicit choice fails before inference rather than being silently ignored. The Codex adapter passes `--config model_reasoning_effort="high"` independently of `--model`, while preserving the existing sandbox and approvals. Task Activity/history labels this as the requested effort, not provider-reported reasoning usage.
 

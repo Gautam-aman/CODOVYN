@@ -160,6 +160,8 @@ To inspect the outgoing diff without creating anything, use `node apps/cli/src/i
 
 To build a local VS Code extension archive, run `npm ci --ignore-scripts` and `npm run package:extension`. This produces `codovyn-dev.vsix`. Install it through VS Code's **Extensions → Install from VSIX…** action, open a Git repository folder, and run **CODOVYN: Open Agent Workspace** from the Command Palette. The panel streams task activity and lists saved tasks for that repository. The extension needs a Node.js 26 executable on your `PATH`; set `codovyn.nodePath` if necessary. The `codovyn-local` publisher identifier is for development packaging and is not a verified Marketplace publisher.
 
+See the [OpenCode connection guide](docs/agents/opencode.md) for version restrictions, private setup, model discovery and execution limitations.
+
 ## Agent compatibility
 
 | Agent | Authentication | Current behavior | Status |
@@ -168,7 +170,8 @@ To build a local VS Code extension archive, run `npm ci --ignore-scripts` and `n
 | OpenAI Codex CLI | Existing CLI authentication | Read-only tasks or approved worktree edits, structured tool activity; no session resume | Simulated tests and one authenticated read-only and one draft edit run verified on macOS |
 | Claude Code CLI | Existing CLI authentication | Read-only tasks or restricted worktree edits; no session resume or confirmed quota detection | Simulated tests only; CLI absent locally |
 | Gemini CLI | Official CLI authentication | Experimental restricted read/file-edit tasks, streaming and explicit Codex-to-Gemini fallback | CLI 0.65.0 invocation checked; authentication missing (exit 41). Fixture handoff tested; live Gemini tasks unverified |
-| OpenCode, ACP, local providers | Provider-specific | None yet | Planned |
+| OpenCode 2.1.2 | Separate CODOVYN-owned CLI context | Guarded macOS ACP, discovered models/variants, isolated reviewed drafts | Experimental; live inference gate pending |
+| OpenRouter, local providers | Provider-specific | None yet | Planned |
 
 The [Codex CLI reference](https://learn.chatgpt.com/docs/developer-commands?surface=cli) documents `codex exec --json` and read-only sandbox mode. [Claude Code's CLI reference](https://code.claude.com/docs/en/cli-reference) documents structured streaming and restricted tools. Neither adapter assumes that an unstructured error message proves quota exhaustion.
 
