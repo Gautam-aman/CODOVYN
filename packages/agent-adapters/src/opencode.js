@@ -1,5 +1,4 @@
-import { execFile, spawn } from 'node:child_process';
-import { promisify } from 'node:util';
+import { spawn } from 'node:child_process';
 import { realpathSync, statSync, constants, accessSync, lstatSync } from 'node:fs';
 import { join, delimiter, isAbsolute, resolve, relative, dirname } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -9,16 +8,15 @@ import { manageAgentProcess } from './process.js';
 import { openCodeBoundary } from './opencode-sandbox.js';
 import { AgentFailure } from '../../agent-core/src/index.js';
 import { createHandoffPacket } from '../../agent-core/src/handoff.js';
-const execute = promisify(execFile);
 async function ownedOutput(command,args,options) {
   const controller=new AbortController();
   const child=spawn(command,args,{cwd:options.cwd,env:options.env,shell:false,detached:process.platform!=='win32',stdio:['pipe','pipe','pipe']});
   const lifecycle=manageAgentProcess(child,controller.signal);child.stdin.end();
   const abort=()=>controller.abort();options.signal?.addEventListener('abort',abort,{once:true});if(options.signal?.aborted)abort();
-  const timer=setTimeout(()=>controller.abort(),15000);let chunks=[],size=0,stderr=0;
+  const timer=setTimeout(()=>controller.abort(),options.timeoutMs||15000);let chunks=[],size=0,stderr=0;
   child.stderr.on('data',chunk=>{stderr+=chunk.length;if(stderr>1048576)controller.abort();});
   try{
-    for await(const chunk of child.stdout){size+=chunk.length;if(size>262144)throw new AgentFailure('fatal','OpenCode catalogue exceeded its byte bound');chunks.push(chunk);}
+    for await(const chunk of child.stdout){size+=chunk.length;if(size>(options.maxBytes||262144))throw new AgentFailure('fatal','OpenCode catalogue exceeded its byte bound');chunks.push(chunk);}
     const code=await lifecycle.closed;
     if(controller.signal.aborted||lifecycle.error()||code!==0)throw new AgentFailure('fatal','OpenCode metadata inspection failed or timed out');
     return Buffer.concat(chunks).toString('utf8');
@@ -36,7 +34,7 @@ export function resolveOpenCodeCommand(configured = process.env.CODOVYN_OPENCODE
 }
 export async function inspectOpenCodeInstallation(configured) {
   const command=resolveOpenCodeCommand(configured);
-  let stdout;try{({stdout}=await execute(command,['--version'],{timeout:5000,maxBuffer:4096,env:{PATH:'/usr/bin:/bin',HOME:process.env.HOME},shell:false}));}catch{throw new AgentFailure('fatal','OpenCode version inspection failed');}
+  let stdout;try{stdout=await ownedOutput(command,['--version'],{timeoutMs:5000,maxBytes:4096,env:{PATH:'/usr/bin:/bin',HOME:process.env.HOME}});}catch{throw new AgentFailure('fatal','OpenCode version inspection failed');}
   const match=/^(?:opencode(?: v|\s+))?(\d+\.\d+\.\d+)\s*$/.exec(stdout.trim());
   if(!match)throw new AgentFailure('fatal','Unrecognized OpenCode CLI version response');
   return {command,version:match[1],compatible:match[1]===openCodeVersion};
@@ -73,6 +71,8 @@ async function begin(connection,cwd,model,variant,write) {
   if(!optionValues(configOption(session,'mode')).some(entry=>entry.value===mode))throw new AgentFailure('fatal','OpenCode cannot enforce the requested task mode');
   const selectedMode=await connection.request('session/set_config_option',{sessionId:session.sessionId,configId:'mode',value:mode});
   if(configOption(selectedMode,'mode')?.currentValue!==mode)throw new AgentFailure('fatal','OpenCode did not confirm the requested task mode');
+  session={...session,...selectedMode};
+  if((model && configOption(session,'model')?.currentValue!==model)||(variant && configOption(session,'effort')?.currentValue!==variant))throw new AgentFailure('fatal','OpenCode changed the accepted model or variant while setting task mode');
   return session;
 }
 function scopePath(cwd,path,write) {

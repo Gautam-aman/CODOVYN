@@ -3,13 +3,20 @@ import assert from 'node:assert/strict';
 import { mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync,realpathSync,symlinkSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';import {join}from'node:path';
-import {parseOpenCodeModels,createOpenCodeAdapter,resolveOpenCodeCommand}from'../src/opencode.js';
+import {parseOpenCodeModels,createOpenCodeAdapter,resolveOpenCodeCommand,inspectOpenCodeInstallation}from'../src/opencode.js';
 import {openCodeBoundary}from'../src/opencode-sandbox.js';
 
 test('OpenCode catalogue parser bounds plain machine output without terminal scraping or invented access',()=>{
  const list=parseOpenCodeModels('provider/model\nprovider/model\nother/family/model\n');assert.equal(list.length,2);assert.equal(list[0].availability,'unknown');assert.equal(list[0].source,'discovered');
  for(const input of ['\x1b[32mprovider/model','Models available: provider/model','token=secret','x'.repeat(262145),Array(513).fill('p/model').join('\n')])assert.throws(()=>parseOpenCodeModels(input));
  assert.throws(()=>resolveOpenCodeCommand('relative/path'));assert.throws(()=>resolveOpenCodeCommand('/missing/opencode'));
+});
+test('OpenCode installation diagnostics reject incompatible versions and malformed output',async()=>{
+ const directory=mkdtempSync(join(tmpdir(),'codovyn-opencode-version-'));
+ try {for(const [output,expected] of [['2.1.2',true],['2.1.1',false],['unrecognized',null]]) {
+  const command=join(directory,'opencode');writeFileSync(command,'#!'+process.execPath+'\nconsole.log('+JSON.stringify(output)+')',{mode:0o700});
+  if(expected===null)await assert.rejects(inspectOpenCodeInstallation(command),/Unrecognized/);else assert.equal((await inspectOpenCodeInstallation(command)).compatible,expected);
+ }}finally{rmSync(directory,{recursive:true,force:true});}
 });
 test('macOS boundary blocks original writes, private external reads, symlink escapes, Git mutations and shell execution', {skip:process.platform!=='darwin'},()=>{
  const temp=mkdtempSync(join(tmpdir(),'codovyn-opencode-boundary-'));const repo=join(temp,'repo'),state=join(temp,'state'),outside=join(temp,'outside');mkdirSync(repo);writeFileSync(outside,'private');writeFileSync(join(repo,'file'),'baseline');mkdirSync(join(repo,'.git'));writeFileSync(join(repo,'.env'),'secret');symlinkSync(outside,join(repo,'escape'));
@@ -21,9 +28,10 @@ test('macOS boundary blocks original writes, private external reads, symlink esc
    assert.equal(result.blocked,7);assert.equal(result.local,write);assert.equal(readFileSync(outside,'utf8'),'private');
   }
   assert.throws(()=>openCodeBoundary({cwd:repo,stateDirectory:temp,command:process.execPath}),/outside/);
+  writeFileSync(join(repo,'opencode.json'),'{}');assert.throws(()=>openCodeBoundary({cwd:repo,stateDirectory:state,command:process.execPath}),/refuses project/);
  }finally{rmSync(temp,{recursive:true,force:true});}
 });
-const fixture=(behavior='success')=>`const rl=require('readline').createInterface({input:process.stdin});let currentModel='p/default',effort='default',mode='plan';const config=()=>[{id:'model',type:'select',currentValue:currentModel,options:[{value:'p/default'},{value:'p/model'}]},{id:'effort',type:'select',currentValue:effort,options:[{value:'default'},{value:'deep'}]},{id:'mode',type:'select',currentValue:mode,options:[{value:'plan'},{value:'build'}]}];const send=m=>console.log(JSON.stringify({jsonrpc:'2.0',...m}));rl.on('line',line=>{const m=JSON.parse(line);if(m.method==='initialize')send({id:m.id,result:{protocolVersion:1}});else if(m.method==='session/new')send({id:m.id,result:{sessionId:'fixture-session',configOptions:config()}});else if(m.method==='session/set_config_option'){if(m.params.configId==='model')currentModel=m.params.value;if(m.params.configId==='effort')effort=m.params.value;if(m.params.configId==='mode')mode=m.params.value;send({id:m.id,result:{configOptions:config()}});}else if(m.method==='session/prompt'){${behavior==='hang'?"return;":behavior==='violation'?"send({id:'permission',method:'session/request_permission',params:{sessionId:'fixture-session',toolCall:{kind:'execute',locations:[]},options:[{kind:'allow_once',optionId:'once'}]}});send({id:m.id,result:{stopReason:'end_turn'}});":"send({method:'session/update',params:{sessionId:'fixture-session',update:{sessionUpdate:'agent_message_chunk',content:{type:'text',text:currentModel+' '+effort}}}});send({id:m.id,result:{stopReason:'end_turn'}});"}}});`;
+const fixture=(behavior='success')=>`const rl=require('readline').createInterface({input:process.stdin});let currentModel='p/default',effort='default',mode='plan';const config=()=>[{id:'model',type:'select',currentValue:currentModel,options:[{value:'p/default'},{value:'p/model'}]},{id:'effort',type:'select',currentValue:effort,options:[{value:'default'},{value:'deep'}]},{id:'mode',type:'select',currentValue:mode,options:[{value:'plan'},{value:'build'}]}];const send=m=>console.log(JSON.stringify({jsonrpc:'2.0',...m}));rl.on('line',line=>{const m=JSON.parse(line);if(m.method==='initialize')send({id:m.id,result:{protocolVersion:1}});else if(m.method==='session/new')send({id:m.id,result:{sessionId:'fixture-session',configOptions:config()}});else if(m.method==='session/set_config_option'){if(m.params.configId==='model')currentModel=m.params.value;if(m.params.configId==='effort')effort=m.params.value;if(m.params.configId==='mode'){mode=m.params.value;if(${JSON.stringify(behavior==='mode-reset')})effort='default';}send({id:m.id,result:{configOptions:config()}});}else if(m.method==='session/prompt'){${behavior==='hang'?"return;":behavior==='violation'?"send({id:'permission',method:'session/request_permission',params:{sessionId:'fixture-session',toolCall:{kind:'execute',locations:[]},options:[{kind:'allow_once',optionId:'once'}]}});send({id:m.id,result:{stopReason:'end_turn'}});":"send({method:'session/update',params:{sessionId:'fixture-session',update:{sessionUpdate:'agent_message_chunk',content:{type:'text',text:currentModel+' '+effort}}}});send({id:m.id,result:{stopReason:'end_turn'}});"}}});`;
 function adapter(repo,behavior,extra={}){const runtime={inspect:async()=>({compatible:true,command:process.execPath}),boundary:()=>({command:process.execPath,prefixArgs:['-e',fixture(behavior)],cwd:realpathSync(repo),env:process.env})};return createOpenCodeAdapter({cwd:repo,stateDirectory:join(repo,'unused'),model:'p/model',reasoning:'deep',...extra},runtime);}
 test('OpenCode ACP applies exact model/variant and normalizes streamed completion',async()=>{
  const agent=adapter(process.cwd(),'success');const events=[];
@@ -33,6 +41,7 @@ test('OpenCode ACP applies exact model/variant and normalizes streamed completio
 test('OpenCode refuses unsupported model/variant and denied execution never reports completion',async()=>{
  for(const extra of [{model:'p/missing'},{reasoning:'invented'}])await assert.rejects(async()=>{for await(const event of adapter(process.cwd(),'success',extra).run({handoff:{request:'Explain',snapshot:{}}})){}},/unsupported|not advertised/);
  await assert.rejects(async()=>{for await(const event of adapter(process.cwd(),'violation').run({handoff:{request:'Explain',snapshot:{}}})){}},/permission request was denied/);
+ await assert.rejects(async()=>{for await(const event of adapter(process.cwd(),'mode-reset').run({handoff:{request:'Explain',snapshot:{}}})){}},/changed the accepted/);
  assert.throws(()=>createOpenCodeAdapter({cwd:process.cwd(),write:true}),/isolated/);
 });
 test('OpenCode cancellation stops owned ACP process and cannot be mistaken for completion',async()=>{
