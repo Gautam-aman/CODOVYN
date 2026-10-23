@@ -1,5 +1,7 @@
 # Premium IDE and task configuration validation
 
+Historical checkpoint. The [premium composer follow-up](premium-composer-validation.md) integrates the queue UI and dispatch, normal-launch preference persistence, and a verified replacement development artifact.
+
 Date: 2026-10-23
 
 ## Repository and validation scope
