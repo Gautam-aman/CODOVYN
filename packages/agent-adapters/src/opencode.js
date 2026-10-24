@@ -29,6 +29,17 @@ export function openCodeProjectReadiness(cwd) {
   for(;;){if(statExists(join(directory,'.git')))return {executionSupported:false,diagnostic:'OpenCode 2.1.2 Git-backed execution is blocked: repository discovery requires git subprocesses denied by CODOVYN. A verified read-only discovery bridge is required; authentication cannot resolve this boundary.'};const parent=dirname(directory);if(parent===directory)break;directory=parent;}
   return {executionSupported:process.platform==='darwin'&&process.arch==='arm64',diagnostic:'Non-Git metadata inspection only; this does not prove authenticated Git-backed execution.'};
 }
+/** Installation, process-policy compatibility and authentication are separate facts.
+ * Never promote a cached catalogue or a successful --version into readiness. */
+export function openCodeProviderStatus(installation,cwd) {
+  const compatible=installation?.compatible===true&&installation.version===openCodeVersion;
+  const project=openCodeProjectReadiness(cwd);
+  return {executionSupported:compatible&&project.executionSupported,
+    compatibility:compatible?'version-compatible':'unsupported-version',
+    readiness:!compatible?'blocked-version':!project.executionSupported?'blocked-project-boundary':'initialization-unverified',
+    metadataInitialization:'not-verified',authentication:'unknown',availability:'unknown',
+    diagnostic:!compatible?'Only OpenCode 2.1.2 is verified; this executable cannot run CODOVYN tasks.':project.diagnostic};
+}
 function requireProjectReadiness(cwd){const readiness=openCodeProjectReadiness(cwd);if(!readiness.executionSupported)throw new AgentFailure('fatal',readiness.diagnostic);}
 
 const modelName = value => typeof value === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,255}$/.test(value) && value.includes('/');

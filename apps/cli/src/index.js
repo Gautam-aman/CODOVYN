@@ -21,7 +21,7 @@ import { createClaudeAdapter, createCodexAdapter, createGeminiAdapter } from '..
 import { validateDraftWorkspace, createDraftWorkspace, reviewDraftWorkspace, acceptDraftWorkspace, rejectDraftWorkspace } from '../../../packages/git-engine/src/draft-workspace.js';
 import { openCodeBoundary } from '../../../packages/agent-adapters/src/opencode-sandbox.js';
 import { discoverProvider, openCodeStateDirectory } from '../../../packages/agent-adapters/src/discovery.js';
-import { createOpenCodeAdapter, inspectOpenCodeInstallation, resolveOpenCodeCommand, openCodeProjectReadiness } from '../../../packages/agent-adapters/src/opencode.js';
+import { createOpenCodeAdapter, inspectOpenCodeInstallation, resolveOpenCodeCommand, openCodeProviderStatus } from '../../../packages/agent-adapters/src/opencode.js';
 import { inspectCodexReasoning } from '../../../packages/agent-adapters/src/codex-models.js';
 import taskConfigurationSchema from '../../../apps/vscode-extension/task-config.cjs';
 import { createIssue, createPullRequest, issueDetails, listIssues, listPullRequests, listWorkflowRuns, previewPullRequest, pullRequestDetails, pullRequestDiff } from '../../../packages/github-integration/src/index.js';
@@ -201,7 +201,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
             ? error.message : 'CLI inspection failed.' };
       }
     }));
-    try { const installation=await inspectOpenCodeInstallation(); agents.push({id:'opencode',installation:installation.compatible?'detected':'unsupported-version',authentication:'unknown',availability:'unknown',version:installation.version,command:installation.command,...openCodeProjectReadiness(value),capabilities:{streaming:true,tools:true,writes:process.platform==='darwin',shell:false},diagnostic:!installation.compatible?'Only OpenCode 2.1.2 is verified':openCodeProjectReadiness(value).diagnostic}); } catch { agents.push({id:'opencode',installation:'not-detected-or-unsupported',authentication:'unknown',availability:'unknown',capabilities:{},diagnostic:'Install OpenCode 2.1.2 or configure its absolute executable path.'}); }
+    try { const installation=await inspectOpenCodeInstallation(); agents.push({id:'opencode',installation:installation.compatible?'detected':'unsupported-version',version:installation.version,command:installation.command,...openCodeProviderStatus(installation,value),capabilities:{streaming:true,tools:true,writes:process.platform==='darwin',shell:false}}); } catch { agents.push({id:'opencode',installation:'not-detected-or-unsupported',authentication:'unknown',availability:'unknown',capabilities:{},diagnostic:'Install OpenCode 2.1.2 or configure its absolute executable path.'}); }
     output.log(JSON.stringify(stream ? { type: 'result', agents } : { agents })); return 0;
   }
   if (mode === 'issue') {

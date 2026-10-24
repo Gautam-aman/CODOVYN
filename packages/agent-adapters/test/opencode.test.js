@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync,realpathSync,symlinkSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';import {join}from'node:path';
-import {openCodeProjectReadiness,parseOpenCodeModels,createOpenCodeAdapter,resolveOpenCodeCommand,inspectOpenCodeInstallation}from'../src/opencode.js';
+import {openCodeProviderStatus,openCodeProjectReadiness,parseOpenCodeModels,createOpenCodeAdapter,resolveOpenCodeCommand,inspectOpenCodeInstallation}from'../src/opencode.js';
 import {createContextFlow,digest} from '../../agent-core/src/contextflow.js';
 import {openCodeBoundary}from'../src/opencode-sandbox.js';
 
@@ -64,5 +64,18 @@ test('OpenCode Git repository readiness fails closed before any prompt or execut
  const d=mkdtempSync(join(tmpdir(),'codovyn-opencode-git-readiness-'));const project=join(d,'project');mkdirSync(project);let launched=false;
  try{assert.equal(openCodeProjectReadiness(project).executionSupported,process.platform==='darwin'&&process.arch==='arm64');mkdirSync(join(project,'.git'));mkdirSync(join(project,'src'));assert.equal(openCodeProjectReadiness(join(project,'src')).executionSupported,false);assert.match(openCodeProjectReadiness(project).diagnostic,/git subprocesses denied/);
  const agent=createOpenCodeAdapter({cwd:project,stateDirectory:join(d,'state')},{inspect:async()=>({compatible:true,command:process.execPath}),boundary:openCodeBoundary});assert.equal(await agent.availability(),'unavailable');await assert.rejects(async()=>{for await(const event of agent.run({handoff:{request:'Explain'},execution:{starting(){launched=true;}}})){}},/Git-backed execution is blocked/);assert.equal(launched,false);
+ }finally{rmSync(d,{recursive:true,force:true});}
+});
+
+
+test('OpenCode diagnostics cannot promote unsupported versions or cached metadata into readiness',()=>{
+ const d=mkdtempSync(join(tmpdir(),'codovyn-opencode-readiness-version-'));
+ try{
+  for(const installation of [{version:'2.1.1',compatible:false},{version:'2.1.3',compatible:true},{version:'2.1.2',compatible:false}]){
+   const status=openCodeProviderStatus({...installation,defaultModel:'cached/not-proof',authentication:'authenticated'},d);
+   assert.equal(status.executionSupported,false);assert.equal(status.readiness,'blocked-version');assert.equal(status.authentication,'unknown');assert.equal(status.metadataInitialization,'not-verified');assert.equal(status.availability,'unknown');
+  }
+  const unverified=openCodeProviderStatus({version:'2.1.2',compatible:true},d);assert.equal(unverified.readiness,process.platform==='darwin'&&process.arch==='arm64'?'initialization-unverified':'blocked-project-boundary');
+  mkdirSync(join(d,'.git'));const blocked=openCodeProviderStatus({version:'2.1.2',compatible:true},d);assert.equal(blocked.executionSupported,false);assert.equal(blocked.readiness,'blocked-project-boundary');assert.equal(blocked.compatibility,'version-compatible');
  }finally{rmSync(d,{recursive:true,force:true});}
 });
