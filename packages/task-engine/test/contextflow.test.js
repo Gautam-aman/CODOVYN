@@ -47,3 +47,11 @@ test('pending transfer fences queue dispatch and cancellation consumes approval 
  const result=await new TaskEngine({store:f.store,registry,snapshot:()=>repositorySnapshot(f.repo)}).run('transfer-task',{signal:controller.signal,contextFlow:{id:t.id,hash:t.hash}});assert.equal(result.status,'cancelled');assert.equal(runs,0);assert.equal(f.store.contextFlowTransfer(t.id).status,'cancelled');assert.ok(f.store.executionLease('transfer-task').releasedAt);
  }finally{f.store.close();rmSync(f.dir,{recursive:true,force:true});}
 });
+
+test('automatic preparation considers only the latest Codex interruption and never revives historical eligibility',()=>{
+ const task={primaryAgent:'codex',activeAgent:'codex'};
+ for(const older of [{kind:'agent-unavailable',data:{agent:'codex'}},{kind:'agent-failed',data:{agent:'codex',kind:'quota'}}]) {
+  const events=[older,{kind:'agent-failed',data:{agent:'codex',kind:'fatal'}}];assert.throws(()=>contextFlowReason(task,events),/confirmed/);assert.equal(contextFlowReason(task,events,true),'user-requested-switch');
+ }
+ assert.equal(contextFlowReason(task,[{kind:'agent-failed',data:{agent:'codex',kind:'fatal'}},{kind:'agent-unavailable',data:{agent:'codex'}}]),'unavailable');
+});

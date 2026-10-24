@@ -10,9 +10,9 @@ export function contextFlowReason(task,events,manual=false) {
  if(task.activeAgent!=='codex'&&task.primaryAgent!=='codex')throw new Error('Initial ContextFlow supports Codex to OpenCode only');
  if(task.activeAgent&&task.activeAgent!=='codex')throw new Error('This task is no longer at a Codex boundary');
  if(manual)return 'user-requested-switch';
- const failure=events.findLast(event=>event.kind==='agent-failed'&&event.data.agent==='codex');
+ const failure=events.findLast(event=>['agent-failed','agent-unavailable'].includes(event.kind)&&event.data.agent==='codex');
+ if(failure?.kind==='agent-unavailable')return 'unavailable';
  if(failure&&['quota','authentication','temporary'].includes(failure.data.kind))return failure.data.kind;
- if(events.findLast(event=>event.kind==='agent-unavailable'&&event.data.agent==='codex'))return 'unavailable';
  throw new Error('No confirmed eligible interruption; unknown failures require explicit manual review');
 }
 export async function contextFlowWorkspace(store,task,dataDirectory) {
