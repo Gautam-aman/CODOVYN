@@ -1,0 +1,10 @@
+{
+  "inferenceRequests": 0,
+  "productionBoundary": true,
+  "metadataCommand": "models --standalone",
+  "code": 1,
+  "gitSpawnDenied": true,
+  "elapsedMs": 901.941875,
+  "pid": 50916,
+  "survivors": []
+}

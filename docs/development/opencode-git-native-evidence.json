@@ -1,0 +1,203 @@
+{
+  "builtSourceCommit": "ad57d6a7bfccccc9aed133da4a0c1d49ba244c62",
+  "sourceDirty": false,
+  "dmgSha256": "8d082ee63ac7da0eea3bd62b781e099633425033ee16d64275a962efba6970b4",
+  "sourceTests": {
+    "check": {
+      "tests": 255,
+      "passed": 255,
+      "failed": 0,
+      "skipped": 0
+    },
+    "extensionHost": "passed on VS Code 1.143.1",
+    "nativeHost": "passed",
+    "nativeChat": "passed two launches with real blocked-provider status; conversation/inference fixtures",
+    "routingUi": "passed; DOM focus unavailable",
+    "restoration": "passed two launches"
+  },
+  "sourceLifecycles": {
+    "restoration-read-lifecycle.json": {
+      "phase": "read",
+      "pid": 47944,
+      "result": {
+        "code": 0,
+        "signal": null
+      },
+      "survivors": [],
+      "elapsedMs": 1813,
+      "timeoutMs": 120000,
+      "graceMs": 1500,
+      "killGraceMs": 2500
+    },
+    "restoration-write-lifecycle.json": {
+      "phase": "write",
+      "pid": 47804,
+      "result": {
+        "code": 0,
+        "signal": null
+      },
+      "survivors": [],
+      "elapsedMs": 3746,
+      "timeoutMs": 120000,
+      "graceMs": 1500,
+      "killGraceMs": 2500
+    },
+    "chat-first-launch-lifecycle.json": {
+      "phase": "chat-first-launch",
+      "pid": 45612,
+      "result": {
+        "code": 0,
+        "signal": null
+      },
+      "survivors": [],
+      "elapsedMs": 9769,
+      "timeoutMs": 120000,
+      "graceMs": 1500,
+      "killGraceMs": 2500
+    },
+    "host-lifecycle.json": {
+      "phase": "host-fresh-profile",
+      "pid": 46804,
+      "result": {
+        "code": 0,
+        "signal": null
+      },
+      "survivors": [],
+      "elapsedMs": 24548,
+      "timeoutMs": 120000,
+      "graceMs": 1500,
+      "killGraceMs": 2500
+    },
+    "chat-relaunch-lifecycle.json": {
+      "phase": "chat-relaunch",
+      "pid": 46152,
+      "result": {
+        "code": 0,
+        "signal": null
+      },
+      "survivors": [],
+      "elapsedMs": 6036,
+      "timeoutMs": 120000,
+      "graceMs": 1500,
+      "killGraceMs": 2500
+    }
+  },
+  "copiedLifecycles": {
+    "java-host-lifecycle.json": {
+      "phase": "host-fresh-profile",
+      "pid": 48540,
+      "result": {
+        "code": 0,
+        "signal": null
+      },
+      "survivors": [],
+      "elapsedMs": 17175,
+      "timeoutMs": 120000,
+      "graceMs": 1500,
+      "killGraceMs": 2500
+    },
+    "restoration-read-lifecycle.json": {
+      "phase": "read",
+      "pid": 52322,
+      "result": {
+        "code": 0,
+        "signal": null
+      },
+      "survivors": [],
+      "elapsedMs": 1995,
+      "timeoutMs": 120000,
+      "graceMs": 1500,
+      "killGraceMs": 2500
+    },
+    "restoration-write-lifecycle.json": {
+      "phase": "write",
+      "pid": 52170,
+      "result": {
+        "code": 0,
+        "signal": null
+      },
+      "survivors": [],
+      "elapsedMs": 4382,
+      "timeoutMs": 120000,
+      "graceMs": 1500,
+      "killGraceMs": 2500
+    },
+    "chat-first-launch-lifecycle.json": {
+      "phase": "chat-first-launch",
+      "pid": 49834,
+      "result": {
+        "code": 0,
+        "signal": null
+      },
+      "survivors": [],
+      "elapsedMs": 8695,
+      "timeoutMs": 120000,
+      "graceMs": 1500,
+      "killGraceMs": 2500
+    },
+    "routing-host-lifecycle.json": {
+      "phase": "host-fresh-profile",
+      "pid": 51086,
+      "result": {
+        "code": 0,
+        "signal": null
+      },
+      "survivors": [],
+      "elapsedMs": 25967,
+      "timeoutMs": 120000,
+      "graceMs": 1500,
+      "killGraceMs": 2500
+    },
+    "chat-relaunch-lifecycle.json": {
+      "phase": "chat-relaunch",
+      "pid": 50369,
+      "result": {
+        "code": 0,
+        "signal": null
+      },
+      "survivors": [],
+      "elapsedMs": 6771,
+      "timeoutMs": 120000,
+      "graceMs": 1500,
+      "killGraceMs": 2500
+    }
+  },
+  "copiedHost": {
+    "fileSearchMs": 319.272167,
+    "javaTests": 3,
+    "javaExitCode": 0,
+    "readinessGate": "file service stat"
+  },
+  "liveInferenceRequests": 0,
+  "productionOpenCodeGitEnabled": false,
+  "issue16": "open, no causal fix",
+  "hostedCi": [
+    {
+      "conclusion": "failure",
+      "databaseId": 40075837236,
+      "headSha": "ad57d6a7bfccccc9aed133da4a0c1d49ba244c62",
+      "name": "CI",
+      "status": "completed"
+    },
+    {
+      "conclusion": "failure",
+      "databaseId": 40075653273,
+      "headSha": "3589daffc934e49eab02be583c8f911f4e19a0d2",
+      "name": "CI",
+      "status": "completed"
+    },
+    {
+      "conclusion": "failure",
+      "databaseId": 40075307872,
+      "headSha": "a508057e5305122aa20d85c1d729b2c67cb5249f",
+      "name": "CI",
+      "status": "completed"
+    }
+  ],
+  "dependencyAudit": {
+    "high": 2,
+    "path": "@vscode/vsce -> @azure/identity -> @azure/msal-node",
+    "advisory": "https://github.com/advisories/GHSA-xcx6-jx8p-x3h5",
+    "status": "reported, not remediated in this phase"
+  }
+}
