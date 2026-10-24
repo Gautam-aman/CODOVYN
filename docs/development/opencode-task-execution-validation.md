@@ -230,3 +230,53 @@ these observations are not a claim that every startup stall is resolved.
 References: [OpenCode MCP](https://docs.opencode.ai/docs/mcp-servers/),
 [MCP Streamable HTTP](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports),
 [Bun scoped CA environment](https://bun.sh/docs/runtime/environment-variables).
+
+## Continued hardening — accepted repository identity and draft publication
+
+**TASK AUTHORITY VERIFIED / DETERMINISTICALLY TESTED:** `00511ef` adds the
+root device/inode identity to host repository snapshots and recovery/ContextFlow
+fingerprints. TaskEngine pins that accepted root for each execution segment.
+File-service initialization must bind the repository broker identity to the
+accepted root; a newly issued broker for another repository at the same pathname
+cannot adopt the task. Observed replacement permanently revokes authority, even
+if the original directory is restored. Legacy saved approvals lacking this new
+identity cannot match a freshly inspected repository and require fresh review.
+This does not claim complete race resistance across all host filesystem activity.
+
+**FILE-ACCESS VERIFIED:** separate non-hidden Git/common directories are excluded
+from ordinary source reads. The native source reader also rejects nested bare
+Git stores (HEAD/objects layouts), cross-device traversal inside the authorized
+root, symlinks and multiply linked files. Root replacement and detected nested
+Git boundaries revoke the grant. Tests cover initial separate-store exclusion,
+changed broker identity rejection, copied content at a replaced pathname,
+revocation and continued ordinary Java/manifest reads. The checkpoint full suite
+passed **305 tests, zero failed/skipped**; the focused identity/read/MCP/recovery
+run passed **26 tests**.
+
+**REAL OS SECURITY VERIFIED — experimental create-only primitive:**
+`native/task-file-create.c` stages at most 64 KiB in a private same-filesystem
+host directory. It publishes only a new file using macOS `RENAME_EXCL` after an
+explicit commit signal. Existing targets, including symlinks and hardlinks, are
+never overwritten. There is no shell, Git, network, directory-creation or
+existing-file edit interface. The helper has no provider entry point and is not
+wired into the normal adapter, MCP tools or TaskEngine write journal.
+
+Five actual macOS tests compile/sign the helper and verify successful sandboxed
+creation, unchanged original/Git witness files, sensitive/traversal/nested-store
+rejection, abandoned staging without publication, and a concurrently inserted
+target remaining unchanged. A deterministic barrier moves the pinned target
+root outside the sandbox scope immediately before atomic rename. Sandboxed
+publication is denied; the identical unsandboxed control publishes into the
+moved directory and exits with an ambiguous-identity error. This validates the
+specific kernel rename boundary; it is not a proof of every possible write race.
+
+**BLOCKED:** task-journal write intent/completion, task-bound draft admission,
+revocation during publication, crash reconciliation, existing-file modification,
+concurrent nested-repository creation at the commit boundary, and complete
+provider-tool policy integration still require independent validation. The
+experimental create primitive must not be exposed as a safe general write tool.
+The existing production coding guard remains enforced. No live inference was
+performed or authorized by these tests.
+
+With the five publication tests included, `npm run check` passed **310 tests,
+zero failed, cancelled or skipped**, after syntax checking 155 JavaScript files.
