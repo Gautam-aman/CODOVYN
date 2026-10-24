@@ -339,7 +339,7 @@
       realProviderDiagnostics=true;activateWorkspaceView('settings');const readiness=hostMessage('agent-diagnostics',data=>data.agents?.some(entry=>entry.id==='opencode'&&entry.version==='2.1.2'));inspectAgents.click();const diagnostics=await readiness;
       const actual=diagnostics.agents.find(entry=>entry.id==='opencode');requireValue(actual?.installation==='detected'&&actual.version==='2.1.2'&&actual.executionSupported===false&&actual.authentication==='unknown','Actual OpenCode Git execution blocker was not shown.');
       requireValue([...compactComposer.entries()].filter(entry=>entry.provider==='opencode').every(entry=>entry.disabled),'Unavailable OpenCode entries remain selectable.');
-      const card=document.querySelector('[data-provider="opencode"]');requireValue(card?.textContent.includes('git subprocesses denied'),'Native provider card lost the actionable process-boundary diagnostic.');card.closest('details').open=true;card.scrollIntoView({block:'center',behavior:'instant'});report.providerReadinessBlocked=true;stage('real-provider-readiness-without-inference-verified');
+      const card=document.querySelector('[data-provider="opencode"]');requireValue(card?.textContent.includes('git subprocesses denied'),'Native provider card lost the actionable process-boundary diagnostic.');requireValue(card.textContent.includes('Default model: unknown while project execution is blocked')&&!card.textContent.includes('fixture/native-model'),'Blocked provider promoted stale catalogue metadata as a current default.');card.closest('details').open=true;card.scrollIntoView({block:'center',behavior:'instant'});report.providerReadinessBlocked=true;stage('real-provider-readiness-without-inference-verified');
     }
     return report;
   }

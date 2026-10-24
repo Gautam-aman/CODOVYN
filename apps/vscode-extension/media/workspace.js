@@ -612,7 +612,7 @@ window.addEventListener('message', ({ data }) => {
       const capabilities = document.createElement('p'); capabilities.textContent = `Capabilities: ${Object.entries(entry.capabilities || {}).filter(([, enabled]) => enabled === true).map(([name]) => name).join(', ')}`;
       if(entry.id === 'opencode')role.textContent=entry.executionSupported===false?'Execution blocked · inspect the project boundary diagnostic':'Manual tasks only · continuation requires separate approval';
       const source=document.createElement('p');source.className='provider-source';source.textContent=`Executable: ${entry.command || 'runtime PATH'} · Version: ${entry.version || 'unknown'}`;
-      const defaultModel=document.createElement('p');defaultModel.textContent=`Default model: ${providerCatalogues.get(entry.id)?.defaultModel || 'not yet discovered'}`;
+      const defaultModel=document.createElement('p');defaultModel.textContent=entry.executionSupported===false?'Default model: unknown while project execution is blocked':`Default model: ${providerCatalogues.get(entry.id)?.defaultModel || 'not yet discovered'}`;
       card.append(title, role, description, source, defaultModel, capabilities);
       if(entry.diagnostic){const diagnostic=document.createElement('p');diagnostic.className='provider-diagnostic';diagnostic.textContent=entry.diagnostic;card.append(diagnostic);}
       const controls=document.createElement('div');controls.className='provider-actions';
