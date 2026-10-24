@@ -1,3 +1,4 @@
+import {javaValidationFiles} from './lib/live-validation-project.js';
 import { mkdtemp, writeFile, readFile, mkdir, rm, copyFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -15,6 +16,7 @@ try {
   await mkdir(fixture);
   if (process.env.CODOVYN_HOST_WORKSPACE_FILE) await writeFile(process.env.CODOVYN_HOST_WORKSPACE_FILE, fixture, 'utf8');
   await writeFile(join(fixture, 'desktop-smoke.txt'), '');
+  if(process.env.CODOVYN_HOST_JAVA_VALIDATION==='1')for(const [name,content]of Object.entries(javaValidationFiles)){await mkdir(join(fixture,name,'..'),{recursive:true});await writeFile(join(fixture,name),content);}
   execFileSync('git', ['init', '-q', fixture]);
   execFileSync('git', ['-C', fixture, 'add', '.']);
   execFileSync('git', ['-C', fixture, '-c', 'user.name=CODOVYN Test', '-c', 'user.email=test@example.invalid', 'commit', '-qm', 'native fixture']);

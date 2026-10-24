@@ -89,6 +89,7 @@ exports.run = async () => {
   assert.equal(await step('apply-edit', () => vscode.workspace.applyEdit(edit)), true);
   assert.equal(await step('save-document', () => document.save()), true);
   assert.match(fs.readFileSync(file.fsPath, 'utf8'), /Edited by CODOVYN Desktop/);
+  if(process.env.CODOVYN_HOST_JAVA_VALIDATION==='1'){const java=await step('java-open-editor',()=>vscode.workspace.openTextDocument(vscode.Uri.file(path.join(folder,'src/main/java/dev/codovyn/Calculator.java'))));await vscode.window.showTextDocument(java);assert.equal(java.languageId,'java');assert.match(java.getText(),/class Calculator/);}
   const panel = await step('agent-panel', () => vscode.commands.executeCommand('codovyn.open'));
   assert.match(panel.webview.html, /Task activity/);
   assert.match(panel.webview.html, /routing-form\.cjs/, 'catalogue validator is loaded by the real agent webview');
@@ -125,9 +126,17 @@ exports.run = async () => {
   while ((!fs.existsSync(path.join(folder, 'terminal-smoke.txt')) || !fs.readFileSync(path.join(folder, 'terminal-smoke.txt'), 'utf8').trim()) && Date.now() < end) await new Promise(r => setTimeout(r, 100));
   assert.equal(fs.readFileSync(path.join(folder, 'terminal-smoke.txt'), 'utf8').trim(), node);
   trace('terminal', 'complete');
+  let javaValidation=null;
+  if(process.env.CODOVYN_HOST_JAVA_VALIDATION==='1'){
+    trace('java-terminal-tests','pending');
+    terminal.sendText('/opt/homebrew/bin/mvn -B -ntp -o test > java-maven-output.txt 2>&1; codovyn_maven_status=$?; node -e \'require("fs").writeFileSync("java-test-result.json",JSON.stringify({exitCode:Number(process.argv[1])}))\' "$codovyn_maven_status"');
+    const deadline=Date.now()+60000;const resultPath=path.join(folder,'java-test-result.json');while(!fs.existsSync(resultPath)&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,100));
+    assert.ok(fs.existsSync(resultPath),'Integrated terminal completed bounded Maven verification');javaValidation=JSON.parse(fs.readFileSync(resultPath,'utf8'));assert.equal(javaValidation.exitCode,0,'Trusted disposable Java fixture passes independent Maven tests');
+    const report=fs.readFileSync(path.join(folder,'target/surefire-reports/TEST-dev.codovyn.CalculatorTest.xml'),'utf8');assert.match(report,/tests="3"/);assert.match(report,/failures="0"/);assert.match(report,/errors="0"/);javaValidation={...javaValidation,tests:3,javaEditor:true};trace('java-terminal-tests','complete');
+  }
   terminal.dispose(); panel.dispose();
   const report = { app: vscode.env.appName, version: vscode.version, edit: true, fileSearch: true, fileSearchDurationMs,
-    fileSearchPattern: process.env.CODOVYN_HOST_SEARCH_GLOB || '**/desktop-smoke.txt', git: true, terminal: true, bundledNode: true };
+    fileSearchPattern: process.env.CODOVYN_HOST_SEARCH_GLOB || '**/desktop-smoke.txt', git: true, terminal: true, bundledNode: true,...(javaValidation?{javaValidation}: {}) };
   fs.writeFileSync(path.join(folder, 'host-result.json'), JSON.stringify(report, null, 2));
   console.log('CODOVYN DESKTOP HOST PASSED', report);
 };
