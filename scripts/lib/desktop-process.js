@@ -104,3 +104,6 @@ export async function runDesktopProcess({ executable, args, env, directory, phas
   }
   return { pid: child.pid, cleanupVerified: true, elapsedMs: Date.now() - startedAt };
 }
+
+// Read-only audit reused by bounded host-side correctness checks.
+export { members as ownedProcessMembers };
