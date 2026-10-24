@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync,realpathSync,symlinkSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';import {join}from'node:path';
-import {parseOpenCodeModels,createOpenCodeAdapter,resolveOpenCodeCommand,inspectOpenCodeInstallation}from'../src/opencode.js';
+import {openCodeProjectReadiness,parseOpenCodeModels,createOpenCodeAdapter,resolveOpenCodeCommand,inspectOpenCodeInstallation}from'../src/opencode.js';
 import {createContextFlow,digest} from '../../agent-core/src/contextflow.js';
 import {openCodeBoundary}from'../src/opencode-sandbox.js';
 
@@ -58,4 +58,11 @@ test('OpenCode transmits only the approved ContextFlow packet, without legacy ra
  const agent=createOpenCodeAdapter({cwd:process.cwd(),stateDirectory:'/unused',model:'p/model'}, {inspect:async()=>({compatible:true,command:process.execPath}),boundary:()=>({command:process.execPath,prefixArgs:['-e',code],cwd:process.cwd(),env:process.env})});
  const output=[];for await(const event of agent.run({handoff:{contextFlow:packet,request:'DO NOT TRANSFER THIS RAW REQUEST',history:[{secret:'never copy'}]}}))if(event.type==='text')output.push(event.text);
  assert.ok(output.join('').includes('Continue utility'));assert.ok(!output.join('').includes('RAW REQUEST'));assert.ok(!output.join('').includes('never copy'));
+});
+
+test('OpenCode Git repository readiness fails closed before any prompt or execution registration',async()=>{
+ const d=mkdtempSync(join(tmpdir(),'codovyn-opencode-git-readiness-'));const project=join(d,'project');mkdirSync(project);let launched=false;
+ try{assert.equal(openCodeProjectReadiness(project).executionSupported,process.platform==='darwin'&&process.arch==='arm64');mkdirSync(join(project,'.git'));mkdirSync(join(project,'src'));assert.equal(openCodeProjectReadiness(join(project,'src')).executionSupported,false);assert.match(openCodeProjectReadiness(project).diagnostic,/git subprocesses denied/);
+ const agent=createOpenCodeAdapter({cwd:project,stateDirectory:join(d,'state')},{inspect:async()=>({compatible:true,command:process.execPath}),boundary:openCodeBoundary});assert.equal(await agent.availability(),'unavailable');await assert.rejects(async()=>{for await(const event of agent.run({handoff:{request:'Explain'},execution:{starting(){launched=true;}}})){}},/Git-backed execution is blocked/);assert.equal(launched,false);
+ }finally{rmSync(d,{recursive:true,force:true});}
 });

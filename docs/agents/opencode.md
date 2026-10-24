@@ -1,5 +1,7 @@
 # OpenCode connection
 
+**Current Git-project blocker (Phase 12):** real guarded inspection of OpenCode 2.1.2 requires a `git rev-parse` subprocess when `.git` exists. CODOVYN correctly denies that execution. Git-backed Ask/Plan/Agent and ContextFlow continuation are therefore blocked until a verified read-only discovery bridge exists. A catalogue obtained outside a Git project does not establish working coding integration. Do not relax the process policy or hide Git metadata to bypass this limitation; authentication cannot fix it.
+
 CODOVYN's guarded OpenCode adapter targets **OpenCode 2.1.2 on macOS ARM64**. Other versions and non-macOS execution are refused until independently verified. Intel macOS has not been tested. It uses the documented ACP stdio interface, not an embedded terminal UI.
 
 Open **Settings → AI Providers and backups** and inspect providers. If the executable is outside the app's PATH, choose **Configure path** and set the application-level `codovyn.opencodeCliPath` to its absolute path. Workspace content cannot set that trusted executable.
@@ -24,6 +26,6 @@ The process boundary permits provider network traffic and OpenCode's owned priva
 
 Queued requests keep the provider, stable model ID, exact variant, permission and project snapshot. **Review & run next** revalidates metadata, policies and the repository baseline. Restart never automatically dispatches queued work. Cancellation terminates only owned processes. Ambiguous actions require review and are not replayed.
 
-Automatic OpenCode fallback, cross-provider continuation, session resume, provider-reported usage and Windows/Linux execution remain disabled or unverified. Live authenticated read/edit validation is a separate gate; deterministic tests do not satisfy it.
+Automatic OpenCode execution, session resume, provider-reported usage and Windows/Linux execution remain disabled or unverified. ContextFlow review is implemented, but actual Git-backed OpenCode continuation is blocked as described above. Live authenticated read/edit validation is a separate gate; deterministic tests do not satisfy it.
 
 Official interfaces: [ACP](https://docs.opencode.ai/docs/acp/), [CLI](https://docs.opencode.ai/docs/cli/), [models](https://docs.opencode.ai/docs/models/), [permissions](https://docs.opencode.ai/docs/permissions/).

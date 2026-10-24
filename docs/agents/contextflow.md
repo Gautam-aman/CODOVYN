@@ -1,5 +1,7 @@
 # ContextFlow: review before changing providers
 
+**Current readiness gate:** Phase 12 identified that OpenCode 2.1.2 Git discovery requires a subprocess denied by the existing process boundary. Real Git-backed preparation/continuation is blocked; see [OpenCode connection](opencode.md). Native fixture review and deterministic continuation do not establish live execution.
+
 ContextFlow can prepare a stopped Codex task for one new OpenCode session under the same CODOVYN task ID. This is experimental, consent-based continuation. A live Codex-to-OpenCode continuation has not yet been verified. It does not migrate a provider's private session or reasoning.
 
 1. Stop Codex and wait for cleanup. Select the interrupted task in History.

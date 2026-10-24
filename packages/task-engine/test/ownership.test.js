@@ -27,3 +27,12 @@ test('a legacy running task never acquires a new lease to conceal unknown old pr
  await assert.rejects(new TaskEngine({store,registry:new AgentRegistry()}).run('task'),/process reconciliation/);
  assert.equal(store.executionLease('task'),null);assert.equal(store.get('task').status,'running');store.close();
 });
+
+test('failed ACP cleanup keeps the task lease fenced even when the test later reaps its process',async()=>{
+ const {AcpConnection}=await import('../../agent-adapters/src/acp.js');const store=new TaskStore(':memory:');store.create({id:'acp-cleanup',request:'Inspect',primaryAgent:'opencode'});let client,actualDispose;
+ const registry=new AgentRegistry();registry.register({id:'opencode',capabilities:{shell:false,writes:false},availability:async()=> 'available',async*run({execution}){
+  client=new AcpConnection({command:process.execPath,args:['-e',"process.stdin.resume()"],cwd:process.cwd(),env:process.env,execution});actualDispose=client.lifecycle.dispose.bind(client.lifecycle);client.lifecycle.dispose=async()=>{throw new Error('Injected cleanup failure');};await client.dispose();yield{type:'completed'};
+ }});
+ try{assert.equal((await new TaskEngine({store,registry}).run('acp-cleanup')).status,'interrupted');assert.equal(store.executionLease('acp-cleanup').releasedAt,null);assert.ok(!store.events('acp-cleanup').some(event=>event.kind==='provider-stopped'));await assert.rejects(new TaskEngine({store,registry}).run('acp-cleanup'),/process reconciliation/);}
+ finally{if(client){client.lifecycle.dispose=actualDispose;await actualDispose();await client.pump;}store.close();}
+});

@@ -115,14 +115,14 @@ class CodovynComposer {
     const defaults = ['codex', 'opencode', 'gemini', 'claude'].map(provider => {
       const state = this.providers.find(entry => entry.id === provider);
       return { key: `default:${provider}`, provider, label: `${provider === 'codex' ? 'Codex' : provider === 'gemini' ? 'Gemini' : provider === 'opencode' ? 'OpenCode' : 'Claude'} · Provider Default`,
-        detail: state?.installation === 'detected' ? 'CLI detected · Authentication unknown' : state ? 'CLI setup required' : 'Installation and authentication unverified',
+        detail: state?.executionSupported === false ? state.diagnostic || 'Execution blocked by the verified process boundary' : state?.installation === 'detected' ? 'CLI detected · Authentication unknown' : state ? 'CLI setup required' : 'Installation and authentication unverified',
         disabled: state && (state.installation !== 'detected' || state.executionSupported === false) };
     });
     return [{ key: 'auto', label: 'Auto · Smart Routing', detail: 'Uses your configured routing policy', provider: 'auto' }, ...defaults,
       ...this.getModels().filter(model => model && ['codex', 'gemini', 'claude','opencode'].includes(model.provider)).map(model => ({
         key: `model:${model.id}`, provider: model.provider, id: model.id, label: model.model,
         detail: model.provider === 'claude' ? 'Model override unsupported by this adapter' : `${model.source==='discovered'?'Discovered catalogue':'Configured model'} · ${model.availability === 'unavailable' ? 'Unavailable' : 'Access unverified'}`,
-        disabled: model.availability === 'unavailable' || model.provider === 'claude',
+        disabled: model.availability === 'unavailable' || model.provider === 'claude' || this.providers?.some(state => state.id === model.provider && state.executionSupported === false),
       }))];
   }
   renderModels() {

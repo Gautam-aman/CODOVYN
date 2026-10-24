@@ -24,6 +24,13 @@ async function ownedOutput(command,args,options) {
   }finally{clearTimeout(timer);options.signal?.removeEventListener('abort',abort);await lifecycle.dispose();}
 }
 export const openCodeVersion = '2.1.2';
+export function openCodeProjectReadiness(cwd) {
+  let directory;try{directory=realpathSync(cwd);}catch{return {executionSupported:false,diagnostic:'OpenCode project identity could not be verified.'};}
+  for(;;){if(statExists(join(directory,'.git')))return {executionSupported:false,diagnostic:'OpenCode 2.1.2 Git-backed execution is blocked: repository discovery requires git subprocesses denied by CODOVYN. A verified read-only discovery bridge is required; authentication cannot resolve this boundary.'};const parent=dirname(directory);if(parent===directory)break;directory=parent;}
+  return {executionSupported:process.platform==='darwin'&&process.arch==='arm64',diagnostic:'Non-Git metadata inspection only; this does not prove authenticated Git-backed execution.'};
+}
+function requireProjectReadiness(cwd){const readiness=openCodeProjectReadiness(cwd);if(!readiness.executionSupported)throw new AgentFailure('fatal',readiness.diagnostic);}
+
 const modelName = value => typeof value === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,255}$/.test(value) && value.includes('/');
 export const discoveredModelId = (provider, model) => `discovered-${provider}-${createHash('sha256').update(model).digest('hex').slice(0,24)}`;
 
@@ -86,6 +93,7 @@ function statExists(path){try{lstatSync(path);return true;}catch{return false;}}
 export async function discoverOpenCode({cwd,stateDirectory,configured,model,modelId,signal}={}) {
   const started=performance.now(),installation=await inspectOpenCodeInstallation(configured);
   if(!installation.compatible)throw new AgentFailure('fatal',`OpenCode ${installation.version} is unverified; supported version is ${openCodeVersion}`);
+  requireProjectReadiness(cwd);
   const boundary=openCodeBoundary({cwd,stateDirectory,command:installation.command});
   const stdout=await ownedOutput(boundary.command,[...boundary.prefixArgs,'models','--standalone'],{...boundary,signal});
   const models=parseOpenCodeModels(stdout);
@@ -105,10 +113,11 @@ export function createOpenCodeAdapter({cwd,stateDirectory,command,write=false,mo
   if(reasoning!==undefined&&!/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/.test(reasoning))throw new TypeError('Invalid OpenCode variant');
   if(write&&!lstatSync(join(cwd,'.git')).isFile())throw new AgentFailure('fatal','OpenCode writes require an isolated Git draft worktree');
   return {id:'opencode',capabilities:{streaming:true,tools:true,writes:write,shell:false,resume:false,automaticHandoff:false,usage:false},
-    async availability(){try{return (await runtime.inspect(command)).compatible&&process.platform==='darwin'?'available':'unavailable';}catch{return 'unavailable';}},
+    async availability(){try{return (runtime.boundary!==openCodeBoundary||openCodeProjectReadiness(cwd).executionSupported)&&(await runtime.inspect(command)).compatible&&process.platform==='darwin'?'available':'unavailable';}catch{return 'unavailable';}},
     async *run({handoff,signal,execution}){
       const installation=await runtime.inspect(command);
       if(!installation.compatible)throw new AgentFailure('fatal','OpenCode version is not verified');
+      if(runtime.boundary===openCodeBoundary)requireProjectReadiness(cwd);
       const boundary=runtime.boundary({cwd,stateDirectory,command:installation.command,write});
       const events=[],actions=new Set();let wake,sessionId=null,violation=false,textBytes=0;
       const enqueue=event=>{if(events.length>=256)throw new AgentFailure('fatal','OpenCode event backlog exceeded bound');events.push(event);wake?.();};

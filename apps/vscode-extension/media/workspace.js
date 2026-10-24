@@ -610,7 +610,7 @@ window.addEventListener('message', ({ data }) => {
       role.textContent = savedAgentPolicy?.primary === entry.id ? 'Saved primary agent' : backupIndex >= 0 ? `Saved backup ${backupIndex + 1} · automatic switching ${savedAgentPolicy.automatic ? 'enabled' : 'disabled'}` : 'Not in saved project policy';
       const description = document.createElement('p'); description.textContent = `${entry.installation}. Authentication: ${entry.authentication}. Availability: ${entry.availability}.`;
       const capabilities = document.createElement('p'); capabilities.textContent = `Capabilities: ${Object.entries(entry.capabilities || {}).filter(([, enabled]) => enabled === true).map(([name]) => name).join(', ')}`;
-      if(entry.id === 'opencode')role.textContent='Manual tasks only · automatic handoff disabled';
+      if(entry.id === 'opencode')role.textContent=entry.executionSupported===false?'Execution blocked · inspect the project boundary diagnostic':'Manual tasks only · continuation requires separate approval';
       const source=document.createElement('p');source.className='provider-source';source.textContent=`Executable: ${entry.command || 'runtime PATH'} · Version: ${entry.version || 'unknown'}`;
       const defaultModel=document.createElement('p');defaultModel.textContent=`Default model: ${providerCatalogues.get(entry.id)?.defaultModel || 'not yet discovered'}`;
       card.append(title, role, description, source, defaultModel, capabilities);
