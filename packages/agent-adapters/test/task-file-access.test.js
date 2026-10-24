@@ -1,5 +1,5 @@
 import test,{before,after}from'node:test';import assert from'node:assert/strict';
-import{mkdtempSync,mkdirSync,writeFileSync,readFileSync,realpathSync,rmSync,symlinkSync,linkSync,renameSync,openSync,closeSync,constants}from'node:fs';
+import{mkdtempSync,mkdirSync,writeFileSync,readFileSync,realpathSync,rmSync,symlinkSync,linkSync,renameSync,openSync,closeSync,constants,copyFileSync,chmodSync}from'node:fs';
 import{join}from'node:path';import{tmpdir}from'node:os';import{spawn,execFileSync}from'node:child_process';import{createHash}from'node:crypto';import{fileURLToPath}from'node:url';
 import{TaskStore}from'../../storage/src/index.js';import{TaskEngine}from'../../task-engine/src/index.js';import{AgentRegistry}from'../../agent-core/src/index.js';import{repositorySnapshot}from'../../git-engine/src/index.js';
 import{buildRepositoryReader,createRepositoryAuthority,repositoryTool}from'../src/repository-identity.js';import{buildTaskFileReader,createTaskFileAccess}from'../src/task-file-access.js';import{manageAgentProcess}from'../src/process.js';
@@ -7,11 +7,11 @@ import{createRepositoryBroker}from'../src/repository-broker.js';import{openCodeB
 const supported=process.platform==='darwin'&&process.arch==='arm64';let base,metadataReader,fileReader,index=0;
 before(async()=>{if(supported){base=realpathSync(mkdtempSync(join(tmpdir(),'codovyn-task-files-')));metadataReader=await buildRepositoryReader(join(base,'metadata'));fileReader=await buildTaskFileReader(join(base,'files'));}});after(()=>{if(base)rmSync(base,{recursive:true,force:true});});
 function git(root,...args){return execFileSync('/usr/bin/git',['-c','core.fsmonitor=false','-C',root,...args],{encoding:'utf8',env:{PATH:'/usr/bin:/bin',GIT_CONFIG_NOSYSTEM:'1',GIT_CONFIG_GLOBAL:'/dev/null'},stdio:['pipe','pipe','pipe']}).trim();}
-async function run(intent,callback,ownershipChanged=false){const root=join(base,'project-'+ ++index);mkdirSync(root);git(root,'init','-q');writeFileSync(join(root,'Calculator.java'),'class Calculator {}\n');writeFileSync(join(root,'pom.xml'),'<project/>\n');writeFileSync(join(root,'README.md'),'Project documentation\n');git(root,'add','.');git(root,'-c','user.name=Test','-c','user.email=test@example.invalid','commit','-qm','baseline');const store=new TaskStore(join(base,'state-'+index,'tasks.sqlite'));const config={provider:'opencode',permission:'read',intent,modelId:null,reasoning:null,routingMode:'manual'};store.create({id:'task',request:'Read authorized files in an OS fixture; no model request',repositoryRoot:root,primaryAgent:'opencode'});store.append('task','task-configuration',config);const registry=new AgentRegistry();let saved;
+async function run(intent,callback,ownershipChanged=false,executable=process.execPath){const root=join(base,'project-'+ ++index);mkdirSync(root);git(root,'init','-q');writeFileSync(join(root,'Calculator.java'),'class Calculator {}\n');writeFileSync(join(root,'pom.xml'),'<project/>\n');writeFileSync(join(root,'README.md'),'Project documentation\n');git(root,'add','.');git(root,'-c','user.name=Test','-c','user.email=test@example.invalid','commit','-qm','baseline');const store=new TaskStore(join(base,'state-'+index,'tasks.sqlite'));const config={provider:'opencode',permission:'read',intent,modelId:null,reasoning:null,routingMode:'manual'};store.create({id:'task',request:'Read authorized files in an OS fixture; no model request',repositoryRoot:root,primaryAgent:'opencode'});store.append('task','task-configuration',config);const registry=new AgentRegistry();let saved;
  let fixtureError;registry.register({id:'opencode',capabilities:{writes:false,shell:false},availability:async()=> 'available',async*run({execution}){
-  const child=spawn(process.execPath,['-e','process.stdin.resume()'],{detached:true,stdio:['pipe','pipe','pipe']});const lifecycle=manageAgentProcess(child);execution.starting();execution.spawned({pid:child.pid,group:true});
+  const child=spawn(executable,executable===process.execPath?['-e','process.stdin.resume()']:[],{detached:true,stdio:['pipe','pipe','pipe']});const lifecycle=manageAgentProcess(child);execution.starting();execution.spawned({pid:child.pid,group:true});
   let repository,files;try{
-   saved=execution.authority;saved.bindProcess(child,{executable:process.execPath,sha256:createHash('sha256').update(readFileSync(process.execPath)).digest('hex')});
+   saved=execution.authority;saved.bindProcess(child,{executable,sha256:createHash('sha256').update(readFileSync(executable)).digest('hex')});
    repository=await createRepositoryAuthority({root,reader:metadataReader,lease:{id:'file-test',purpose:'metadata-only',expiresAt:Date.now()+60000,isCurrent:()=>{try{saved.verify();return true;}catch{return false;}}}});
    files=await createTaskFileAccess({execution:saved,repository,reader:fileReader});await callback({root,store,execution:saved,repository,files,child});yield{type:'completed'};
   }catch(error){fixtureError=error;throw error;}finally{try{await files?.close();repository?.revoke();await lifecycle.dispose();}catch(error){throw error;}execution.stopped();}
@@ -48,6 +48,10 @@ check('task authority rejects duplicate process binding and revokes reads immedi
 });
 check('a failed durable file audit prevents otherwise allowed content from being returned',async()=>{
  await run('ask',async({files,store})=>{const original=store.append;store.append=function(...args){if(args[1]==='file-access')throw new Error('Audit storage unavailable');return original.apply(this,args);};try{await assert.rejects(files.read('pom.xml'),/audit could not be persisted/);}finally{store.append=original;}});
+});
+check('an observed provider executable deletion permanently revokes authority even after restoration',async()=>{
+ const executable=join(base,'owned-cat');copyFileSync('/bin/cat',executable);chmodSync(executable,0o500);
+ await run('ask',async({files})=>{assert.ok(await files.read('pom.xml'));renameSync(executable,executable+'-saved');try{await assert.rejects(files.read('pom.xml'),/executable changed/);}finally{renameSync(executable+'-saved',executable);}await assert.rejects(files.read('pom.xml'),/revoked/);},false,executable);
 });
 check('a task grant does not broaden the provider OS sandbox or permit direct execution of the host file helper',async()=>{
  await run('ask',async({root,repository})=>{const broker=await createRepositoryBroker(repository);try{

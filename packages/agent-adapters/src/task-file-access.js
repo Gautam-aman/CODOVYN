@@ -20,17 +20,17 @@ const safePath=path=>typeof path==='string'&&path.length>0&&path.length<4096&&!/
  * fs support, grant project access to the provider, or authorize draft writes. */
 export async function createTaskFileAccess({execution,repository,reader}){
  if(!isTaskExecutionAuthority(execution)||!isRepositoryAuthority(repository))throw new Error('Host-issued task and repository authorities required');
- const provider=execution.verify(),executable=lstatSync(provider.executable,{bigint:true});if(!executable.isFile()||hash(readFileSync(provider.executable))!==provider.sha256)throw new Error('Task provider executable integrity changed');
- const initial=await repository.read();if(initial.root!==execution.workspace)throw new Error('Task repository scope mismatch');
+ const provider=execution.verify();let executable;try{executable=lstatSync(provider.executable,{bigint:true});if(!executable.isFile()||hash(readFileSync(provider.executable))!==provider.sha256)throw new Error('Changed executable');}catch{execution.revoke();throw new Error('Task provider executable integrity changed');}
+ let initial;try{initial=await repository.read();if(initial.root!==execution.workspace)throw new Error('Task repository scope mismatch');}catch(error){execution.revoke();throw error;}
  if(reader.command.startsWith(initial.root+'/'))throw new Error('Task reader must be outside the project');
  const rootFd=openSync(initial.root,constants.O_RDONLY|constants.O_DIRECTORY|constants.O_NOFOLLOW),controller=new AbortController(),pending=new Set();let closed=false,budget=0,closing,cleanupFailure;
  const abort=()=>controller.abort();execution.signal.addEventListener('abort',abort,{once:true});
- async function verify(path){execution.verify();if(closed||controller.signal.aborted)throw new Error('File access revoked');const actual=lstatSync(provider.executable,{bigint:true});if(['dev','ino','size','mtimeNs','ctimeNs'].some(key=>actual[key]!==executable[key])){execution.revoke();throw new Error('Task provider executable changed');}let state;try{state=await repository.read(join(initial.root,dirname(path)));}catch(error){execution.revoke();throw error;}if(state.fingerprint!==initial.fingerprint){execution.revoke();throw new Error('Task repository changed');}}
+ async function verify(path){execution.verify();if(closed||controller.signal.aborted)throw new Error('File access revoked');try{const actual=lstatSync(provider.executable,{bigint:true});if(['dev','ino','size','mtimeNs','ctimeNs'].some(key=>actual[key]!==executable[key]))throw new Error('Changed executable');}catch{execution.revoke();throw new Error('Task provider executable changed');}let state;try{state=await repository.read(join(initial.root,dirname(path)));}catch(error){execution.revoke();throw error;}if(state.fingerprint!==initial.fingerprint){execution.revoke();throw new Error('Task repository changed');}}
  async function operation(path){
   const started=performance.now();let decision='denied';
   try{
    if(!safePath(path)||++budget>128)throw new Error('Unsupported or sensitive task path');await verify(path);
-   const info=lstatSync(reader.command);if(!info.isFile()||info.mode&0o022||hash(readFileSync(reader.command))!==reader.sha256)throw new Error('Task reader integrity changed');
+   try{const info=lstatSync(reader.command);if(!info.isFile()||info.mode&0o022||hash(readFileSync(reader.command))!==reader.sha256)throw new Error('Changed reader');}catch{execution.revoke();throw new Error('Task reader integrity changed');}
    const child=spawn(reader.command,[initial.root,path],{env:{PATH:'/usr/bin:/bin',LANG:'en_US.UTF-8'},shell:false,detached:true,stdio:['pipe','pipe','pipe',rootFd]});const lifecycle=manageAgentProcess(child,controller.signal);child.stdin.end();let bytes=0,errors=0,chunks=[];
    child.stdout.on('data',chunk=>{bytes+=chunk.length;if(bytes<=131073)chunks.push(chunk);else lifecycle.dispose().catch(()=>{});});child.stderr.on('data',chunk=>{errors+=chunk.length;if(errors>4096)lifecycle.dispose().catch(()=>{});});
    const timer=setTimeout(()=>lifecycle.dispose().catch(()=>{}),3000);let code;try{code=await lifecycle.closed;}finally{clearTimeout(timer);await lifecycle.dispose();}
