@@ -316,10 +316,13 @@
     requireValue(document.activeElement===document.querySelector('#contextflow-review h2'),'Switch Agent did not focus the review heading.');
     if(phase==='relaunch'){flowReply=hostMessage('contextflow-state',data=>data.transfer?.status==='rejected');document.querySelector('#contextflow-reject').click();await flowReply;requireValue(document.querySelector('#contextflow-continue').disabled,'Rejected transfer retained execution control.');report.contextFlowRejection=true;}
     report.contextFlowReview=true;stage('contextflow-persisted-review-verified');
+    send({type:'history',taskId:'native-segment-fixture',status:'interrupted',request:'Native provider segment fixture',timeline:[{type:'message',text:'Codex earlier response'},{type:'segment',provider:'OpenCode',text:'New approved segment'},{type:'message',text:'OpenCode continuation response'}]});
+    requireValue(chat.querySelectorAll('.chat-message-assistant').length===2&&chat.lastElementChild.querySelector('.chat-speaker').textContent==='OpenCode','Provider segments merged into an unlabeled response.');report.providerSegmentPresentation=true;
     // Restore the pre-existing conversation assertions; keep the review visible for screenshots.
     if(restoredTaskId){flowReply=hostMessage('history',data=>data.taskId===restoredTaskId);vscode.postMessage({type:'history',id:restoredTaskId});await flowReply;}
     report.transcriptMessages = [...chat.querySelectorAll('.chat-message')].map(item => item.textContent);
     report.activityRows = [...document.querySelectorAll('#timeline > li')].map(item => item.textContent);
+    activateWorkspaceView('changes');
     return report;
   }
 

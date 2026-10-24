@@ -52,6 +52,8 @@ try {
     reports.push(report);
     await copyFile(join(phaseDirectory, `chat-${phase}-lifecycle.json`), join(root, 'dist/desktop', `chat-${phase}-lifecycle.json`));
   }
+  assert.equal(reports[1].checks.contextFlowRejection, true);
+  assert.equal(reports[1].checks.contextFlowReview, true);
   assert.equal(reports[1].checks.openCodePreferencesRestored, true);
   assert.equal(reports[1].checks.openCodeQueueRestored, true);
   assert.equal(reports[1].checks.openCodeEffectiveVariantRestored, true);

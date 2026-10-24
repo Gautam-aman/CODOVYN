@@ -55,7 +55,7 @@ async function seedOrVerifyJournal(folder) {
       store.append('native-contextflow-task','agent-started',{agent:'codex',repository:snapshot});
       store.append('native-contextflow-task','agent-failed',{agent:'codex',kind:'quota'});
       store.append('native-contextflow-task','checkpoint',{repository:snapshot});
-      store.update('native-contextflow-task',{status:'interrupted',activeAgent:'codex'});
+      store.update('native-contextflow-task',{status:'interrupted',activeAgent:'codex',step:0});
       store.releaseExecution('native-contextflow-task','native-contextflow-lease-token');
       await prepareContextFlow({store,taskId:'native-contextflow-task',dataDirectory,configuration:{provider:'opencode',modelId:null,permission:'read',routingMode:'manual',reasoning:null,intent:'ask'},destinationModel:'fixture/native-model',binding:'native-review-fixture-only'});
     }
@@ -104,7 +104,7 @@ exports.run = async () => {
     trace('webview-test-requested');
     const report = await result;
     assert.equal(report?.passed, true, `Native Chat checks failed: ${report?.error || 'unknown failure'}`);
-    for (const name of ['contextFlowReview', 'openCodeModelAndVariant', 'queueManagement', 'compactComposer', 'composerControls', 'submissionAcknowledgement', 'submittedPrompt', 'streamingOrderAndTextSafety', 'navigationAndActivitySeparation',
+    for (const name of ['providerSegmentPresentation', 'contextFlowReview', 'openCodeModelAndVariant', 'queueManagement', 'compactComposer', 'composerControls', 'submissionAcknowledgement', 'submittedPrompt', 'streamingOrderAndTextSafety', 'navigationAndActivitySeparation',
       'completionState', 'scrollFollowAndJump', 'sqliteJournalRestoration', 'interruptionState']) {
       assert.equal(report.checks?.[name], true, `Native Chat check did not pass: ${name}`);
     }
