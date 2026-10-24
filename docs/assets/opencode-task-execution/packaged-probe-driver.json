@@ -1,0 +1,9 @@
+{
+  "source": "Existing validate-opencode-task-boundary.js with its 15 relative host imports resolved to copied app packages or unchanged test utilities; bundled app untouched",
+  "scriptSha256": "511e341d16fa2575498a198bd56575174d96e00b22ad8d497472fb36cf52ba14",
+  "externalDriverSha256": "23abb37056b853cd4da60104019a5e4b35e0fc534888196b2bf2dc187cd17522",
+  "bundledRuntime": "Node 26.9.0",
+  "app": "/private/tmp/codovyn-phase15-copied-6XBGt8/CODOVYN.app",
+  "sourceCommit": "b2a37ef45c8267e356a596080e11c58f696dff4b",
+  "inferenceRequests": 0
+}

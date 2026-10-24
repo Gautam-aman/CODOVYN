@@ -1,0 +1,139 @@
+{
+  "version": 1,
+  "sourceCommit": "b2a37ef45c8267e356a596080e11c58f696dff4b",
+  "sourceDirty": false,
+  "inferenceRequests": 0,
+  "providerFileToolInvocations": 0,
+  "productionExecutionEnabled": false,
+  "phases": [
+    {
+      "mode": "ask",
+      "taskId": "ask-boundary-probe",
+      "providerOutput": "NONE — metadata-only validation adapter",
+      "sourceReadBy": "TRUSTED HOST FILE SERVICE; not OpenCode tools",
+      "ownedGroups": [
+        75748,
+        75755
+      ],
+      "acpInitialized": true,
+      "readHashes": {
+        "source": "dbb6e2410f4b1f153c3c840ed376b42c9ba1f3f094f899a14767678de9eaf9d4",
+        "manifest": "038f8987ce54d1460794e05f81a4ac79401f5c7b8fed5928c5e849a7596ef6ae"
+      },
+      "writesBlocked": true,
+      "repositoryIdentity": "1dafc7d3bfbbc2904e0c204b1a738cdafe59a71a8686945a5dbb0a919f09e2ed",
+      "segment": "a1eba338-9190-4e09-97a6-3dc82085d473",
+      "leaseHeld": true,
+      "cleanupVerified": true,
+      "originalUnchanged": true,
+      "revokedAfterTask": true,
+      "fileAudit": [
+        {
+          "segment": "a1eba338-9190-4e09-97a6-3dc82085d473",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "src/main/java/dev/codovyn/Calculator.java",
+          "repositoryIdentity": "1dafc7d3bfbbc2904e0c204b1a738cdafe59a71a8686945a5dbb0a919f09e2ed",
+          "decision": "allowed",
+          "elapsedMs": 191.9773750000004
+        },
+        {
+          "segment": "a1eba338-9190-4e09-97a6-3dc82085d473",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "pom.xml",
+          "repositoryIdentity": "1dafc7d3bfbbc2904e0c204b1a738cdafe59a71a8686945a5dbb0a919f09e2ed",
+          "decision": "allowed",
+          "elapsedMs": 11.339540999999826
+        },
+        {
+          "segment": "a1eba338-9190-4e09-97a6-3dc82085d473",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "[rejected path]",
+          "repositoryIdentity": "1dafc7d3bfbbc2904e0c204b1a738cdafe59a71a8686945a5dbb0a919f09e2ed",
+          "decision": "denied",
+          "elapsedMs": 0.024333000000297034
+        },
+        {
+          "segment": "a1eba338-9190-4e09-97a6-3dc82085d473",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "[rejected path]",
+          "repositoryIdentity": "1dafc7d3bfbbc2904e0c204b1a738cdafe59a71a8686945a5dbb0a919f09e2ed",
+          "decision": "denied",
+          "elapsedMs": 0.011915999999928317
+        }
+      ]
+    },
+    {
+      "mode": "agent",
+      "taskId": "agent-boundary-probe",
+      "providerOutput": "NONE — metadata-only validation adapter",
+      "sourceReadBy": "TRUSTED HOST FILE SERVICE; not OpenCode tools",
+      "ownedGroups": [
+        76429,
+        76439
+      ],
+      "acpInitialized": true,
+      "readHashes": {
+        "source": "dbb6e2410f4b1f153c3c840ed376b42c9ba1f3f094f899a14767678de9eaf9d4",
+        "manifest": "038f8987ce54d1460794e05f81a4ac79401f5c7b8fed5928c5e849a7596ef6ae"
+      },
+      "writesBlocked": true,
+      "repositoryIdentity": "1ea9d84a03ba74245894a662e4d77f558503934102846f8f51929fd2d6aeef78",
+      "segment": "588ac8b5-0662-4359-8f07-1b21f4b4d571",
+      "leaseHeld": true,
+      "cleanupVerified": true,
+      "originalUnchanged": true,
+      "revokedAfterTask": true,
+      "fileAudit": [
+        {
+          "segment": "588ac8b5-0662-4359-8f07-1b21f4b4d571",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "src/main/java/dev/codovyn/Calculator.java",
+          "repositoryIdentity": "1ea9d84a03ba74245894a662e4d77f558503934102846f8f51929fd2d6aeef78",
+          "decision": "allowed",
+          "elapsedMs": 7.216917000000194
+        },
+        {
+          "segment": "588ac8b5-0662-4359-8f07-1b21f4b4d571",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "pom.xml",
+          "repositoryIdentity": "1ea9d84a03ba74245894a662e4d77f558503934102846f8f51929fd2d6aeef78",
+          "decision": "allowed",
+          "elapsedMs": 6.763415999999779
+        },
+        {
+          "segment": "588ac8b5-0662-4359-8f07-1b21f4b4d571",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "[rejected path]",
+          "repositoryIdentity": "1ea9d84a03ba74245894a662e4d77f558503934102846f8f51929fd2d6aeef78",
+          "decision": "denied",
+          "elapsedMs": 0.012749999999869033
+        },
+        {
+          "segment": "588ac8b5-0662-4359-8f07-1b21f4b4d571",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "[rejected path]",
+          "repositoryIdentity": "1ea9d84a03ba74245894a662e4d77f558503934102846f8f51929fd2d6aeef78",
+          "decision": "denied",
+          "elapsedMs": 0.00537499999973079
+        }
+      ]
+    }
+  ],
+  "provider": {
+    "version": "2.1.2",
+    "executableSha256": "3f01e2ba8efd4242c638add9248b88696221d76588d9511e63cb2d727c278fcc"
+  },
+  "nativeSources": {
+    "repository": "513b5d23f5bf11e65210505ca19d9b1cc77c5a2cd1359fb2c27122092c749469",
+    "files": "690eeff34dc9d2a3693dac2424a1165dab70ab66529d21ba5b74865a45c85c22"
+  },
+  "passed": true
+}

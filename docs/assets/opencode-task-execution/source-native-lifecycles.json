@@ -1,0 +1,72 @@
+{
+  "host-lifecycle.json": {
+    "phase": "host-fresh-profile",
+    "pid": 83938,
+    "result": {
+      "code": 0,
+      "signal": null
+    },
+    "survivors": [],
+    "elapsedMs": 27614,
+    "timeoutMs": 120000,
+    "graceMs": 1500,
+    "killGraceMs": 2500,
+    "lastProgress": "{\"phase\":\"terminal\",\"state\":\"complete\",\"pid\":84021,\"elapsedMs\":22725.308916,\"at\":\"2026-10-24T13:18:21.508Z\"}"
+  },
+  "chat-first-launch-lifecycle.json": {
+    "phase": "chat-first-launch",
+    "pid": 82543,
+    "result": {
+      "code": 0,
+      "signal": null
+    },
+    "survivors": [],
+    "elapsedMs": 13757,
+    "timeoutMs": 120000,
+    "graceMs": 1500,
+    "killGraceMs": 2500,
+    "lastProgress": "{\"phase\":\"first-launch\",\"state\":\"all-chat-assertions-passed\",\"pid\":82550,\"monotonicNs\":\"34059910387416\",\"at\":\"2026-10-24T13:16:04.747Z\",\"report\":\"/var/folders/m6/yq18_j7n0l70y1zllfgm50s80000gn/T/codovyn-desktop-chat-npP9pT/first-launch/chat-result.json\"}"
+  },
+  "chat-relaunch-lifecycle.json": {
+    "phase": "chat-relaunch",
+    "pid": 83151,
+    "result": {
+      "code": 0,
+      "signal": null
+    },
+    "survivors": [],
+    "elapsedMs": 11839,
+    "timeoutMs": 120000,
+    "graceMs": 1500,
+    "killGraceMs": 2500,
+    "lastProgress": "{\"phase\":\"relaunch\",\"state\":\"all-chat-assertions-passed\",\"pid\":83160,\"monotonicNs\":\"34071743876625\",\"at\":\"2026-10-24T13:16:16.581Z\",\"report\":\"/var/folders/m6/yq18_j7n0l70y1zllfgm50s80000gn/T/codovyn-desktop-chat-npP9pT/relaunch/chat-result.json\"}"
+  },
+  "restoration-write-lifecycle.json": {
+    "phase": "write",
+    "pid": 84998,
+    "result": {
+      "code": 0,
+      "signal": null
+    },
+    "survivors": [],
+    "elapsedMs": 6274,
+    "timeoutMs": 120000,
+    "graceMs": 1500,
+    "killGraceMs": 2500,
+    "lastProgress": "{\"phase\":\"write\",\"operation\":\"native-quit\",\"state\":\"complete\",\"pid\":85086,\"at\":\"2026-10-24T13:19:36.946Z\"}"
+  },
+  "restoration-read-lifecycle.json": {
+    "phase": "read",
+    "pid": 85140,
+    "result": {
+      "code": 0,
+      "signal": null
+    },
+    "survivors": [],
+    "elapsedMs": 3619,
+    "timeoutMs": 120000,
+    "graceMs": 1500,
+    "killGraceMs": 2500,
+    "lastProgress": "{\"phase\":\"read\",\"operation\":\"native-quit\",\"state\":\"complete\",\"pid\":85177,\"at\":\"2026-10-24T13:19:40.475Z\"}"
+  }
+}

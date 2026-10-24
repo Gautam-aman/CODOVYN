@@ -1,0 +1,51 @@
+{
+  "upstreamCommit": "a517687fde98a7329ada3ae644a01a9fc6c4e99e",
+  "source": "Official GitHub pinned commit tree and blobs; no provider binary modified",
+  "files": [
+    {
+      "path": "packages/cli/src/acp/capabilities.ts",
+      "gitBlobSha1": "2cef227309912022af208fdc22286570943e2ae6",
+      "sha256": "bb4849e6ba46203f397d6a3086bc784172fb5f86056e9b41e7e18d282137d35e"
+    },
+    {
+      "path": "packages/cli/src/acp/turn.ts",
+      "gitBlobSha1": "c02aeac4ef51fec6447f743e1930827d280f29b7",
+      "sha256": "74b72ef7c50c9d1f20a4a3f002c866ec80fb64aa287f301670afd87cf0ba0d16"
+    },
+    {
+      "path": "packages/cli/src/acp/tool.ts",
+      "gitBlobSha1": "d535055061f3b0a0717593d5b000ed0a3b2b7086",
+      "sha256": "c8b49d7884ad93139111361775bb9994f9abadaabb8b353148bed1cb099a64b9"
+    },
+    {
+      "path": "packages/core/src/tool/plugin/read.ts",
+      "gitBlobSha1": "9150905fe4d689e6ddb84c693e36ec2814dc08ee",
+      "sha256": "c8ab44d68ff8a9a175078c3ed6e4fc651e37b8a50eeac4ab12476952d299da97"
+    },
+    {
+      "path": "packages/core/src/tool/plugin/write.ts",
+      "gitBlobSha1": "17996009036d6be90a9578a96f4999cd18104e0a",
+      "sha256": "42fdd3ce5a24139eab24052225f4397deca0b035f1f4ae7a7c2c7c52d84eab9f"
+    },
+    {
+      "path": "packages/core/src/tool/plugin/edit.ts",
+      "gitBlobSha1": "302c4257f110481989ad444463ee9a128eb12c84",
+      "sha256": "001aac93fb7d691fd4a6592a8176a008299764e2d0e75b000d1bb05783518646"
+    },
+    {
+      "path": "packages/cli/src/acp/connection.ts",
+      "gitBlobSha1": "4d93ccd2b8913834ebab65f956b2d9b97ad7dda5",
+      "sha256": "8193136406765f0a7ff919c62d9f8095f0192e06afbefc2ab6ede895a26c580e"
+    },
+    {
+      "path": "packages/core/src/environment/index.ts",
+      "gitBlobSha1": "0f6564a33da472d7252410f9ded3755d68931a61",
+      "sha256": "e3fa50718c62e4eec232e9680b3ccda5c9e4a7268eeb3f7f63111ac28c13f6b8"
+    },
+    {
+      "path": "packages/core/src/tool/read-filesystem.ts",
+      "gitBlobSha1": "e4b3b56eb8c9684be7108ad8a4face2156c0c988",
+      "sha256": "f81de523ae9d83d6caeb78a4a9faae4ecf80a55f753a8444e4e4f1346ba3bbd4"
+    }
+  ]
+}
