@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { contextFlowUsage } from '../../../packages/agent-core/src/contextflow-usage.js';
 import { randomUUID } from 'node:crypto';
 import { homedir } from 'node:os';
 import { readFile, stat } from 'node:fs/promises';
@@ -321,7 +322,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
         const selection=await destination(JSON.parse(rest[1]));
         emit(await prepareContextFlow({store,taskId:value,dataDirectory,configuration:selection.configuration,binding:selection.binding,destinationModel:selection.model,manual:rest[2]==='--manual'}));return 0;
       }
-      if(mode==='contextflow-read') {lookupTask();if(rest.length!==1)throw new TypeError('Invalid ContextFlow inspection');const transfer=store.latestContextFlow(value);emit(transfer?{...transfer,metrics:contextFlowAccounting(transfer.packet)}:null);return 0;}
+      if(mode==='contextflow-read') {lookupTask();if(rest.length!==1)throw new TypeError('Invalid ContextFlow inspection');const transfer=store.latestContextFlow(value);emit(transfer?{...transfer,metrics:{...contextFlowAccounting(transfer.packet),providerUsage:contextFlowUsage(store.events(transfer.taskId))}}:null);return 0;}
       const transfer=store.contextFlowTransfer(value);if(!transfer||store.get(transfer.taskId)?.repositoryRoot!==repository)throw new Error('Transfer belongs to a different repository');
       if(mode==='contextflow-reject'){if(rest.length!==2||rest[1]!=='--yes')throw new Error('Explicit rejection required');emit(store.rejectContextFlow(value));return 0;}
       if(rest.length!==3||rest[1]!==transfer.hash||rest[2]!=='--yes')throw new Error('Explicit recipient and context approval required');
