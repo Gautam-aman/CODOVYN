@@ -3,6 +3,7 @@ import { microUsd, budgetScope } from './budget.js';
 import { chmodSync, mkdirSync, statSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import { hostname } from 'node:os';
 
 const taskIdPattern = /^[a-zA-Z0-9_-]{1,80}$/;
 const validId = (id) => {
@@ -28,6 +29,7 @@ export class TaskStore {
     // transaction lock; never retry provider execution or replay task actions.
     this.#db.exec('PRAGMA busy_timeout = 3000');
     this.#db.exec('PRAGMA journal_mode = WAL');
+    this.#db.exec('PRAGMA synchronous = FULL');
     this.#db.exec('PRAGMA foreign_keys = ON');
     this.#db.exec(`
       CREATE TABLE IF NOT EXISTS tasks (
@@ -90,6 +92,13 @@ export class TaskStore {
         paused INTEGER NOT NULL DEFAULT 0
       );
       CREATE INDEX IF NOT EXISTS events_by_task ON events(task_id, seq);
+      CREATE TABLE IF NOT EXISTS draft_write_intents (
+        id TEXT PRIMARY KEY, task_id TEXT NOT NULL REFERENCES tasks(id),
+        segment TEXT NOT NULL, execution_token TEXT NOT NULL,
+        metadata TEXT NOT NULL, state TEXT NOT NULL,
+        created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS draft_writes_by_task ON draft_write_intents(task_id,state);
     `);
     if (!this.#db.prepare('PRAGMA table_info(tasks)').all().some((column) => column.name === 'repository_root')) {
       this.#db.exec('ALTER TABLE tasks ADD COLUMN repository_root TEXT');
@@ -159,6 +168,10 @@ export class TaskStore {
       throw new TypeError('Invalid execution owner');
     }
     if (!this.get(id)) throw new Error('Unknown task');
+    if(kind!=='recovery'&&this.unresolvedDraftWrites(id).length)throw new Error('Unresolved draft write requires explicit reconciliation; no replay');
+    if(this.#db.prepare(`SELECT 1 FROM draft_write_intents w JOIN tasks t ON t.id=w.task_id
+      WHERE t.repository_root=(SELECT repository_root FROM tasks WHERE id=?) AND w.task_id<>?
+      AND w.state IN ('prepared','uncertain','conflict')`).get(id,id))throw new Error('Repository has an unresolved draft write');
     const result = this.#db.prepare(`INSERT INTO execution_leases SELECT ?, ?, ?, ?, NULL WHERE NOT EXISTS (
       SELECT 1 FROM execution_leases held JOIN tasks occupied ON occupied.id=held.task_id
       WHERE held.task_id<>? AND held.released_at IS NULL AND occupied.repository_root=(SELECT repository_root FROM tasks WHERE id=?))
@@ -169,6 +182,48 @@ export class TaskStore {
     return this.executionLease(id);
   }
 
+  /** FULL-sync SQLite transaction commits write intent and unsafe tool evidence
+   * before the host is allowed to start a filesystem mutation. No file contents. */
+  prepareDraftWrite({id,taskId,token,segment,...metadata}) {
+    validId(id);validId(taskId);
+    if(typeof segment!=='string'||!/^[a-zA-Z0-9-]{1,80}$/.test(segment)||
+      typeof metadata.path!=='string'||metadata.path.length>4095||metadata.path.split('/').some(p=>!p||p[0]==='.'||/credential|secret|token|^auth\.json$|^id_|\.pem|\.key/i.test(p))||/[\x00-\x1f\\]/.test(metadata.path)||
+      ![metadata.afterHash,metadata.configurationDigest,metadata.repositoryIdentity].every(h=>typeof h==='string'&&/^[a-f0-9]{64}$/.test(h))||
+      !(metadata.beforeHash===null||typeof metadata.beforeHash==='string'&&/^[a-f0-9]{64}$/.test(metadata.beforeHash))||!Number.isSafeInteger(metadata.bytes)||metadata.bytes<0||metadata.bytes>65536||
+      typeof metadata.stageDirectory!=='string'||!metadata.stageDirectory.startsWith('/')||Object.keys(metadata).some(k=>!['path','beforeHash','afterHash','bytes','configurationDigest','repositoryIdentity','stageDirectory'].includes(k))||JSON.stringify(metadata).length>8192)throw new TypeError('Invalid bounded draft write intent');
+    this.#db.exec('BEGIN IMMEDIATE');try{
+      const lease=this.executionLease(taskId),task=this.get(taskId);
+      if(!lease||lease.releasedAt!==null||lease.token!==token||lease.owner.pid!==process.pid||lease.owner.host!==hostname()||task.status!=='running'||task.activeAgent!=='opencode')throw new Error('Draft write has no current execution owner');
+      if(this.unresolvedDraftWrites(taskId).length)throw new Error('An unresolved write fences this task');
+      const now=new Date().toISOString();
+      this.#db.prepare("INSERT INTO draft_write_intents VALUES (?,?,?,?,?,'prepared',?,?)").run(id,taskId,segment,token,JSON.stringify({...metadata,version:1}),now,now);
+      const event={type:'tool-start',actionId:id,action:'file_change',safeToRetry:false};
+      const seq=this.append(taskId,'agent-event',{agent:'opencode',event});
+      this.append(taskId,'draft-write-prepared',{id,segment,...metadata});
+      this.#db.exec('COMMIT');return {id,event,seq};
+    }catch(error){this.#db.exec('ROLLBACK');throw error;}
+  }
+
+  finishDraftWrite(taskId,id,token,segment,state) {
+    validId(taskId);validId(id);if(!['published','aborted','uncertain','conflict'].includes(state))throw new TypeError('Invalid draft write outcome');
+    this.#db.exec('BEGIN IMMEDIATE');try{
+      const lease=this.executionLease(taskId);
+      if(!lease||lease.releasedAt!==null||lease.token!==token||lease.owner.pid!==process.pid||lease.owner.host!==hostname())throw new Error('Draft write owner changed');
+      const changed=this.#db.prepare("UPDATE draft_write_intents SET state=?,updated_at=? WHERE id=? AND task_id=? AND execution_token=? AND segment=? AND state='prepared'").run(state,new Date().toISOString(),id,taskId,token,segment);
+      if(changed.changes!==1)throw new Error('Draft write outcome is stale or already recorded');
+      this.append(taskId,'draft-write-'+state,{id});let event,seq;
+      if(['published','aborted'].includes(state)){event={type:'tool-complete',actionId:id,action:'file_change'};seq=this.append(taskId,'agent-event',{agent:'opencode',event});}
+      this.#db.exec('COMMIT');return {event,seq};
+    }catch(error){this.#db.exec('ROLLBACK');throw error;}
+  }
+
+  draftWrites(taskId){return this.#db.prepare('SELECT * FROM draft_write_intents WHERE task_id=? ORDER BY created_at,id').all(validId(taskId)).map(r=>({id:r.id,taskId:r.task_id,segment:r.segment,...JSON.parse(r.metadata),state:r.state}));}
+  unresolvedDraftWrites(taskId){return this.draftWrites(taskId).filter(w=>['prepared','uncertain','conflict'].includes(w.state));}
+  reconcileDraftWrites(taskId,token){
+    const lease=this.executionLease(taskId);if(!lease||lease.releasedAt!==null||lease.token!==token||lease.owner.kind!=='recovery'||lease.owner.pid!==process.pid||lease.owner.host!==hostname())throw new Error('Explicit recovery owner required');
+    this.#db.exec('BEGIN IMMEDIATE');try{const writes=this.unresolvedDraftWrites(taskId);for(const w of writes){this.#db.prepare("UPDATE draft_write_intents SET state='reconciled',updated_at=? WHERE id=?").run(new Date().toISOString(),w.id);this.append(taskId,'draft-write-reconciled',{id:w.id,previousState:w.state,policy:'Outcome reviewed, no replay or automatic rollback authorized'});}this.#db.exec('COMMIT');return writes.length;}catch(error){this.#db.exec('ROLLBACK');throw error;}
+  }
+
   prepareContextFlow({id,taskId,packet,configuration,binding,now=Date.now()}) {
     validId(id);validId(taskId);validateContextFlow(packet);
     if(packet.task.id!==taskId||typeof binding!=='string'||binding.length>1024||!Number.isSafeInteger(now)||JSON.stringify(configuration).length>4096)throw new TypeError('Invalid transfer configuration');
@@ -176,6 +231,7 @@ export class TaskStore {
     this.#db.exec('BEGIN IMMEDIATE');
     try {
       const task=this.get(taskId);
+      if(this.unresolvedDraftWrites(taskId).length)throw new Error('Reconcile unresolved draft writes before ContextFlow');
       if(!task||!['interrupted','cancelled'].includes(task.status)||!this.executionLease(taskId)?.releasedAt)throw new Error('Reconcile task ownership before preparing ContextFlow');
       this.#db.prepare("UPDATE contextflow_transfers SET status=CASE WHEN status='starting' THEN 'interrupted' ELSE 'expired' END WHERE task_id=? AND status IN ('prepared','starting')").run(taskId);
       const seq=this.append(taskId,'contextflow-prepared',{id,hash,destination:'opencode',bytes:Buffer.byteLength(JSON.stringify(packet)),expiresAt:now+600000});

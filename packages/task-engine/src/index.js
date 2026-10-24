@@ -53,6 +53,7 @@ export class TaskEngine {
   }
 
   async run(id, options = {}) {
+    if(this.store.unresolvedDraftWrites(id).length)throw new Error('Unresolved draft write requires explicit reconciliation; no replay');
     const previousTask=this.store.get(id);
     if(this.store.events(id).some(event=>event.kind==='routing-decision')&&!this.store.hasRouteBudget(id))throw new Error('Routed task requires an active budget reservation');
     if (previousTask && previousTask.status !== 'pending' && !this.store.executionLease(id)?.releasedAt) {
@@ -207,7 +208,7 @@ export class TaskEngine {
         const planning = this.store.events(task.id).findLast(event => event.kind === 'task-configuration')?.data.intent === 'plan';
         const handoff = { request: planning ? `${task.request}\n\nCODOVYN task mode: Plan. Produce an implementation plan and verification steps only. Do not modify files or execute write-capable actions.` : task.request, step: task.step, history: this.store.events(task.id), snapshot: baseline, ...(continuation.contextFlow?{contextFlow:continuation.contextFlow}:{}) };
         this.#record(task.id, 'handoff-prepared', { agent: id, packet: createHandoffPacket(handoff) });
-        executionAuthority=createTaskExecutionAuthority({store:this.store,taskId:task.id,provider:id,token:continuation.executionToken,workspace:baseline.root,filesystemIdentity:baseline.filesystemIdentity,configuration:continuation.configuration||this.store.events(task.id).findLast(e=>e.kind==='task-configuration')?.data,contextFlow:!!continuation.contextFlow,signal});
+        executionAuthority=createTaskExecutionAuthority({store:this.store,taskId:task.id,provider:id,token:continuation.executionToken,workspace:baseline.root,filesystemIdentity:baseline.filesystemIdentity,configuration:continuation.configuration||this.store.events(task.id).findLast(e=>e.kind==='task-configuration')?.data,contextFlow:!!continuation.contextFlow,signal,onWriteEvent:({event,seq})=>{if(event.type==='tool-start'){pendingTools.set(event.actionId,false);usedUnsafeTool=true;}else pendingTools.delete(event.actionId);try{this.onEvent({seq,kind:'agent-event',data:{agent:id,event}});}catch{}}});
         for await (const event of agent.run({ taskId: task.id, handoff, signal, execution: {
           authority:executionAuthority,
           starting: () => this.#record(task.id, 'provider-starting', { agent: id }),

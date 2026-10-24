@@ -9,7 +9,7 @@ export const isTaskExecutionAuthority=value=>issued.has(value);
 /** Trusted TaskEngine seam. No serialized token or task ID is a capability.
  * File access consumers must additionally bind repository/executable identity.
  * Issuance grants no direct OS permissions and no provider inference. */
-export function createTaskExecutionAuthority({store,taskId,provider,token,workspace,filesystemIdentity,configuration,contextFlow=false,signal,ttlMs=120000}) {
+export function createTaskExecutionAuthority({store,taskId,provider,token,workspace,filesystemIdentity,configuration,contextFlow=false,signal,ttlMs=120000,onWriteEvent=()=>{}}) {
  if(!Number.isSafeInteger(ttlMs)||ttlMs<1||ttlMs>120000)throw new Error('Invalid execution authority lifetime');
  const segment=randomUUID(),policy=structuredClone(configuration),policyHash=digest(policy),expiresAt=Date.now()+ttlMs;
  const controller=new AbortController();let child=null,binding=null,active=true,timer,rootPin=null,repositoryId=null;
@@ -32,6 +32,9 @@ export function createTaskExecutionAuthority({store,taskId,provider,token,worksp
  };
  if(active){timer=setTimeout(revoke,ttlMs);timer.unref();}
  const authority=Object.freeze({taskId,segment,provider,workspace,configurationDigest:policyHash,permission:policy?.permission,intent:policy?.intent,expiresAt,signal:controller.signal,
+  draft(){current();const draft=store.events(taskId).findLast(e=>e.kind==='draft-created')?.data;if(policy.permission!=='read-write'||policy.intent!=='agent'||!draft?.baseCommit||workspace===store.get(taskId).repositoryRoot)throw new Error('Approved isolated draft required');return {original:store.get(taskId).repositoryRoot,baseCommit:draft.baseCommit};},
+  beginWrite(metadata){current();authority.verify();authority.draft();if(!repositoryId||metadata.repositoryIdentity!==repositoryId)throw new Error('Draft write repository is not bound');const result=store.prepareDraftWrite({id:randomUUID(),taskId,token,segment,...metadata,configurationDigest:policyHash});onWriteEvent(result);return result.id;},
+  finishWrite(id,state){if(['published','aborted'].includes(state))current();const result=store.finishDraftWrite(taskId,id,token,segment,state);if(result.event)onWriteEvent(result);if(['uncertain','conflict'].includes(state))revoke();},
   bindProcess(process,identity){
    current();if(binding||child||boundProcesses.has(process))throw new Error('Execution authority is single-process and non-transferable');
    if(!(process instanceof ChildProcess)||!Number.isSafeInteger(process.pid)||process.pid<1||process.exitCode!==null||process.signalCode!==null||typeof identity?.executable!=='string'||!/^([a-f0-9]{64})$/.test(identity?.sha256||''))throw new Error('A live owned process and executable identity are required');

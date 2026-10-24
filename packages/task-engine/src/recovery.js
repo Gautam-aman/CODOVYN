@@ -64,6 +64,7 @@ export async function reconcileDraft({ store, id, snapshot, expectedFingerprint,
     const repository=await snapshot();
     const fingerprint=recoveryFingerprint(repository);
     if (fingerprint !== expectedFingerprint) throw new Error('Draft changed since recovery inspection');
+    store.reconcileDraftWrites(id,token);
     store.append(id,'draft-reconciled',{decision,fingerprint,repository,
       processEvidence:safety.reason,actionResolution:'unresolved outcomes remain unknown; no replay authorized'});
     return store.update(id,{status:decision==='abandon'?'cancelled':'interrupted',activeAgent:task.activeAgent,step:task.step});
