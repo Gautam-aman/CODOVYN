@@ -14,12 +14,12 @@ check('native broker client returns fresh verified branch/HEAD and rejects new n
  }finally{await f.broker.close();}});
 check('native client denies command escalation, environment redirection, cross-project and revoked leases',async()=>{const f=await fixture();try{
  for(const args of [['push'],['commit'],['reset','--hard'],['config','x.y','bad'],['rev-parse','HEAD','extra'],['-C','/tmp','rev-parse','HEAD'],['--git-dir','/tmp','--work-tree',f.root,'rev-parse','HEAD']])assert.equal((await client(f,args)).code,126);
- assert.equal((await client(f,['rev-parse','HEAD'],base)).code,126);assert.equal((await client(f,['rev-parse','HEAD'],f.root,{GIT_DIR:'/etc',GIT_WORK_TREE:'/etc',DYLD_LIBRARY_PATH:'/tmp',CODOVYN_BROKER_SOCKET:'/tmp/evil'})).stdout,git(f.root,'rev-parse','HEAD')+'\n');
- const raw=await new Promise((resolve,reject)=>{const socket=net.connect(f.broker.endpoint,()=>socket.write('1 '+'0'.repeat(64)+' 1 2f746d70\n'));let text='';socket.on('data',b=>text+=b);socket.on('end',()=>resolve(text));socket.on('error',reject);});assert.equal(raw,'126 \n');f.revoke();assert.equal((await client(f,['rev-parse','HEAD'])).code,126);
+ assert.equal((await client(f,['rev-parse','HEAD'],f.root,{GIT_DIR:'/etc',GIT_WORK_TREE:'/etc',DYLD_LIBRARY_PATH:'/tmp',CODOVYN_BROKER_SOCKET:'/tmp/evil'})).stdout,git(f.root,'rev-parse','HEAD')+'\n');
+ const raw=await new Promise((resolve,reject)=>{const socket=net.connect(f.broker.endpoint,()=>socket.write('1 '+'0'.repeat(64)+' 1 2f746d70\n'));let text='';socket.on('data',b=>text+=b);socket.on('end',()=>resolve(text));socket.on('error',reject);});assert.equal(raw,'126 \n');assert.equal((await client(f,['rev-parse','HEAD'],base)).code,126);f.revoke();assert.equal((await client(f,['rev-parse','HEAD'])).code,126);
  }finally{await f.broker.close();}});
 check('OS process policy still denies real Git, shells, network executables, metadata writes and broker tampering',async()=>{const f=await fixture();try{
  const outside=join(base,'outside');writeFileSync(outside,'private');
- for(const write of [false,true]){const b=f.broker.boundary(openCodeBoundary({cwd:f.root,stateDirectory:join(base,'witness-'+index+'-'+write),command:process.execPath,write}));const actions=[`c.execFileSync('/usr/bin/git',['push'])`,`c.execFileSync('/Library/Developer/CommandLineTools/usr/bin/git',['config','x.y','z'])`,`c.execFileSync('/bin/sh',['-c','true'])`,`c.execFileSync('/usr/bin/curl',['--version'])`,`c.execFileSync(${JSON.stringify(reader.command)},[])`,`s.writeFileSync('.git/config','bad')`,`s.readFileSync(${JSON.stringify(outside)})`,`s.writeFileSync(${JSON.stringify(outside)},'bad')`,`s.writeFileSync(${JSON.stringify(f.broker.command)},'bad')`,`s.linkSync(${JSON.stringify(f.broker.command)},'linked-client')`,`s.unlinkSync(${JSON.stringify(f.broker.endpoint)})`,`s.renameSync(${JSON.stringify(f.broker.bin)},'moved-client')`];const code=`const s=require('fs'),c=require('child_process');let denied=0;for(const action of [${actions.map(a=>'()=>'+a).join(',')}])try{action()}catch{denied++}console.log(denied);`;
+ for(const write of [false,true]){const b=f.broker.boundary(openCodeBoundary({cwd:f.root,stateDirectory:join(base,'witness-'+index+'-'+write),command:process.execPath,write}));const actions=[`c.execFileSync('/usr/bin/git',['push'])`,`c.execFileSync('/Library/Developer/CommandLineTools/usr/bin/git',['config','x.y','z'])`,`c.execFileSync('/bin/sh',['-c','true'])`,`c.execFileSync('/usr/bin/curl',['--version'])`,`c.execFileSync(${JSON.stringify(reader.command)},[])`,`s.writeFileSync('.git/config','bad')`,`s.readFileSync(${JSON.stringify(outside)})`,`s.writeFileSync(${JSON.stringify(outside)},'bad')`,`s.writeFileSync(${JSON.stringify(f.broker.command)},'bad')`,`s.linkSync(${JSON.stringify(f.broker.command)},'linked-client')`,`s.unlinkSync(${JSON.stringify(f.broker.endpoint)})`,`s.renameSync(${JSON.stringify(f.broker.bin)},'moved-client')`,`s.readFileSync('f')`,`s.writeFileSync('f','must not write')`];const code=`const s=require('fs'),c=require('child_process');let denied=0;for(const action of [${actions.map(a=>'()=>'+a).join(',')}])try{action()}catch{denied++}console.log(denied);`;
  const result=await probeProcess(b.command,[...b.prefixArgs,'-e',code],{cwd:b.cwd,env:b.env});assert.equal(result.code,0);assert.equal(Number(result.stdout.trim()),actions.length);assert.equal(readFileSync(outside,'utf8'),'private');}
  }finally{await f.broker.close();}});
 check('hardened client ignores injected dynamic libraries under the provider sandbox',async()=>{const f=await fixture();try{
@@ -41,4 +41,12 @@ check('broker shutdown revokes abandoned requests and stale clients cannot reuse
 
 check('oversized IPC frames close before any repository inspection',async()=>{
  const f=await fixture();try{const before=f.authority.measurements.length;await new Promise((resolve,reject)=>{const socket=net.connect(f.broker.endpoint,()=>socket.end('x'.repeat(17000)));socket.on('error',error=>{if(error.code!=='ECONNRESET')reject(error);});socket.on('close',resolve);socket.setTimeout(2000,()=>{socket.destroy();reject(new Error('Oversized frame was not bounded'));});});assert.equal(f.authority.measurements.length,before);}finally{await f.broker.close();}
+});
+
+test('broker rejects provider-supplied or reconstructed authority objects before opening IPC',async()=>{
+ await assert.rejects(createRepositoryBroker({identity:{root:'/tmp'},read:()=>({})}),/host-issued repository authority/);
+});
+
+check('a metadata authorization cannot be rebound to a second broker',async()=>{
+ const f=await fixture();try{await assert.rejects(createRepositoryBroker(f.authority),/already bound/);assert.equal((await client(f,['rev-parse','HEAD'])).code,0);}finally{await f.broker.close();}
 });

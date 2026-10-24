@@ -6,6 +6,9 @@ import {inflateSync} from 'node:zlib';
 import {performance} from 'node:perf_hooks';
 import {manageAgentProcess} from './process.js';
 const hash=data=>createHash('sha256').update(data).digest('hex');
+const authorities=new WeakSet(),claimedAuthorities=new WeakSet();
+export const isRepositoryAuthority=value=>authorities.has(value);
+export function claimRepositoryAuthority(value){if(!authorities.has(value)||claimedAuthorities.has(value))return false;claimedAuthorities.add(value);return true;}
 const cleanEnv={PATH:'/usr/bin:/bin',LANG:'en_US.UTF-8'};
 export async function repositoryTool(command,args,{cwd,signal,timeoutMs=10000,maxBytes=1048576}={}) {
  if(signal?.aborted)throw new Error('Repository inspection cancelled before spawn');
@@ -56,26 +59,31 @@ export async function createRepositoryAuthority({root,gitDirectory,commonDirecto
  if(!gitDirectory){if(!lstatSync(join(root,'.git')).isDirectory())throw new Error('External Git metadata requires explicit host authorization');gitDirectory=join(root,'.git');}
  gitDirectory=realpathSync(gitDirectory);commonDirectory=realpathSync(commonDirectory||gitDirectory);
  if([root,gitDirectory,commonDirectory].some(path=>/[\0\r\n]/.test(path)))throw new Error('Unsupported Git path encoding');
- let expected='-',active=true;const controller=new AbortController();const measurements=[];
+ const helper=realpathSync(reader.command);for(const scope of [root,gitDirectory,commonDirectory]){const rel=relative(scope,helper);if(!isAbsolute(rel)&&rel!=='..'&&!rel.startsWith('../'))throw new Error('Repository reader must be outside project and Git metadata');}
+ let expected='-',active=true,pinTimer,pinCleanupFailed=false;const pins=[],controller=new AbortController(),measurements=[];
+ function revoke(){active=false;clearTimeout(pinTimer);controller.abort();while(pins.length)try{closeSync(pins.pop());}catch{pinCleanupFailed=true;}return !pinCleanupFailed;}
  async function validLease(){
-  if(!active||Date.now()>=frozenLease.expiresAt)throw new Error('Repository authorization expired or revoked');
+  if(!active||Date.now()>=frozenLease.expiresAt){revoke();throw new Error('Repository authorization expired or revoked');}
   let timer,abort;try{
    const current=await Promise.race([Promise.resolve().then(()=>frozenLease.isCurrent()),new Promise((_,reject)=>{abort=()=>reject(new Error('Repository authorization revoked'));controller.signal.addEventListener('abort',abort,{once:true});timer=setTimeout(()=>reject(new Error('Repository lease verification deadline exceeded')),500);})]);
-   if(current!==true||!active||Date.now()>=frozenLease.expiresAt)throw new Error('Repository authorization expired or revoked');
-  }finally{clearTimeout(timer);controller.signal.removeEventListener('abort',abort);}
+   if(current!==true||!active||Date.now()>=frozenLease.expiresAt){revoke();throw new Error('Repository authorization expired or revoked');}
+  }catch(error){revoke();throw error;}finally{clearTimeout(timer);controller.signal.removeEventListener('abort',abort);}
  }
  async function inspect(cwd,op='state',object=''){
   await validLease();const rel=relative(root,cwd);if(isAbsolute(rel)||rel==='..'||rel.startsWith('../'))throw new Error('Cross-project repository query denied');
   if(measurements.length>=512)throw new Error('Repository inspection budget exceeded');
-  verifyReader(reader);const result=await repositoryTool(reader.command,[root,gitDirectory,commonDirectory,rel,expected,op,object],{signal:controller.signal});measurements.push({pid:result.pid,elapsedMs:result.elapsedMs,code:result.code});
-  if(result.code!==0)throw new Error('Repository identity changed or metadata is unsupported');
+  let result;try{verifyReader(reader);result=await repositoryTool(reader.command,[root,gitDirectory,commonDirectory,rel,expected,op,object],{signal:controller.signal});measurements.push({pid:result.pid,elapsedMs:result.elapsedMs,code:result.code});}catch(error){revoke();throw error;}
+  if(result.code!==0){revoke();throw new Error('Repository identity changed or metadata is unsupported');}
   const record=JSON.parse(result.stdout);if(record.version!==1||typeof record.identity!=='string'||!/^[0-9:;]{1,399}$/.test(record.identity)||expected!=='-'&&record.identity!==expected)throw new Error('Repository identity mismatch');
   await validLease();return {record,state:currentState(record)};
  }
  const initial=await inspect(root);expected=initial.record.identity;
+ // Keep these objects alive for the complete lease so deleted inode numbers
+ // cannot be recycled into an existing authorization between native reads.
+ try{const expectedIds=expected.split(';'),paths=[root,gitDirectory,commonDirectory,join(root,'.git')];for(let i=0;i<paths.length;i++){const fd=openSync(paths[i],constants.O_RDONLY|constants.O_NOFOLLOW|constants.O_NONBLOCK|(i<3?constants.O_DIRECTORY:0));pins.push(fd);const info=fstatSync(fd,{bigint:true});if((i<3&&!info.isDirectory())||(!info.isDirectory()&&!info.isFile())||!info.nlink||`${info.dev}:${info.ino}`!==expectedIds[i])throw new Error('Repository changed while pinning authorization');}await validLease();pinTimer=setTimeout(revoke,Math.max(1,frozenLease.expiresAt-Date.now()));pinTimer.unref();}catch(error){revoke();throw error;}
  const stable=Object.freeze({version:1,root,gitDirectory,commonDirectory,filesystemIdentity:expected,id:hash(JSON.stringify({root,gitDirectory,commonDirectory,expected}))});
  const sameState=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
- return Object.freeze({identity:stable,leaseId:frozenLease.id,measurements,
+ const authority=Object.freeze({identity:stable,leaseId:frozenLease.id,measurements,
   async read(cwd=root){const result=await inspect(cwd);return {...stable,...result.state,fingerprint:hash(JSON.stringify([stable.id,result.state]))};},
   async roots(cwd=root){
    const start=await inspect(cwd);if(start.state.unborn)return [];
@@ -88,6 +96,6 @@ export async function createRepositoryAuthority({root,gitDirectory,commonDirecto
    }
    const final=await inspect(cwd);if(!sameState(start.state,final.state))throw new Error('Concurrent repository state transition');return roots.sort();
   },
-  revoke(){active=false;controller.abort();}
- });
+  revoke
+ });authorities.add(authority);return authority;
 }

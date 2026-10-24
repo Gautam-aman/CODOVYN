@@ -51,14 +51,16 @@ export async function prepareContextFlow({store,taskId,dataDirectory,configurati
  return {...transfer,metrics:contextFlowAccounting(packet)};
 }
 export async function verifyContextFlow({store,transferId,hash,dataDirectory,binding,now=Date.now()}) {
- const transfer=store.contextFlowTransfer(transferId);if(!transfer||transfer.status!=='prepared'||transfer.hash!==hash||transfer.binding!==binding||transfer.expiresAt<=now)throw new Error('ContextFlow approval is expired, changed or consumed');
+ const transfer=store.contextFlowTransfer(transferId);if(!transfer||transfer.status!=='prepared'||transfer.hash!==hash||transfer.expiresAt<=now)throw new Error('ContextFlow approval is expired, changed or consumed');
+ const invalidate=reason=>{store.invalidateContextFlow(transferId,reason);throw new Error('ContextFlow '+reason+'; fingerprint or recipient changed, prepare fresh review');};
+ if(transfer.binding!==binding)invalidate('destination-changed');
  validateContextFlow(transfer.packet);const task=store.get(transfer.taskId);
  if(!executionRecovery(store,task.id).safe)throw new Error('ContextFlow process ownership is unresolved');
  const workspace=await contextFlowWorkspace(store,task,dataDirectory);
  const snapshot=await repositorySnapshot(workspace.cwd);
- if(recoveryFingerprint(snapshot)!==transfer.packet.repository.fingerprint||recoveryFingerprint(workspace.original)!==transfer.packet.repository.originalFingerprint)throw new Error('ContextFlow repository fingerprint mismatch');
+ if(recoveryFingerprint(snapshot)!==transfer.packet.repository.fingerprint||recoveryFingerprint(workspace.original)!==transfer.packet.repository.originalFingerprint)invalidate('repository-changed');
  const files=await selectContextFiles(workspace.cwd,task.request,snapshot.changedPaths,{draft:!!workspace.draft});
- for(const file of transfer.packet.context.files)if(!files.some(actual=>actual.path===file.path&&actual.sha256===file.sha256))throw new Error('ContextFlow source changed after review');
+ for(const file of transfer.packet.context.files)if(!files.some(actual=>actual.path===file.path&&actual.sha256===file.sha256))invalidate('source-changed');
  return {transfer,task,workspace};
 }
 export const contextFlowBinding = value => digest(JSON.stringify(value));

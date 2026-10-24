@@ -17,11 +17,11 @@ async function configuredRemote(root, remote) {
 }
 
 /** Read-only repository identity for checkpoints. No file contents leave Git. */
-export async function repositorySnapshot(directory) {
+export async function repositorySnapshot(directory, { env = process.env } = {}) {
   const cwd = await realpath(directory);
   const git = async (...args) => (await execute('git', ['-c','core.fsmonitor=false','-C', cwd, ...args], {
     encoding: 'utf8', timeout: 10_000, maxBuffer: 4 * 1024 * 1024,
-    env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' },
+    env: { ...env, GIT_OPTIONAL_LOCKS: '0' },
   })).stdout.trimEnd();
   const root = await realpath(await git('rev-parse', '--show-toplevel'));
   const branch = await git('branch', '--show-current');

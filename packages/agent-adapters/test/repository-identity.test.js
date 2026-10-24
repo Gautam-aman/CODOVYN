@@ -2,7 +2,7 @@ import {inflateSync,deflateSync} from 'node:zlib';
 import {fileURLToPath} from 'node:url';
 import test,{before,after} from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync,renameSync,realpathSync,symlinkSync} from 'node:fs';
+import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync,copyFileSync,renameSync,realpathSync,symlinkSync} from 'node:fs';
 import {tmpdir} from 'node:os';import{join}from'node:path';import{execFileSync,spawn}from'node:child_process';
 import{buildRepositoryReader,createRepositoryAuthority,repositoryTool}from'../src/repository-identity.js';
 import{manageAgentProcess}from'../src/process.js';
@@ -23,7 +23,7 @@ check('unborn HEAD and packed branch refs are explicit fresh states',async()=>{
  const root=repo({commit:false}),a=await auth(root);assert.equal((await a.read()).unborn,true);assert.deepEqual(await a.roots(),[]);writeFileSync(join(root,'f'),'x');git(root,'add','.');git(root,'-c','user.name=Test','-c','user.email=test@example.invalid','commit','-qm','first');git(root,'pack-refs','--all');assert.equal((await a.read()).head,git(root,'rev-parse','HEAD'));a.revoke();
 });
 check('nested directories work until a new repository or symlink boundary appears',async()=>{
- const root=repo(),a=await auth(root),nested=join(root,'nested');mkdirSync(nested);assert.equal((await a.read(nested)).id,a.identity.id);git(nested,'init','-q');await assert.rejects(a.read(nested),/identity changed/);symlinkSync(base,join(root,'escape'));await assert.rejects(a.read(join(root,'escape')),/identity changed/);await assert.rejects(a.read(base),/Cross-project/);a.revoke();
+ const root=repo(),a=await auth(root),nested=join(root,'nested');mkdirSync(nested);assert.equal((await a.read(nested)).id,a.identity.id);git(nested,'init','-q');await assert.rejects(a.read(nested),/identity changed/);await assert.rejects(a.read(),/revoked/);const b=await auth(root);await assert.rejects(b.read(base),/Cross-project/);symlinkSync(base,join(root,'escape'));await assert.rejects(b.read(join(root,'escape')),/identity changed/);a.revoke();b.revoke();
 });
 check('replacement, deletion and Git-directory substitution invalidate prior authorization',async()=>{
  for(const kind of ['root','deleted','git']){const root=repo(),a=await auth(root);if(kind==='git'){renameSync(join(root,'.git'),join(root,'old-git'));git(root,'init','-q');}else{renameSync(root,root+'-old');if(kind==='root'){mkdirSync(root);git(root,'init','-q');}}await assert.rejects(a.read(),/identity changed/);a.revoke();}
@@ -51,4 +51,12 @@ check('in-place Git pointer mutation at the native race barrier invalidates the 
  const root=repo({separate:true}),a=await auth(root,{gitDirectory:root+'-git',commonDirectory:root+'-git'}),race=join(base,'pointer-race-reader');assert.equal((await repositoryTool('/usr/bin/xcrun',['clang','-D_DARWIN_C_SOURCE','-DCODOVYN_READER_TEST_PAUSE','-O2',fileURLToPath(new URL('../native/repository-reader.c',import.meta.url)),'-o',race])).code,0);
  const child=spawn(race,[root,root+'-git',root+'-git','',a.identity.filesystemIdentity,'state',''],{detached:true,stdio:['pipe','pipe','pipe'],env});const life=manageAgentProcess(child);let output='';child.stdout.on('data',d=>output+=d);const timer=setTimeout(()=>life.dispose().catch(()=>{}),3000);
  try{while(!output.includes('PINNED')){await new Promise(r=>setTimeout(r,5));if(child.exitCode!==null)throw new Error('Pointer witness exited before barrier');}writeFileSync(join(root,'.git'),'gitdir: /unapproved/other-repository\n');child.stdin.end('\n');assert.equal(await life.closed,76);assert.equal(output.trim(),'PINNED');}finally{clearTimeout(timer);await life.dispose();a.revoke();}
+});
+
+check('host authority refuses an executable stored inside the authorized project',async()=>{
+ const root=repo(),command=join(root,'untrusted-location-reader');copyFileSync(reader.command,command);await assert.rejects(auth(root,{reader:{...reader,command}}),/outside project/);
+});
+
+check('an observed replacement permanently revokes the authority even if the original pathname is restored',async()=>{
+ const root=repo(),a=await auth(root);renameSync(root,root+'-saved');mkdirSync(root);git(root,'init','-q');await assert.rejects(a.read(),/identity changed/);rmSync(root,{recursive:true});renameSync(root+'-saved',root);await assert.rejects(a.read(),/revoked/);const fresh=await auth(root);assert.equal((await fresh.read()).id,a.identity.id);fresh.revoke();a.revoke();
 });

@@ -316,7 +316,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
         const selected=metadata.models.find(entry=>configuration.modelId?entry.id===configuration.modelId:entry.model===metadata.defaultModel);
         if(!selected||configuration.reasoning&&!selected.reasoning.includes(configuration.reasoning))throw new Error('Destination model or variant is not currently advertised');
         return {configuration,executionSupported:metadata.executionSupported,model:selected.model,command:metadata.command,reasoning:configuration.reasoning||undefined,
-          binding:contextFlowBinding({configuration,model:selected.model,command:metadata.command||'',version:metadata.version||'',binarySha256:metadata.binarySha256||'',repositoryIdentity:metadata.repositoryIdentity?.id||'',repositoryState:metadata.repositoryIdentity?.fingerprint||'',configuredCommand:process.env.CODOVYN_OPENCODE_COMMAND||''})};
+          binding:contextFlowBinding({configuration,model:selected.model,command:metadata.command||'',version:metadata.version||'',binarySha256:metadata.binarySha256||'',brokerImplementation:metadata.inspection?.implementationSha256||'',readerSource:metadata.inspection?.readerSourceSha256||'',clientSource:metadata.inspection?.clientSourceSha256||'',repositoryIdentity:metadata.repositoryIdentity?.id||'',repositoryState:metadata.repositoryIdentity?.fingerprint||'',configuredCommand:process.env.CODOVYN_OPENCODE_COMMAND||''})};
       };
       if(mode==='contextflow-prepare') {
         lookupTask();if(rest.length!==3||!['--manual','--eligible'].includes(rest[2])||rest[1].length>4096)throw new TypeError('Invalid ContextFlow preparation');
@@ -329,8 +329,8 @@ export async function main(args = process.argv.slice(2), output = console, signa
       if(rest.length!==3||rest[1]!==transfer.hash||rest[2]!=='--yes')throw new Error('Explicit recipient and context approval required');
       if(transfer.status!=='prepared'||transfer.expiresAt<=Date.now())throw new Error('ContextFlow approval is expired or consumed');
       const selection=await destination(transfer.configuration);
-      if(selection.executionSupported===false)throw new Error('OpenCode metadata-only compatibility does not authorize ContextFlow execution');
       const verified=await verifyContextFlow({store,transferId:value,hash:rest[1],dataDirectory,binding:selection.binding});
+      if(selection.executionSupported===false)throw new Error('OpenCode metadata-only compatibility does not authorize ContextFlow execution');
       const registry=new AgentRegistry();registry.register((adapters.createOpenCodeAdapter||createOpenCodeAdapter)({cwd:verified.workspace.cwd,stateDirectory:openCodeStateDirectory(dataDirectory,repository),command:selection.command,model:selection.model,reasoning:selection.reasoning,write:selection.configuration.permission==='read-write'}));
       const snapshot=async()=>{if(recoveryFingerprint(await repositorySnapshot(repository))!==transfer.packet.repository.originalFingerprint)throw new Error('Original repository changed after handoff approval');return repositorySnapshot(verified.workspace.cwd);};
       const engine=new TaskEngine({store,registry,snapshot,onEvent:stream?event=>output.log(JSON.stringify({type:'event',taskId:verified.task.id,event})):undefined});

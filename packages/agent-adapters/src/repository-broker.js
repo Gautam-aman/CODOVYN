@@ -1,12 +1,16 @@
 import net from 'node:net';
 import {randomBytes,createHash,timingSafeEqual} from 'node:crypto';
 import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,chmodSync,realpathSync,rmSync} from 'node:fs';
-import {join} from 'node:path';
-import {repositoryTool} from './repository-identity.js';
+import {join,relative,isAbsolute} from 'node:path';
+import {repositoryTool,isRepositoryAuthority,claimRepositoryAuthority} from './repository-identity.js';
 const cstring=value=>'"'+[...Buffer.from(value)].map(b=>'\\'+b.toString(8).padStart(3,'0')).join('')+'"';
 /** A metadata-only lease never authorizes session/prompt or tool execution. */
 export async function createRepositoryBroker(authority,{signal}={}) {
- const directory=realpathSync(mkdtempSync('/private/tmp/codovyn-rb-'));const bin=join(directory,'client');mkdirSync(bin,{mode:0o700});
+ if(!isRepositoryAuthority(authority))throw new Error('A host-issued repository authority is required');
+ if(!claimRepositoryAuthority(authority))throw new Error('Repository authority is already bound to a broker');
+ await authority.read();
+ const directory=realpathSync(mkdtempSync('/private/tmp/codovyn-rb-'));const rel=relative(authority.identity.root,directory);if(!isAbsolute(rel)&&rel!=='..'&&!rel.startsWith('../')){rmSync(directory,{recursive:true,force:true});throw new Error('Repository broker must be outside the project');}
+ const bin=join(directory,'client');mkdirSync(bin,{mode:0o700});
  const endpoint=join(directory,'socket'),capability=randomBytes(32).toString('hex');
  const values={...authority.identity,endpoint,capability};
  writeFileSync(join(bin,'client-config.h'),['root','gitDirectory','commonDirectory','endpoint','capability'].map(key=>`static const char *${key}=${cstring(values[key])};`).join('\n'),{mode:0o600});
@@ -20,10 +24,10 @@ export async function createRepositoryBroker(authority,{signal}={}) {
   socket.on('data',chunk=>{
    if(handled){socket.destroy();return;}frame+=chunk.toString('utf8');if(frame.length>16384){socket.destroy();return;}if(!frame.endsWith('\n'))return;handled=true;socket.setTimeout(9000,()=>{authority.revoke();socket.destroy();});
    const work=(async()=>{
-    let code=126,text='';const started=performance.now();
+    let code=126,text='',authenticated=false;const started=performance.now();
     try{
      const match=/^1 ([0-9a-f]{64}) ([1-4]) ([0-9a-f]{2,8192})\n$/.exec(frame);if(!match||match[3].length%2||!timingSafeEqual(Buffer.from(match[1]),Buffer.from(capability))||++total>128)throw new Error('Invalid bounded metadata request');
-     const cwd=Buffer.from(match[3],'hex').toString('utf8');if(cwd.includes('\0'))throw new Error('Invalid metadata path');
+     authenticated=true;const cwd=Buffer.from(match[3],'hex').toString('utf8');if(cwd.includes('\0')||Buffer.from(cwd).toString('hex')!==match[3])throw new Error('Invalid metadata path');
      const state=await authority.read(cwd);switch(Number(match[2])){
       case 1:text=`${state.gitDirectory}\n${state.commonDirectory}\n${state.root}\n`;code=0;break;
       case 2:text=state.head?state.head+'\n':'';code=state.head?0:1;break;
@@ -33,7 +37,7 @@ export async function createRepositoryBroker(authority,{signal}={}) {
      // Revalidate authorization and current state immediately before responding.
      const after=await authority.read(cwd);if(after.fingerprint!==state.fingerprint)throw new Error('Repository state changed before broker response');
      if(Buffer.byteLength(text)>16384)throw new Error('Metadata response exceeds bound');
-    }catch(error){if(error?.kind==='fatal')cleanupFailure=error;code=126;text='';}
+    }catch(error){if(authenticated)authority.revoke();if(error?.kind==='fatal')cleanupFailure=error;code=126;text='';}
     queries.push({code,elapsedMs:performance.now()-started});if(!socket.destroyed)socket.end(`${code} ${Buffer.from(text).toString('hex')}\n`);
    })();pending.add(work);work.finally(()=>pending.delete(work)).catch(()=>{});
   });
@@ -44,9 +48,9 @@ export async function createRepositoryBroker(authority,{signal}={}) {
   boundary(base){
    if(createHash('sha256').update(readFileSync(command)).digest('hex')!==binarySha256)throw new Error('Repository client integrity changed');
    if(base.cwd!==authority.identity.root)throw new Error('Broker boundary belongs to another project');
-   const profile=base.prefixArgs[1]+`\n(allow process-exec (literal ${JSON.stringify(command)}))\n(allow file-read* (subpath ${JSON.stringify(bin)}))\n(deny file-write* (subpath ${JSON.stringify(directory)}))`;
-   return {...base,prefixArgs:[base.prefixArgs[0],profile,...base.prefixArgs.slice(2)],env:{...base.env,PATH:bin+':'+base.env.PATH}};
+   const profile=base.prefixArgs[1]+`\n(allow process-exec (literal ${JSON.stringify(command)}))\n(allow file-read* (subpath ${JSON.stringify(bin)}))\n(deny file-write* (subpath ${JSON.stringify(directory)}))\n(deny file-read-data (subpath ${JSON.stringify(authority.identity.root)}))\n(allow file-read-data (require-all (subpath ${JSON.stringify(authority.identity.root)}) (vnode-type DIRECTORY)))\n(deny file-write* (subpath ${JSON.stringify(authority.identity.root)}))`;
+   return {...base,prefixArgs:[base.prefixArgs[0],profile,...base.prefixArgs.slice(2)],env:{...base.env,PATH:bin+':'+base.env.PATH,OPENCODE_DISABLE_FILEWATCHER:'true',OPENCODE_DISABLE_FFF:'true'}};
   },
-  close(){if(closed)return closed;closed=(async()=>{closing=true;authority.revoke();for(const socket of sockets)socket.destroy();await new Promise(resolve=>server.close(resolve));await Promise.allSettled([...pending]);if(cleanupFailure)throw cleanupFailure;chmodSync(bin,0o700);rmSync(directory,{recursive:true,force:true});})();return closed;}
+  close(){if(closed)return closed;closed=(async()=>{closing=true;const pinsClosed=authority.revoke();for(const socket of sockets)socket.destroy();await new Promise(resolve=>server.close(resolve));await Promise.allSettled([...pending]);if(cleanupFailure)throw cleanupFailure;if(!pinsClosed)throw new Error('Repository descriptor cleanup unverified');chmodSync(bin,0o700);rmSync(directory,{recursive:true,force:true});})();return closed;}
  });
 }

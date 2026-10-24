@@ -3,6 +3,7 @@ import { realpathSync, statSync, constants, accessSync, lstatSync, readFileSync 
 import { join, delimiter, isAbsolute, resolve, relative, dirname } from 'node:path';
 import { createHash } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
+import {captureOpenCodeServer} from './opencode-process.js';
 import { AcpConnection } from './acp.js';
 import { manageAgentProcess } from './process.js';
 import { openCodeBoundary } from './opencode-sandbox.js';
@@ -16,12 +17,13 @@ async function ownedOutput(command,args,options) {
   const abort=()=>controller.abort();options.signal?.addEventListener('abort',abort,{once:true});if(options.signal?.aborted)abort();
   const timer=setTimeout(()=>controller.abort(),options.timeoutMs||15000);let chunks=[],size=0,stderr=0;
   child.stderr.on('data',chunk=>{stderr+=chunk.length;if(stderr>1048576)controller.abort();});
-  try{
+  let server;try{
+    if(options.privateServer){server=await captureOpenCodeServer(child,options.privateServer,controller.signal);options.ownedGroups?.push(server.group);}
     for await(const chunk of child.stdout){size+=chunk.length;if(size>(options.maxBytes||262144))throw new AgentFailure('fatal','OpenCode catalogue exceeded its byte bound');chunks.push(chunk);}
     const code=await lifecycle.closed;
     if(controller.signal.aborted||lifecycle.error()||code!==0)throw new AgentFailure('fatal','OpenCode metadata inspection failed or timed out');
     return Buffer.concat(chunks).toString('utf8');
-  }finally{clearTimeout(timer);options.signal?.removeEventListener('abort',abort);await lifecycle.dispose();}
+  }finally{clearTimeout(timer);options.signal?.removeEventListener('abort',abort);try{await lifecycle.dispose();}finally{if(server)await server.verifyStopped();}}
 }
 export const openCodeVersion = '2.1.2';
 export function openCodeProjectReadiness(cwd) {
@@ -113,17 +115,18 @@ export async function discoverOpenCode({cwd,stateDirectory,configured,model,mode
 /** Host metadata path only; never sends a prompt and never returns a session. */
 export async function inspectOpenCodeMetadataBoundary({installation,boundary,model,modelId,signal}) {
   const started=performance.now(),ownedGroups=[];
-  const stdout=await ownedOutput(boundary.command,[...boundary.prefixArgs,'models','--standalone'],{...boundary,signal,ownedGroups});
+  const stdout=await ownedOutput(boundary.command,[...boundary.prefixArgs,'models','--standalone'],{...boundary,signal,ownedGroups,privateServer:installation.command});
   const models=parseOpenCodeModels(stdout);
   if(modelId){const selected=models.find(entry=>entry.id===modelId);if(!selected)throw new AgentFailure('fatal','Selected OpenCode model is no longer in the discovered catalogue');model=selected.model;}
   const connection=new AcpConnection({...boundary,args:[...boundary.prefixArgs,'acp'],signal,execution:{starting(){},spawned(info){if(info.pid)ownedGroups.push(info.pid);},stopped(){}}});
-  try{
+  let server;try{
+    server=await captureOpenCodeServer(connection.child,installation.command,signal);ownedGroups.push(server.group);
     const session=await begin(connection,boundary.cwd,model,undefined,false);
     const selected=configOption(session,'model')?.currentValue;
     const entry=models.find(entry=>entry.model===selected);
     if(entry)entry.reasoning=optionValues(configOption(session,'effort')).map(option=>option.value).filter(value=>value!=='default'&&/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/.test(value));
     return {provider:'opencode',...installation,models,defaultModel:!model?selected:null,selectedModel:selected,metadataOwnedGroups:ownedGroups,metadataSessionIdHash:createHash('sha256').update(session.sessionId).digest('hex'),elapsedMs:performance.now()-started,authentication:'unknown',availability:'unknown',isolatedAuthentication:true};
-  }finally{await connection.dispose();}
+  }finally{try{await connection.dispose();}finally{if(server)await server.verifyStopped();}}
 }
 export function createOpenCodeAdapter({cwd,stateDirectory,command,write=false,model,reasoning}={},runtime={inspect:inspectOpenCodeInstallation,boundary:openCodeBoundary}) {
   if(typeof write !== 'boolean')throw new TypeError('OpenCode write scope must be explicit');

@@ -222,6 +222,15 @@ export class TaskStore {
     }catch(error){this.#db.exec('ROLLBACK');throw error;}
   }
 
+  invalidateContextFlow(id,reason) {
+    if(!['destination-changed','repository-changed','source-changed'].includes(reason))throw new TypeError('Invalid ContextFlow invalidation reason');
+    this.#db.exec('BEGIN IMMEDIATE');try {
+      const transfer=this.contextFlowTransfer(id);if(!transfer||transfer.status!=='prepared')throw new Error('Only an unstarted transfer can be invalidated');
+      this.#db.prepare("UPDATE contextflow_transfers SET status='expired' WHERE id=?").run(id);
+      this.append(transfer.taskId,'contextflow-invalidated',{id,reason});this.#db.exec('COMMIT');return this.contextFlowTransfer(id);
+    }catch(error){this.#db.exec('ROLLBACK');throw error;}
+  }
+
   executionLease(id) {
     const row = this.#db.prepare('SELECT * FROM execution_leases WHERE task_id = ?').get(validId(id));
     return row ? { token: row.token, owner: JSON.parse(row.owner), acquiredAt: row.acquired_at,

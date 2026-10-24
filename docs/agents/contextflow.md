@@ -1,6 +1,6 @@
 # ContextFlow: review before changing providers
 
-**Current readiness gate:** Phase 12 identified that OpenCode 2.1.2 Git discovery requires a subprocess denied by the existing process boundary. Real Git-backed preparation/continuation is blocked; see [OpenCode connection](opencode.md). Native fixture review and deterministic continuation do not establish live execution.
+**Current readiness gate:** Phase 14 verifies Git-backed **metadata-only** OpenCode initialization through the descriptor-authority broker. Production continuation remains blocked until execution-lease and provider filesystem-lifetime integration is verified. Native/CLI fixture continuation and real metadata are separate evidence; neither establishes live inference. See [OpenCode connection](opencode.md).
 
 ContextFlow can prepare a stopped Codex task for one new OpenCode session under the same CODOVYN task ID. This is experimental, consent-based continuation. A live Codex-to-OpenCode continuation has not yet been verified. It does not migrate a provider's private session or reasoning.
 
@@ -31,3 +31,11 @@ contextflow-reject <transfer-id> <repo> --yes
 ```
 
 Prepare validates an OpenCode configuration through normal model discovery. Run revalidates it and requires explicit authorization. Never put credentials in configuration JSON. A prepared review blocks queued dispatch for that repository until resolved; ordinary task admission cannot bypass repository ownership, and any intervening repository changes invalidate continuation.
+
+
+Phase 14 additionally binds a prepared transfer to the observed filesystem identity,
+mutable Git metadata fingerprint, provider binary digest and broker implementation/
+native-source digests when available. A changed identity or implementation requires
+fresh review. Consumed/expired approvals reject before a new metadata process starts.
+Metadata-only compatibility cannot admit a coding task or consume a continuation
+execution approval. Git task execution remains disabled.

@@ -34,7 +34,11 @@ function showProviderMetadataObservation(card,metadata) {
     row.textContent=`ACP compatible (metadata only). Authentication unknown; inference unverified; execution blocked. Last check: ${metadata.verifiedAt}. Branch: ${metadata.repositoryIdentity?.branch || 'detached'}.`;
     row.dataset.repositoryIdentity=metadata.repositoryIdentity?.id || '';
     const readiness=card.querySelector('.provider-readiness');if(readiness)readiness.textContent='Repository identity compatible at last check · Broker experimental · ACP metadata verified · Inference unverified · Execution blocked.';
-  }else row.textContent='ACP metadata initialization not verified. Refresh Models to inspect the current repository.';
+  }else {
+    row.textContent='ACP metadata initialization not verified. Refresh Models to inspect the current repository.';
+    delete row.dataset.repositoryIdentity;
+    const readiness=card.querySelector('.provider-readiness');if(readiness)readiness.textContent=`Readiness: ${card.dataset.executionBlocked==='true'?'blocked-project-boundary':'initialization-unverified'}. Metadata initialization: not-verified. Authentication unknown · Inference unverified.`;
+  }
 }
 const allTaskModels = () => [...taskModelCatalogue,...[...providerCatalogues.values()].flatMap(metadata => metadata.models || [])];
 function requestProviderModels(provider,modelId,refresh=false) {
@@ -1088,6 +1092,9 @@ window.addEventListener('message', ({ data }) => {
     diffOutput.textContent = 'Choose a diff to review.';
   } else if (data.type === 'provider-models-loading') {
     policyStatus.textContent = `Inspecting ${data.provider} models. No inference request is started.`;
+    if(data.provider==='opencode'){
+      const card=agentCards.querySelector('[data-provider="opencode"]');if(card)showProviderMetadataObservation(card,null);
+    }
   } else if (data.type === 'provider-models') {
     if(!['codex','opencode'].includes(data.provider))return;
     const previous=providerCatalogues.get(data.provider);
