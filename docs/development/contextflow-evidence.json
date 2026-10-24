@@ -1,0 +1,215 @@
+{
+  "sourceCommit": "2a3e9cc39facae9e4d15e71f805102b094326f02",
+  "localTests": {
+    "passed": 246,
+    "failed": 0,
+    "skipped": 0
+  },
+  "copiedHost": {
+    "app": "CODOVYN Desktop",
+    "version": "1.140.0",
+    "edit": true,
+    "fileSearch": true,
+    "fileSearchDurationMs": 87.906417,
+    "fileSearchPattern": "**/desktop-smoke.txt",
+    "git": true,
+    "terminal": true,
+    "bundledNode": true
+  },
+  "copiedRoutingHost": {
+    "app": "CODOVYN Desktop",
+    "version": "1.140.0",
+    "edit": true,
+    "fileSearch": true,
+    "fileSearchDurationMs": 173.126958,
+    "fileSearchPattern": "**/desktop-smoke.txt",
+    "git": true,
+    "terminal": true,
+    "bundledNode": true
+  },
+  "nativeChatChecks": [
+    {
+      "compactComposer": true,
+      "composerControls": true,
+      "inlineEffort": true,
+      "queueManagement": true,
+      "submissionAcknowledgement": true,
+      "submittedPrompt": true,
+      "streamingOrderAndTextSafety": true,
+      "navigationAndActivitySeparation": true,
+      "completionState": true,
+      "scrollFollowAndJump": true,
+      "sqliteJournalRestoration": true,
+      "interruptionState": true,
+      "openCodeModelAndVariant": true,
+      "contextFlowNarrowAndFocus": true,
+      "contextFlowReview": true,
+      "providerSegmentPresentation": true,
+      "transcriptMessages": [
+        "YouPersisted native journal request",
+        "AgentPersisted agent response from SQLite."
+      ],
+      "activityRows": [
+        "Started codex",
+        "Using agent tool: read_file",
+        "Agent tool finished: read_file",
+        "Completed with codex"
+      ]
+    },
+    {
+      "openCodePreferencesRestored": true,
+      "openCodeEffectiveVariantRestored": true,
+      "compactComposer": true,
+      "composerControls": true,
+      "inlineEffort": true,
+      "queueRestoredAfterRestart": true,
+      "queueManagement": true,
+      "submissionAcknowledgement": true,
+      "submittedPrompt": true,
+      "streamingOrderAndTextSafety": true,
+      "navigationAndActivitySeparation": true,
+      "completionState": true,
+      "scrollFollowAndJump": true,
+      "sqliteJournalRestoration": true,
+      "interruptionState": true,
+      "openCodeQueueRestored": true,
+      "openCodeModelAndVariant": true,
+      "contextFlowNarrowAndFocus": true,
+      "contextFlowRejection": true,
+      "contextFlowReview": true,
+      "providerSegmentPresentation": true,
+      "transcriptMessages": [
+        "YouPersisted native journal request",
+        "AgentPersisted agent response from SQLite."
+      ],
+      "activityRows": [
+        "Started codex",
+        "Using agent tool: read_file",
+        "Agent tool finished: read_file",
+        "Completed with codex"
+      ]
+    }
+  ],
+  "lifecycles": [
+    {
+      "file": "copied-host-lifecycle.json",
+      "command": "test:desktop-host",
+      "phase": "host-fresh-profile",
+      "exitCode": 0,
+      "survivors": [],
+      "elapsedMs": 11162
+    },
+    {
+      "file": "host-lifecycle.json",
+      "phase": "host-fresh-profile",
+      "exitCode": 0,
+      "survivors": [],
+      "elapsedMs": 24251,
+      "command": "test:desktop-routing-ui"
+    },
+    {
+      "file": "chat-first-launch-lifecycle.json",
+      "phase": "chat-first-launch",
+      "exitCode": 0,
+      "survivors": [],
+      "elapsedMs": 8203
+    },
+    {
+      "file": "chat-relaunch-lifecycle.json",
+      "phase": "chat-relaunch",
+      "exitCode": 0,
+      "survivors": [],
+      "elapsedMs": 5946
+    },
+    {
+      "file": "restoration-write-lifecycle.json",
+      "phase": "write",
+      "exitCode": 0,
+      "survivors": [],
+      "elapsedMs": 3774
+    },
+    {
+      "file": "restoration-read-lifecycle.json",
+      "phase": "read",
+      "exitCode": 0,
+      "survivors": [],
+      "elapsedMs": 1798
+    }
+  ],
+  "dmgSha256": "3641cc3018f94a2a308412e2c199d32f4df1d94b15c15069c465c025e6092d6c",
+  "benchmark": {
+    "version": 1,
+    "environment": {
+      "node": "v26.9.0",
+      "platform": "darwin",
+      "arch": "arm64"
+    },
+    "results": [
+      {
+        "name": "short-history",
+        "baselineUtf8Bytes": 974,
+        "contextFlowUtf8Bytes": 1874,
+        "byteDifference": 900,
+        "serializationMs": 1.461,
+        "inputTokens": null,
+        "outputTokens": null,
+        "costUsd": null,
+        "providerCalls": 0,
+        "completionOutcome": "not tested",
+        "provenance": "synthetic local UTF-8 serialization; manual full-journal baseline"
+      },
+      {
+        "name": "repeated-long-history",
+        "baselineUtf8Bytes": 91319,
+        "contextFlowUtf8Bytes": 4689,
+        "byteDifference": -86630,
+        "serializationMs": 0.326,
+        "inputTokens": null,
+        "outputTokens": null,
+        "costUsd": null,
+        "providerCalls": 0,
+        "completionOutcome": "not tested",
+        "provenance": "synthetic local UTF-8 serialization; manual full-journal baseline"
+      }
+    ],
+    "limitations": "Byte sizes are not token usage, cost savings, provider latency, or evidence of successful continuation. Short histories may grow due to verification metadata."
+  },
+  "hostedRuns": [
+    {
+      "conclusion": "failure",
+      "databaseId": 40061393584,
+      "headSha": "2a3e9cc39facae9e4d15e71f805102b094326f02",
+      "name": "CI",
+      "status": "completed"
+    },
+    {
+      "conclusion": "failure",
+      "databaseId": 40061393655,
+      "headSha": "2a3e9cc39facae9e4d15e71f805102b094326f02",
+      "name": "Desktop development validation",
+      "status": "completed"
+    }
+  ],
+  "hostedCiAnnotations": [
+    "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings",
+    "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times."
+  ],
+  "hostedJobStepCounts": [
+    {
+      "name": "test (windows-latest)",
+      "executedSteps": 0,
+      "conclusion": "failure"
+    },
+    {
+      "name": "test (ubuntu-latest)",
+      "executedSteps": 0,
+      "conclusion": "failure"
+    },
+    {
+      "name": "test (macos-latest)",
+      "executedSteps": 0,
+      "conclusion": "failure"
+    }
+  ],
+  "notarizationValidationExitCode": 65
+}
