@@ -4,6 +4,7 @@ import { restorationDecision } from './restoration.js';
 import { recoveryFingerprint } from './recovery.js';
 import { createHandoffPacket } from '../../agent-core/src/handoff.js';
 import { AgentFailure } from '../../agent-core/src/index.js';
+import {createTaskExecutionAuthority} from './execution-authority.js';
 
 function repositoryChanged(before, after) {
   return ['root', 'branch', 'commit', 'dirty', 'workingTreeHash'].some((field) => before?.[field] !== after?.[field]) ||
@@ -63,7 +64,7 @@ export class TaskEngine {
     const transfer=options.contextFlow?this.store.claimContextFlow(options.contextFlow.id,options.contextFlow.hash,{token,pid:process.pid,host:hostname()}):null;
     if(!transfer)this.store.claimExecution(id, { token, pid: process.pid, host: hostname() });
     const start = this.#record(id, 'execution-owned', { token });
-    try { return await this.#runOwned(id, {...options,contextFlow:transfer}); }
+    try { return await this.#runOwned(id, {...options,contextFlow:transfer,executionToken:token}); }
     finally {
       const events = this.store.events(id).filter(event => event.seq > start);
       const process = events.findLast(event => ['provider-starting', 'provider-spawned', 'provider-stopped'].includes(event.kind));
@@ -73,7 +74,7 @@ export class TaskEngine {
     }
   }
 
-  async #runOwned(id, { signal, continuation, contextFlow } = {}) {
+  async #runOwned(id, { signal, continuation, contextFlow,executionToken } = {}) {
     if (this.#running.has(id)) throw new Error(`Task already running: ${id}`);
     const task = this.store.get(id);
     if (!task) throw new Error(`Unknown task: ${id}`);
@@ -150,7 +151,7 @@ export class TaskEngine {
       }
     }
     this.#running.add(id);
-    try { return await this.#run(task, signal, { agent:contextFlow?'opencode':continuation?.agent, repository:approvedRepository, contextFlow:contextFlow?.packet }); }
+    try { return await this.#run(task, signal, { agent:contextFlow?'opencode':continuation?.agent, repository:approvedRepository, contextFlow:contextFlow?.packet,configuration:contextFlow?.configuration,executionToken }); }
     finally { this.#running.delete(id); }
   }
 
@@ -194,6 +195,7 @@ export class TaskEngine {
       let usedUnsafeTool = false;
       let completed = false;
       let baseline;
+      let executionAuthority;
       try {
         baseline = await this.snapshot();
         if (expectedSnapshot && repositoryChanged(expectedSnapshot, baseline)) {
@@ -205,7 +207,9 @@ export class TaskEngine {
         const planning = this.store.events(task.id).findLast(event => event.kind === 'task-configuration')?.data.intent === 'plan';
         const handoff = { request: planning ? `${task.request}\n\nCODOVYN task mode: Plan. Produce an implementation plan and verification steps only. Do not modify files or execute write-capable actions.` : task.request, step: task.step, history: this.store.events(task.id), snapshot: baseline, ...(continuation.contextFlow?{contextFlow:continuation.contextFlow}:{}) };
         this.#record(task.id, 'handoff-prepared', { agent: id, packet: createHandoffPacket(handoff) });
+        executionAuthority=createTaskExecutionAuthority({store:this.store,taskId:task.id,provider:id,token:continuation.executionToken,workspace:baseline.root,configuration:continuation.configuration||this.store.events(task.id).findLast(e=>e.kind==='task-configuration')?.data,contextFlow:!!continuation.contextFlow,signal});
         for await (const event of agent.run({ taskId: task.id, handoff, signal, execution: {
+          authority:executionAuthority,
           starting: () => this.#record(task.id, 'provider-starting', { agent: id }),
           spawned: ({ pid, group }) => {
             if (!Number.isSafeInteger(pid) || pid < 1 || typeof group !== 'boolean') throw new Error('Invalid provider process');
@@ -243,7 +247,7 @@ export class TaskEngine {
           return this.store.update(task.id, { status: 'interrupted', activeAgent: id, step: task.step });
         }
         previous = id;
-      }
+      } finally {executionAuthority?.revoke();}
     }
     this.#record(task.id, 'fallback-exhausted');
     return this.store.update(task.id, { status: 'interrupted', activeAgent: previous, step: task.step });

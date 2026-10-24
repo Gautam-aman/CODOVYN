@@ -28,7 +28,7 @@ async function ownedOutput(command,args,options) {
 export const openCodeVersion = '2.1.2';
 export function openCodeProjectReadiness(cwd) {
   let directory;try{directory=realpathSync(cwd);}catch{return {executionSupported:false,diagnostic:'OpenCode project identity could not be verified.'};}
-  for(;;){if(statExists(join(directory,'.git')))return {executionSupported:false,diagnostic:'OpenCode 2.1.2 Git-backed execution is blocked: real git subprocesses denied by CODOVYN; metadata-only broker inspection is experimental. Task-bound execution and provider file-access revalidation are not verified; authentication cannot remove these gates.'};const parent=dirname(directory);if(parent===directory)break;directory=parent;}
+  for(;;){if(statExists(join(directory,'.git')))return {executionSupported:false,diagnostic:'OpenCode 2.1.2 Git-backed execution is blocked: real git subprocesses denied by CODOVYN; metadata-only broker inspection is experimental. Task-bound host reads are implemented, but provider-native file tools cannot yet use that mediation. Safe Agent writes remain blocked; authentication cannot remove these gates.'};const parent=dirname(directory);if(parent===directory)break;directory=parent;}
   return {executionSupported:process.platform==='darwin'&&process.arch==='arm64',diagnostic:'Non-Git metadata inspection only; this does not prove authenticated Git-backed execution.'};
 }
 /** Installation, process-policy compatibility and authentication are separate facts.
@@ -96,6 +96,8 @@ async function begin(connection,cwd,model,variant,write) {
   if((model && configOption(session,'model')?.currentValue!==model)||(variant && configOption(session,'effort')?.currentValue!==variant))throw new AgentFailure('fatal','OpenCode changed the accepted model or variant while setting task mode');
   return session;
 }
+// Trusted host initialization seam; advertises no client filesystem capability.
+export {begin as initializeOpenCodeSession};
 function scopePath(cwd,path,write) {
   if(typeof path!=='string'||path.length>4096)return false;
   const candidate=resolve(cwd,path), rel=relative(cwd,candidate);

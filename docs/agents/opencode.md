@@ -76,3 +76,19 @@ shutdown also track OpenCode's separate private `serve --stdio` process group.
 The upstream stdin lease closes that server on owner death; the integration
 checks both client and server groups rather than assuming one group contains all
 owned processes. A missing or surviving server fails the metadata inspection.
+
+### Task-bound host reads (Phase 15)
+
+The TaskEngine now issues non-transferable per-segment execution authorities. A
+separate host-only file-read service checks that authority, the live process,
+accepted policy, executable and repository identity before returning bounded text.
+Native traversal rejects symlinks/hardlinks and known sensitive/hidden paths.
+Allowed ordinary source files may still contain sensitive data; reviewing the
+scope and obtaining provider-transfer consent remain necessary. No perfect secret
+classification is claimed.
+
+This service does **not** yet mediate OpenCode 2.1.2's built-in tools. The provider
+retains the metadata-only OS profile: direct project-file access and all project
+writes remain denied. Client ACP file capabilities stay false. Agent writes stay
+blocked; neither CLI detection nor authentication can remove that restriction.
+See [task execution boundary evidence](../development/opencode-task-execution-validation.md).
