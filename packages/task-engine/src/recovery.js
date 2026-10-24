@@ -44,7 +44,7 @@ export function executionRecovery(store, id, { host = hostname(), absent = proce
 export function recoveryFingerprint(snapshot) {
   if (!snapshot || typeof snapshot.root !== 'string' || typeof snapshot.commit !== 'string' ||
       typeof snapshot.workingTreeHash !== 'string') throw new Error('Incomplete recovery repository verification');
-  return createHash('sha256').update(JSON.stringify({ root:snapshot.root,branch:snapshot.branch,
+  return createHash('sha256').update(JSON.stringify({ root:snapshot.root,filesystemIdentity:snapshot.filesystemIdentity,branch:snapshot.branch,
     commit:snapshot.commit,workingTreeHash:snapshot.workingTreeHash,dirty:snapshot.dirty,
     changedPaths:snapshot.changedPaths })).digest('hex');
 }

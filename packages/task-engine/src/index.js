@@ -7,7 +7,7 @@ import { AgentFailure } from '../../agent-core/src/index.js';
 import {createTaskExecutionAuthority} from './execution-authority.js';
 
 function repositoryChanged(before, after) {
-  return ['root', 'branch', 'commit', 'dirty', 'workingTreeHash'].some((field) => before?.[field] !== after?.[field]) ||
+  return ['root', 'filesystemIdentity', 'branch', 'commit', 'dirty', 'workingTreeHash'].some((field) => before?.[field] !== after?.[field]) ||
     JSON.stringify(before?.changedPaths ?? []) !== JSON.stringify(after?.changedPaths ?? []);
 }
 
@@ -207,7 +207,7 @@ export class TaskEngine {
         const planning = this.store.events(task.id).findLast(event => event.kind === 'task-configuration')?.data.intent === 'plan';
         const handoff = { request: planning ? `${task.request}\n\nCODOVYN task mode: Plan. Produce an implementation plan and verification steps only. Do not modify files or execute write-capable actions.` : task.request, step: task.step, history: this.store.events(task.id), snapshot: baseline, ...(continuation.contextFlow?{contextFlow:continuation.contextFlow}:{}) };
         this.#record(task.id, 'handoff-prepared', { agent: id, packet: createHandoffPacket(handoff) });
-        executionAuthority=createTaskExecutionAuthority({store:this.store,taskId:task.id,provider:id,token:continuation.executionToken,workspace:baseline.root,configuration:continuation.configuration||this.store.events(task.id).findLast(e=>e.kind==='task-configuration')?.data,contextFlow:!!continuation.contextFlow,signal});
+        executionAuthority=createTaskExecutionAuthority({store:this.store,taskId:task.id,provider:id,token:continuation.executionToken,workspace:baseline.root,filesystemIdentity:baseline.filesystemIdentity,configuration:continuation.configuration||this.store.events(task.id).findLast(e=>e.kind==='task-configuration')?.data,contextFlow:!!continuation.contextFlow,signal});
         for await (const event of agent.run({ taskId: task.id, handoff, signal, execution: {
           authority:executionAuthority,
           starting: () => this.#record(task.id, 'provider-starting', { agent: id }),

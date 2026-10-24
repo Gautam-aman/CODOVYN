@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, renameSync, cpSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { commitStaged, createBranch, fetchRemote, pullFastForward, pushCurrentBranch, repositoryDiff, repositorySnapshot, stagePaths } from '../src/index.js';
@@ -242,4 +242,12 @@ test('host snapshots, diffs and drafts never execute repository fsmonitor helper
  const {createDraftWorkspace,reviewDraftWorkspace,rejectDraftWorkspace}=await import('../src/draft-workspace.js');const drafts=join(directory,'drafts');const draft=await createDraftWorkspace(repo,drafts,'monitor-task');writeFileSync(join(draft.path,'file.txt'),'draft\n');await reviewDraftWorkspace(repo,drafts,'monitor-task',draft.baseCommit);await rejectDraftWorkspace(repo,drafts,'monitor-task',draft.baseCommit);assert.equal(existsSync(marker),false,'Draft commands ran a repository helper');
  assert.equal(git('config','--get','core.fsmonitor').toString().trim(),command,'Host must not rewrite owner Git configuration');git('status','--porcelain');assert.equal(existsSync(marker),true,'Control helper must be executable outside the hardened host path');
  }finally{rmSync(directory,{recursive:true,force:true});}
+});
+
+test('identical Git content at a replaced pathname has a different filesystem identity', async () => {
+ const root=mkdtempSync(join(tmpdir(),'codovyn-git-identity-')),saved=root+'-original';
+ try{execFileSync('git',['-C',root,'init','-q','-b','main']);writeFileSync(join(root,'Main.java'),'class Main {}\n');execFileSync('git',['-C',root,'add','.']);execFileSync('git',['-C',root,'-c','user.name=Test','-c','user.email=test@example.invalid','commit','-qm','baseline']);
+ const before=await repositorySnapshot(root);renameSync(root,saved);cpSync(saved,root,{recursive:true});const after=await repositorySnapshot(root);
+ assert.equal(after.commit,before.commit);assert.equal(after.workingTreeHash,before.workingTreeHash);assert.notEqual(after.filesystemIdentity,before.filesystemIdentity);
+ }finally{rmSync(root,{recursive:true,force:true});rmSync(saved,{recursive:true,force:true});}
 });

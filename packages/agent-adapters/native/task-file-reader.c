@@ -17,27 +17,33 @@ static int component(const char *s){
  return !strstr(lower,"credential")&&!strstr(lower,"secret")&&!strstr(lower,"token")&&strcmp(lower,"auth.json")&&strncmp(lower,"id_",3)&&!strstr(lower,".pem")&&!strstr(lower,".key");
 }
 static int same(int a,int b){struct stat x,y;return !fstat(a,&x)&&!fstat(b,&y)&&x.st_dev==y.st_dev&&x.st_ino==y.st_ino&&x.st_nlink>0&&y.st_nlink>0;}
-static int directory(int start,const char *path){int fd=dup(start);char copy[PATH_MAX];if(fd<0||strlen(path)>=sizeof copy)return -1;strcpy(copy,path);char *save=NULL;
- for(char *s=strtok_r(copy,"/",&save);s;s=strtok_r(NULL,"/",&save)){if(!strcmp(s,".")||!strcmp(s,"..")){close(fd);return -1;}int next=openat(fd,s,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);close(fd);if(next<0)return -1;fd=next;}return fd;}
-static int root_matches(const char *path){if(path[0]!='/'||strstr(path,"//"))return 0;int slash=open("/",O_RDONLY|O_DIRECTORY|O_CLOEXEC);if(slash<0)return 0;int current=directory(slash,path+1);close(slash);if(current<0)return 0;int ok=same(3,current);close(current);return ok;}
+/* A nested bare Git store has no .git marker. Conservatively deny even
+ * incomplete HEAD/objects layouts instead of treating metadata as source. */
+static int boundary(int fd){struct stat a,b;if(!fstatat(fd,".git",&a,AT_SYMLINK_NOFOLLOW)||errno!=ENOENT)return 1;
+ int head=fstatat(fd,"HEAD",&a,AT_SYMLINK_NOFOLLOW);int headError=errno;int objects=fstatat(fd,"objects",&b,AT_SYMLINK_NOFOLLOW);int objectsError=errno;
+ return (!head&&!objects)||(head&&headError!=ENOENT)||(objects&&objectsError!=ENOENT);}
+static int directory(int start,const char *path,int scoped){int fd=dup(start);struct stat root;char copy[PATH_MAX];if(fd<0||fstat(start,&root)||strlen(path)>=sizeof copy)return -1;strcpy(copy,path);char *save=NULL;
+ for(char *s=strtok_r(copy,"/",&save);s;s=strtok_r(NULL,"/",&save)){if(!strcmp(s,".")||!strcmp(s,"..")){close(fd);return -1;}int next=openat(fd,s,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);close(fd);if(next<0)return -1;fd=next;struct stat info;if(scoped&&(fstat(fd,&info)||info.st_dev!=root.st_dev||boundary(fd))){close(fd);return -1;}}return fd;}
+static int root_matches(const char *path){if(path[0]!='/'||strstr(path,"//"))return 0;int slash=open("/",O_RDONLY|O_DIRECTORY|O_CLOEXEC);if(slash<0)return 0;int current=directory(slash,path+1,0);close(slash);if(current<0)return 0;int ok=same(3,current);close(current);return ok;}
 int main(int argc,char **argv){
- if(argc!=3||strlen(argv[1])>=PATH_MAX||strlen(argv[2])>=PATH_MAX||!root_matches(argv[1]))return fail();
+ if(argc!=3||strlen(argv[1])>=PATH_MAX||strlen(argv[2])>=PATH_MAX)return fail();if(!root_matches(argv[1]))return 77;
  const char *path=argv[2];if(!*path||path[0]=='/'||path[strlen(path)-1]=='/'||strstr(path,"//"))return fail();
  pid_t owner=getppid();char copy[PATH_MAX];strcpy(copy,path);int parent=dup(3);char *save=NULL,*name=strtok_r(copy,"/",&save);if(parent<0||!name)return fail();
  for(;;){if(!component(name))return fail();char *next=strtok_r(NULL,"/",&save);if(!next)break;
-  int fd=openat(parent,name,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);close(parent);if(fd<0)return fail();parent=fd;struct stat marker;if(!fstatat(parent,".git",&marker,AT_SYMLINK_NOFOLLOW)||errno!=ENOENT)return fail();name=next;
+  int fd=openat(parent,name,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);close(parent);if(fd<0)return fail();parent=fd;struct stat top,here;if(fstat(3,&top)||fstat(parent,&here)||top.st_dev!=here.st_dev)return fail();if(boundary(parent))return 79;name=next;
  }
  int file=openat(parent,name,O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);if(file<0)return fail();struct stat before,after,entry;
- if(fstat(file,&before)||!S_ISREG(before.st_mode)||before.st_nlink!=1||before.st_size<0||before.st_size>LIMIT)return fail();
+ struct stat root;if(fstat(3,&root)||fstat(file,&before)||root.st_dev!=before.st_dev||!S_ISREG(before.st_mode)||before.st_nlink!=1||before.st_size<0||before.st_size>LIMIT)return fail();
 #ifdef CODOVYN_TASK_FILE_TEST_PAUSE
  puts("PINNED");fflush(stdout);if(getchar()!='\n')return fail();
 #endif
  unsigned char content[LIMIT+1];ssize_t total=0;while(total<=LIMIT){ssize_t n=read(file,content+total,(size_t)(LIMIT+1-total));if(n<0)return fail();if(!n)break;total+=n;}
- if(fstat(file,&after)||fstatat(parent,name,&entry,AT_SYMLINK_NOFOLLOW)||!S_ISREG(entry.st_mode)||entry.st_dev!=before.st_dev||entry.st_ino!=before.st_ino||after.st_nlink!=1||total!=before.st_size||total>LIMIT||before.st_size!=after.st_size||before.st_mtimespec.tv_sec!=after.st_mtimespec.tv_sec||before.st_mtimespec.tv_nsec!=after.st_mtimespec.tv_nsec||before.st_ctimespec.tv_sec!=after.st_ctimespec.tv_sec||before.st_ctimespec.tv_nsec!=after.st_ctimespec.tv_nsec||getppid()!=owner||!root_matches(argv[1]))return fail();
+ if(!root_matches(argv[1]))return 77;
+ if(fstat(file,&after)||fstatat(parent,name,&entry,AT_SYMLINK_NOFOLLOW)||!S_ISREG(entry.st_mode)||entry.st_dev!=before.st_dev||entry.st_ino!=before.st_ino||after.st_nlink!=1||total!=before.st_size||total>LIMIT||before.st_size!=after.st_size||before.st_mtimespec.tv_sec!=after.st_mtimespec.tv_sec||before.st_mtimespec.tv_nsec!=after.st_mtimespec.tv_nsec||before.st_ctimespec.tv_sec!=after.st_ctimespec.tv_sec||before.st_ctimespec.tv_nsec!=after.st_ctimespec.tv_nsec||getppid()!=owner)return fail();
  // Reopen the complete parent chain: moving a pinned subdirectory out of the
  // authorized root must not turn its descriptor into external file authority.
  char parentPath[PATH_MAX];strcpy(parentPath,path);char *slash=strrchr(parentPath,'/');int current;
- if(slash){*slash=0;current=directory(3,parentPath);}else current=dup(3);
+ if(slash){*slash=0;current=directory(3,parentPath,1);}else current=dup(3);
  if(current<0||!same(current,parent))return fail();close(current);
  for(ssize_t i=0;i<total;i++)printf("%02x",content[i]);putchar('\n');close(file);close(parent);return 0;
 }

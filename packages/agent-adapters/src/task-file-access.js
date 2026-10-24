@@ -1,7 +1,7 @@
 import{spawn}from'node:child_process';
 import{createHash}from'node:crypto';
 import{mkdirSync,writeFileSync,readFileSync,chmodSync,realpathSync,openSync,closeSync,constants,lstatSync}from'node:fs';
-import{join,dirname}from'node:path';
+import{join,dirname,relative,isAbsolute}from'node:path';
 import{performance}from'node:perf_hooks';
 import{isTaskExecutionAuthority}from'../../task-engine/src/execution-authority.js';
 import{isRepositoryAuthority,repositoryTool}from'./repository-identity.js';
@@ -23,7 +23,9 @@ const safePath=path=>typeof path==='string'&&path.length>0&&path.length<4096&&!/
 export async function createTaskFileAccess({execution,repository,reader}){
  if(!isTaskExecutionAuthority(execution)||!isRepositoryAuthority(repository))throw new Error('Host-issued task and repository authorities required');
  const provider=execution.verify();let executable;try{executable=lstatSync(provider.executable,{bigint:true});if(!executable.isFile()||hash(readFileSync(provider.executable))!==provider.sha256)throw new Error('Changed executable');}catch{execution.revoke();throw new Error('Task provider executable integrity changed');}
- let initial;try{initial=await repository.read();if(initial.root!==execution.workspace)throw new Error('Task repository scope mismatch');}catch(error){execution.revoke();throw error;}
+ let initial;try{initial=await repository.read();if(initial.root!==execution.workspace)throw new Error('Task repository scope mismatch');execution.bindRepository(initial);}catch(error){execution.revoke();throw error;}
+ const within=(root,path)=>{const rel=relative(root,path);return !isAbsolute(rel)&&rel!=='..'&&!rel.startsWith('../');};
+ const sourcePath=path=>safePath(path)&&![initial.gitDirectory,initial.commonDirectory].some(metadata=>within(metadata,join(initial.root,path)));
  if(reader.command.startsWith(initial.root+'/'))throw new Error('Task reader must be outside the project');
  const rootFd=openSync(initial.root,constants.O_RDONLY|constants.O_DIRECTORY|constants.O_NOFOLLOW),controller=new AbortController(),pending=new Set();let closed=false,budget=0,closing,cleanupFailure;
  const abort=()=>controller.abort();execution.signal.addEventListener('abort',abort,{once:true});
@@ -31,12 +33,12 @@ export async function createTaskFileAccess({execution,repository,reader}){
  async function operation(path){
   const started=performance.now();let decision='denied';
   try{
-   if(!safePath(path)||++budget>128)throw new Error('Unsupported or sensitive task path');await verify(path);
+   if(!sourcePath(path)||++budget>128)throw new Error('Unsupported or sensitive task path');await verify(path);
    try{const info=lstatSync(reader.command);if(!info.isFile()||info.mode&0o022||hash(readFileSync(reader.command))!==reader.sha256)throw new Error('Changed reader');}catch{execution.revoke();throw new Error('Task reader integrity changed');}
    const child=spawn(reader.command,[initial.root,path],{env:{PATH:'/usr/bin:/bin',LANG:'en_US.UTF-8'},shell:false,detached:true,stdio:['pipe','pipe','pipe',rootFd]});const lifecycle=manageAgentProcess(child,controller.signal);child.stdin.end();let bytes=0,errors=0,chunks=[];
    child.stdout.on('data',chunk=>{bytes+=chunk.length;if(bytes<=131073)chunks.push(chunk);else lifecycle.dispose().catch(()=>{});});child.stderr.on('data',chunk=>{errors+=chunk.length;if(errors>4096)lifecycle.dispose().catch(()=>{});});
    const timer=setTimeout(()=>lifecycle.dispose().catch(()=>{}),3000);let code;try{code=await lifecycle.closed;}finally{clearTimeout(timer);await lifecycle.dispose();}
-   if(code!==0||lifecycle.error()||bytes>131073||errors>4096)throw new Error('Task file operation denied');await verify(path);
+   if(code===77||code===79){execution.revoke();repository.revoke();}if(code!==0||lifecycle.error()||bytes>131073||errors>4096)throw new Error('Task file operation denied');await verify(path);
    const encoded=Buffer.concat(chunks).toString('ascii').trim();if(!/^(?:[0-9a-f]{2})*$/.test(encoded))throw new Error('Invalid task file response');const content=Buffer.from(encoded,'hex');if(content.includes(0))throw new Error('Task reader supports text files only');
    const text=new TextDecoder('utf-8',{fatal:true}).decode(content);decision='allowed';return text;
   }finally{

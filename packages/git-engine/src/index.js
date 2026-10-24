@@ -24,6 +24,8 @@ export async function repositorySnapshot(directory, { env = process.env } = {}) 
     env: { ...env, GIT_OPTIONAL_LOCKS: '0' },
   })).stdout.trimEnd();
   const root = await realpath(await git('rev-parse', '--show-toplevel'));
+  const rootBefore = await lstat(root,{bigint:true});
+  if(!rootBefore.isDirectory())throw new Error('Repository filesystem identity is not a directory');
   const branch = await git('branch', '--show-current');
   let commit = null;
   try { commit = await git('rev-parse', '--verify', 'HEAD'); }
@@ -45,7 +47,9 @@ export async function repositorySnapshot(directory, { env = process.env } = {}) 
     if (info.isSymbolicLink()) hash.update(await readlink(absolute));
     else if (info.isFile()) for await (const chunk of createReadStream(absolute)) hash.update(chunk);
   }
-  return { root, branch: branch || null, commit, dirty: changedPaths.length > 0,
+  const rootAfter=await lstat(root,{bigint:true});
+  if(rootBefore.dev!==rootAfter.dev||rootBefore.ino!==rootAfter.ino||!rootAfter.isDirectory())throw new Error('Repository filesystem identity changed during snapshot');
+  return { root, filesystemIdentity:`${rootBefore.dev}:${rootBefore.ino}`, branch: branch || null, commit, dirty: changedPaths.length > 0,
     changedPaths, workingTreeHash: hash.digest('hex') };
 }
 

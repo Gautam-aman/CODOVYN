@@ -1,7 +1,7 @@
-import test from'node:test';import assert from'node:assert/strict';import{mkdtempSync,rmSync}from'node:fs';import{tmpdir,hostname}from'node:os';import{join}from'node:path';import{spawn}from'node:child_process';import{randomUUID}from'node:crypto';
+import test from'node:test';import assert from'node:assert/strict';import{mkdtempSync,rmSync,lstatSync,renameSync,mkdirSync,realpathSync}from'node:fs';import{tmpdir,hostname}from'node:os';import{join}from'node:path';import{spawn}from'node:child_process';import{randomUUID}from'node:crypto';
 import{TaskStore}from'../../storage/src/index.js';import{createTaskExecutionAuthority,isTaskExecutionAuthority}from'../src/execution-authority.js';import{manageAgentProcess}from'../../agent-adapters/src/process.js';
 const policy={provider:'opencode',permission:'read',intent:'ask'};
-async function fixture(fn){const directory=mkdtempSync(join(tmpdir(),'codovyn-task-scope-')),store=new TaskStore(join(directory,'tasks.sqlite')),token=randomUUID();store.create({id:'task',request:'Local lease witness',repositoryRoot:directory,primaryAgent:'opencode'});store.append('task','task-configuration',policy);store.claimExecution('task',{token,pid:process.pid,host:hostname()});store.update('task',{status:'running',activeAgent:'opencode',step:0});
+async function fixture(fn){const directory=realpathSync(mkdtempSync(join(tmpdir(),'codovyn-task-scope-'))),store=new TaskStore(join(directory,'tasks.sqlite')),token=randomUUID();store.create({id:'task',request:'Local lease witness',repositoryRoot:directory,primaryAgent:'opencode'});store.append('task','task-configuration',policy);store.claimExecution('task',{token,pid:process.pid,host:hostname()});store.update('task',{status:'running',activeAgent:'opencode',step:0});
  const child=spawn(process.execPath,['-e','process.stdin.resume()'],{detached:true,stdio:['pipe','pipe','pipe']}),lifecycle=manageAgentProcess(child);const grants=[];
  const create=extra=>{const a=createTaskExecutionAuthority({store,taskId:'task',provider:'opencode',token,workspace:directory,configuration:policy,...extra});grants.push(a);return a;};
  try{await fn({store,token,child,create,directory});}finally{for(const a of grants)a.revoke();await lifecycle.dispose();store.close();rmSync(directory,{recursive:true,force:true});}
@@ -20,4 +20,11 @@ test('expiry and task cancellation revoke authority without releasing the SQLite
 test('authority rejects unsupported modes and unrelated executable launch identities',async()=>fixture(async({store,child,create})=>{
  store.append('task','task-configuration',{...policy,permission:'read-write'});assert.throws(()=>create({configuration:{...policy,permission:'read-write'}}).verifyAdmission(),/permission policy/);
  store.append('task','task-configuration',policy);assert.throws(()=>create().bindProcess(child,{executable:'/bin/sh',sha256:'a'.repeat(64)}),/does not match/);
+}));
+
+test('accepted filesystem identity prevents fresh authority from adopting a replacement repository',async()=>fixture(async({create,directory})=>{
+ const info=lstatSync(directory,{bigint:true}),filesystemIdentity=`${info.dev}:${info.ino}`,authority=create({filesystemIdentity});
+ renameSync(directory,directory+'-old');mkdirSync(directory);
+ try{assert.throws(()=>authority.verifyAdmission(),/filesystem identity changed/);assert.throws(()=>create({filesystemIdentity}),/identity changed before authority/);}finally{rmSync(directory,{recursive:true});renameSync(directory+'-old',directory);}
+ assert.throws(()=>authority.verifyAdmission(),/revoked/);
 }));

@@ -1,6 +1,7 @@
 import {randomUUID,createHash} from 'node:crypto';
 import {hostname} from 'node:os';
 import {ChildProcess} from 'node:child_process';
+import{openSync,closeSync,fstatSync,lstatSync,constants}from'node:fs';
 const issued=new WeakSet(),boundProcesses=new WeakSet();
 const digest=value=>createHash('sha256').update(JSON.stringify(value??null)).digest('hex');
 export const isTaskExecutionAuthority=value=>issued.has(value);
@@ -8,15 +9,18 @@ export const isTaskExecutionAuthority=value=>issued.has(value);
 /** Trusted TaskEngine seam. No serialized token or task ID is a capability.
  * File access consumers must additionally bind repository/executable identity.
  * Issuance grants no direct OS permissions and no provider inference. */
-export function createTaskExecutionAuthority({store,taskId,provider,token,workspace,configuration,contextFlow=false,signal,ttlMs=120000}) {
+export function createTaskExecutionAuthority({store,taskId,provider,token,workspace,filesystemIdentity,configuration,contextFlow=false,signal,ttlMs=120000}) {
  if(!Number.isSafeInteger(ttlMs)||ttlMs<1||ttlMs>120000)throw new Error('Invalid execution authority lifetime');
  const segment=randomUUID(),policy=structuredClone(configuration),policyHash=digest(policy),expiresAt=Date.now()+ttlMs;
- const controller=new AbortController();let child=null,binding=null,active=true,timer;
- const revoke=()=>{active=false;clearTimeout(timer);controller.abort();signal?.removeEventListener('abort',revoke);child?.removeListener('exit',revoke);child?.removeListener('error',revoke);};
+ const controller=new AbortController();let child=null,binding=null,active=true,timer,rootPin=null,repositoryId=null;
+ const id=info=>`${info.dev}:${info.ino}`;
+ if(filesystemIdentity&&process.platform!=='win32')try{rootPin=openSync(workspace,constants.O_RDONLY|constants.O_DIRECTORY|constants.O_NOFOLLOW);if(id(fstatSync(rootPin,{bigint:true}))!==filesystemIdentity)throw new Error('Task workspace identity changed before authority issuance');}catch(error){if(rootPin!==null)closeSync(rootPin);throw error;}
+ const revoke=()=>{active=false;clearTimeout(timer);controller.abort();signal?.removeEventListener('abort',revoke);child?.removeListener('exit',revoke);child?.removeListener('error',revoke);if(rootPin!==null){closeSync(rootPin);rootPin=null;}};
  signal?.addEventListener('abort',revoke,{once:true});if(signal?.aborted)revoke();
  const current=()=>{
   const lease=store.executionLease(taskId),task=store.get(taskId);
   if(!active||signal?.aborted||Date.now()>=expiresAt||!lease||lease.releasedAt!==null||lease.token!==token||lease.owner.pid!==process.pid||lease.owner.host!==hostname()||task?.status!=='running'||task.activeAgent!==provider){revoke();throw new Error('Task execution authority expired or revoked');}
+  if(rootPin!==null)try{const actual=lstatSync(workspace,{bigint:true});if(!actual.isDirectory()||id(actual)!==filesystemIdentity||id(fstatSync(rootPin,{bigint:true}))!==filesystemIdentity)throw new Error('Changed root');}catch{revoke();throw new Error('Task workspace filesystem identity changed');}
   if(!policy||policy.provider!==provider||!['read','read-write'].includes(policy.permission)||!['ask','plan','agent'].includes(policy.intent)||policy.permission==='read-write'&&policy.intent!=='agent')throw new Error('Task lacks an immutable supported permission policy');
   // A ContextFlow segment has its own approved destination policy. Ordinary
   // configuration changes must not mutate an already accepted segment.
@@ -38,6 +42,7 @@ export function createTaskExecutionAuthority({store,taskId,provider,token,worksp
   },
   verify(){current();if(!child||child.exitCode!==null||child.signalCode!==null){revoke();throw new Error('Execution process is not live');}return {...binding};},
   verifyAdmission(){return current();},
+  bindRepository(identity){current();if(rootPin===null||identity.root!==workspace||identity.filesystemIdentity?.split(';')[0]!==filesystemIdentity||repositoryId&&repositoryId!==identity.id){revoke();throw new Error('Repository authority does not match the accepted task filesystem identity');}repositoryId=identity.id;return repositoryId;},
   audit(data){current();store.append(taskId,'file-access',{segment,provider,...data});},
   revoke
  });issued.add(authority);return authority;

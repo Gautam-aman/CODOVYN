@@ -28,6 +28,7 @@ test('crash matrix never equates missing process or completion evidence with saf
 test('recovery fingerprints bind actual worktree state and reject incomplete snapshots',()=>{
  const state={root:'/draft',branch:'draft',commit:'abc',workingTreeHash:'hash',dirty:true,changedPaths:['a']};
  assert.notEqual(recoveryFingerprint(state),recoveryFingerprint({...state,workingTreeHash:'changed'}));
+ assert.notEqual(recoveryFingerprint({...state,filesystemIdentity:'1:2'}),recoveryFingerprint({...state,filesystemIdentity:'1:3'}));
  assert.throws(()=>recoveryFingerprint({}),/Incomplete/);
 });
 
