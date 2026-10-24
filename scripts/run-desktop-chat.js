@@ -1,3 +1,4 @@
+import {desktopDebugPort} from './lib/desktop-capture.js';
 import { mkdtemp, writeFile, readFile, mkdir, rm, copyFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -35,12 +36,13 @@ try {
     const phaseDirectory = join(temporary, phase);
     await mkdir(phaseDirectory);
     const output = join(phaseDirectory, 'chat-result.json');
+    const debugPort=await desktopDebugPort();
     await runDesktopProcess({ signal: cancellation.signal, executable: join(app, 'MacOS/CODOVYN'), directory: phaseDirectory,
       phase: `chat-${phase}`, args: [fixture, ...nativeProfileArgs(temporary),
         '--disable-workspace-trust', '--skip-welcome', '--skip-release-notes',
-        ...(process.env.CODOVYN_HOST_DEBUG_PORT ? [`--remote-debugging-port=${process.env.CODOVYN_HOST_DEBUG_PORT}`] : [])],
+        `--remote-debugging-port=${debugPort}`],
       env: { ...process.env, VSCODE_CLI: '1', PATH: `${fixtureBin}:/usr/bin:/bin:/usr/sbin:/sbin`, CODOVYN_NATIVE_CHAT_TEST: '1',
-        CODOVYN_NATIVE_CHAT_PHASE: phase, CODOVYN_NATIVE_CHAT_DATA_DIR: dataDirectory,
+        CODOVYN_NATIVE_CHAT_PHASE: phase, CODOVYN_NATIVE_CHAT_DEBUG_PORT:String(debugPort), CODOVYN_NATIVE_CHAT_DATA_DIR: dataDirectory,
         CODOVYN_NATIVE_CHAT_REPORT: output,
         CODOVYN_NATIVE_CHAT_SCREENSHOT: phase === 'first-launch'
           ? join(root, 'dist/desktop/native-chat-capture.png') : '' } });

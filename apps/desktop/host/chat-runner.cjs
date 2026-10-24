@@ -1,7 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { execFileSync } = require('node:child_process');
 const { randomBytes } = require('node:crypto');
 const { pathToFileURL } = require('node:url');
 const vscode = require('vscode');
@@ -114,8 +113,8 @@ exports.run = async () => {
     fs.writeFileSync(output, JSON.stringify({ app: vscode.env.appName, version: vscode.version, ...report }, null, 2));
     const screenshot = process.env.CODOVYN_NATIVE_CHAT_SCREENSHOT;
     if (screenshot && process.platform === 'darwin') {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      execFileSync('/usr/sbin/screencapture', ['-x', screenshot]);
+      const {captureDesktopWindow}=await import(pathToFileURL(path.resolve(__dirname,'../../../scripts/lib/desktop-capture.js')).href);
+      fs.writeFileSync(screenshot,await captureDesktopWindow(Number(process.env.CODOVYN_NATIVE_CHAT_DEBUG_PORT)));
       trace('native-window-screenshot-captured', { screenshot });
     }
     trace('all-chat-assertions-passed', { report: output });
