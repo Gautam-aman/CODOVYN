@@ -1,0 +1,447 @@
+{
+  "version": 1,
+  "startingSha": "c763f011c541316c57c1f98b2cf86f71b08a07b0",
+  "sourceCommit": "5343626a0e773bf3648efbe0166819e78b1d95f5",
+  "sourceDirty": false,
+  "authorization": {
+    "requested": true,
+    "received": false,
+    "maximumProposedInferenceTurns": 6,
+    "executedInferenceTurns": 0,
+    "exactCostKnown": false
+  },
+  "fixture": {
+    "baselineCommit": "8f16b959763703eab55ea792fc848e1843fed888",
+    "fingerprint": "ba70f92ce7412c935007e90eda507898218f48a8c15504cf20dad2167e31a072",
+    "fileHashes": {
+      ".gitignore": "b53ee26e6ff1da219b0563333a76d2c9ec19eec713d6ee54e11a1edacb0e9f3d",
+      "pom.xml": "038f8987ce54d1460794e05f81a4ac79401f5c7b8fed5928c5e849a7596ef6ae",
+      "README.md": "b489fcf95f4eaf8bc8fad0f698021667eb941aa74f9025212b526d721ba7c2f9",
+      "src/main/java/dev/codovyn/Calculator.java": "dbb6e2410f4b1f153c3c840ed376b42c9ba1f3f094f899a14767678de9eaf9d4",
+      "src/main/java/dev/codovyn/TaskService.java": "4dc81d3a1e69235b0455bb6f5835ed4bf2056e1d65edad7abc80c2fdc930eaf8",
+      "src/test/java/dev/codovyn/CalculatorTest.java": "2c6ae1209b342ca6bb414b2744fb89b8b332035be8360e7a09b2fa53aeec22fc"
+    },
+    "initialTasks": []
+  },
+  "codex": {
+    "version": "0.164.0",
+    "configuredSessionReported": true,
+    "accountIdentity": "not read",
+    "defaultModel": "gpt-6.1-sol",
+    "models": 7,
+    "defaultModelSupportsHigh": true,
+    "authenticationValidatedByInference": false
+  },
+  "opencode": {
+    "version": "2.1.2",
+    "isolatedAuthentication": true,
+    "authentication": "unknown",
+    "gitExecutionSupported": false,
+    "controlExperiment": [
+      {
+        "gitRepository": false,
+        "status": "metadata-only",
+        "modelCount": 10,
+        "defaultModel": "opencode/big-pickle",
+        "authentication": "unknown",
+        "elapsedMs": 2281.426333
+      },
+      {
+        "gitRepository": true,
+        "status": "blocked",
+        "kind": "fatal",
+        "message": "OpenCode metadata inspection failed or timed out",
+        "elapsedMs": 241.62033299999985
+      }
+    ],
+    "errorObservation": {
+      "httpStatus": 500,
+      "errno": "EPERM",
+      "operation": "posix_spawn git"
+    },
+    "inferenceTurns": 0
+  },
+  "hostJava": {
+    "mavenBaseline": {
+      "exitCode": 0,
+      "tests": 3,
+      "failures": 0,
+      "skipped": 0
+    },
+    "baselineOracle": {
+      "mode": "baseline",
+      "languageRelease": 17,
+      "compileExitCode": 0,
+      "compileSignal": null,
+      "executionExitCode": 0,
+      "executionSignal": null,
+      "tests": {
+        "found": 7,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0
+      },
+      "passed": true,
+      "unchanged": true,
+      "cleanup": [
+        "verified",
+        "verified"
+      ],
+      "elapsedMs": 773.365541,
+      "providerCalls": 0,
+      "dependencyHashes": {
+        "junit-jupiter-api-5.11.4.jar": "ab83ef9e51ac4597d59d26b4b58812129550e2f579a404c8af7d09f5ce5b4293",
+        "junit-jupiter-engine-5.11.4.jar": "cdf8ac59f3fad774ca738ad03890950eeb91833ef0e8908753177edd26f1581c",
+        "junit-platform-commons-1.11.4.jar": "9edd969b0d0670c54105bc91ae79bd1c6f503e12115faba82073b84c86bbc334",
+        "junit-platform-engine-1.11.4.jar": "b1dd998f64f9acadc15966d9cd3d08074662677b3e390f0a38fcbf0bb4c72330",
+        "junit-platform-launcher-1.11.4.jar": "d7430bd029e7fcced53ee445e4d2d1a8a1e043ea4c4df43b6335a857f79761ae",
+        "opentest4j-1.3.0.jar": "48e2df636cab6563ced64dcdff8abb2355627cb236ef0bf37598682ddf742f1b",
+        "apiguardian-api-1.1.2.jar": "b509448ac506d607319f182537f0b35d71007582ec741832a1f111e5b5b70b38"
+      }
+    },
+    "divisionOracle": {
+      "mode": "division",
+      "languageRelease": 17,
+      "compileExitCode": 0,
+      "compileSignal": null,
+      "executionExitCode": 0,
+      "executionSignal": null,
+      "tests": {
+        "found": 5,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0
+      },
+      "passed": true,
+      "unchanged": true,
+      "cleanup": [
+        "verified",
+        "verified"
+      ],
+      "elapsedMs": 899.542333,
+      "providerCalls": 0,
+      "dependencyHashes": {
+        "junit-jupiter-api-5.11.4.jar": "ab83ef9e51ac4597d59d26b4b58812129550e2f579a404c8af7d09f5ce5b4293",
+        "junit-jupiter-engine-5.11.4.jar": "cdf8ac59f3fad774ca738ad03890950eeb91833ef0e8908753177edd26f1581c",
+        "junit-platform-commons-1.11.4.jar": "9edd969b0d0670c54105bc91ae79bd1c6f503e12115faba82073b84c86bbc334",
+        "junit-platform-engine-1.11.4.jar": "b1dd998f64f9acadc15966d9cd3d08074662677b3e390f0a38fcbf0bb4c72330",
+        "junit-platform-launcher-1.11.4.jar": "d7430bd029e7fcced53ee445e4d2d1a8a1e043ea4c4df43b6335a857f79761ae",
+        "opentest4j-1.3.0.jar": "48e2df636cab6563ced64dcdff8abb2355627cb236ef0bf37598682ddf742f1b",
+        "apiguardian-api-1.1.2.jar": "b509448ac506d607319f182537f0b35d71007582ec741832a1f111e5b5b70b38"
+      }
+    },
+    "taskServiceNegativeControl": {
+      "mode": "task-service",
+      "languageRelease": 17,
+      "compileExitCode": 0,
+      "compileSignal": null,
+      "executionExitCode": 1,
+      "executionSignal": null,
+      "tests": {
+        "found": 7,
+        "passed": 5,
+        "failed": 2,
+        "skipped": 0
+      },
+      "passed": false,
+      "unchanged": true,
+      "cleanup": [
+        "verified",
+        "verified"
+      ],
+      "elapsedMs": 581.492417,
+      "providerCalls": 0,
+      "dependencyHashes": {
+        "junit-jupiter-api-5.11.4.jar": "ab83ef9e51ac4597d59d26b4b58812129550e2f579a404c8af7d09f5ce5b4293",
+        "junit-jupiter-engine-5.11.4.jar": "cdf8ac59f3fad774ca738ad03890950eeb91833ef0e8908753177edd26f1581c",
+        "junit-platform-commons-1.11.4.jar": "9edd969b0d0670c54105bc91ae79bd1c6f503e12115faba82073b84c86bbc334",
+        "junit-platform-engine-1.11.4.jar": "b1dd998f64f9acadc15966d9cd3d08074662677b3e390f0a38fcbf0bb4c72330",
+        "junit-platform-launcher-1.11.4.jar": "d7430bd029e7fcced53ee445e4d2d1a8a1e043ea4c4df43b6335a857f79761ae",
+        "opentest4j-1.3.0.jar": "48e2df636cab6563ced64dcdff8abb2355627cb236ef0bf37598682ddf742f1b",
+        "apiguardian-api-1.1.2.jar": "b509448ac506d607319f182537f0b35d71007582ec741832a1f111e5b5b70b38"
+      }
+    },
+    "taskServiceHostWrittenPositiveControl": {
+      "mode": "task-service",
+      "languageRelease": 17,
+      "compileExitCode": 0,
+      "compileSignal": null,
+      "executionExitCode": 0,
+      "executionSignal": null,
+      "tests": {
+        "found": 7,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0
+      },
+      "passed": true,
+      "unchanged": true,
+      "cleanup": [
+        "verified",
+        "verified"
+      ],
+      "elapsedMs": 665.0728340000002,
+      "providerCalls": 0,
+      "dependencyHashes": {
+        "junit-jupiter-api-5.11.4.jar": "ab83ef9e51ac4597d59d26b4b58812129550e2f579a404c8af7d09f5ce5b4293",
+        "junit-jupiter-engine-5.11.4.jar": "cdf8ac59f3fad774ca738ad03890950eeb91833ef0e8908753177edd26f1581c",
+        "junit-platform-commons-1.11.4.jar": "9edd969b0d0670c54105bc91ae79bd1c6f503e12115faba82073b84c86bbc334",
+        "junit-platform-engine-1.11.4.jar": "b1dd998f64f9acadc15966d9cd3d08074662677b3e390f0a38fcbf0bb4c72330",
+        "junit-platform-launcher-1.11.4.jar": "d7430bd029e7fcced53ee445e4d2d1a8a1e043ea4c4df43b6335a857f79761ae",
+        "opentest4j-1.3.0.jar": "48e2df636cab6563ced64dcdff8abb2355627cb236ef0bf37598682ddf742f1b",
+        "apiguardian-api-1.1.2.jar": "b509448ac506d607319f182537f0b35d71007582ec741832a1f111e5b5b70b38"
+      }
+    },
+    "originalUnchanged": true,
+    "positiveDraftDiscarded": true
+  },
+  "automatedTests": {
+    "baseline": 246,
+    "passed": 252,
+    "failed": 0,
+    "skipped": 0
+  },
+  "sourceHostMatrix": {
+    "profileMode": "warm",
+    "launches": [
+      {
+        "app": "CODOVYN Desktop",
+        "version": "1.140.0",
+        "edit": true,
+        "fileSearch": true,
+        "fileSearchDurationMs": 99.152416,
+        "fileSearchPattern": "**/desktop-smoke.txt",
+        "git": true,
+        "terminal": true,
+        "bundledNode": true
+      },
+      {
+        "app": "CODOVYN Desktop",
+        "version": "1.140.0",
+        "edit": true,
+        "fileSearch": true,
+        "fileSearchDurationMs": 127.417791,
+        "fileSearchPattern": "**/desktop-smoke.txt",
+        "git": true,
+        "terminal": true,
+        "bundledNode": true
+      }
+    ]
+  },
+  "copiedJavaHost": {
+    "app": "CODOVYN Desktop",
+    "version": "1.140.0",
+    "edit": true,
+    "fileSearch": true,
+    "fileSearchDurationMs": 94.636375,
+    "fileSearchPattern": "**/desktop-smoke.txt",
+    "git": true,
+    "terminal": true,
+    "bundledNode": true,
+    "javaValidation": {
+      "exitCode": 0,
+      "tests": 3,
+      "javaEditor": true
+    }
+  },
+  "copiedRoutingHost": {
+    "app": "CODOVYN Desktop",
+    "version": "1.140.0",
+    "edit": true,
+    "fileSearch": true,
+    "fileSearchDurationMs": 56.608292,
+    "fileSearchPattern": "**/desktop-smoke.txt",
+    "git": true,
+    "terminal": true,
+    "bundledNode": true
+  },
+  "nativeChatChecks": [
+    {
+      "compactComposer": true,
+      "composerControls": true,
+      "inlineEffort": true,
+      "queueManagement": true,
+      "submissionAcknowledgement": true,
+      "submittedPrompt": true,
+      "streamingOrderAndTextSafety": true,
+      "navigationAndActivitySeparation": true,
+      "completionState": true,
+      "scrollFollowAndJump": true,
+      "sqliteJournalRestoration": true,
+      "interruptionState": true,
+      "openCodeModelAndVariant": true,
+      "contextFlowNarrowAndFocus": true,
+      "contextFlowReview": true,
+      "providerSegmentPresentation": true,
+      "transcriptMessages": [
+        "YouPersisted native journal request",
+        "AgentPersisted agent response from SQLite."
+      ],
+      "activityRows": [
+        "Started codex",
+        "Using agent tool: read_file",
+        "Agent tool finished: read_file",
+        "Completed with codex"
+      ],
+      "providerReadinessBlocked": true
+    },
+    {
+      "openCodePreferencesRestored": true,
+      "openCodeEffectiveVariantRestored": true,
+      "compactComposer": true,
+      "composerControls": true,
+      "inlineEffort": true,
+      "queueRestoredAfterRestart": true,
+      "queueManagement": true,
+      "submissionAcknowledgement": true,
+      "submittedPrompt": true,
+      "streamingOrderAndTextSafety": true,
+      "navigationAndActivitySeparation": true,
+      "completionState": true,
+      "scrollFollowAndJump": true,
+      "sqliteJournalRestoration": true,
+      "interruptionState": true,
+      "openCodeQueueRestored": true,
+      "openCodeModelAndVariant": true,
+      "contextFlowNarrowAndFocus": true,
+      "contextFlowRejection": true,
+      "contextFlowReview": true,
+      "providerSegmentPresentation": true,
+      "transcriptMessages": [
+        "YouPersisted native journal request",
+        "AgentPersisted agent response from SQLite."
+      ],
+      "activityRows": [
+        "Started codex",
+        "Using agent tool: read_file",
+        "Agent tool finished: read_file",
+        "Completed with codex"
+      ],
+      "providerReadinessBlocked": true
+    }
+  ],
+  "cleanup": [
+    {
+      "file": "copied-java-host-lifecycle.json",
+      "phase": "host-fresh-profile",
+      "exitCode": 0,
+      "survivors": [],
+      "elapsedMs": 13570
+    },
+    {
+      "file": "host-lifecycle.json",
+      "phase": "host-fresh-profile",
+      "exitCode": 0,
+      "survivors": [],
+      "elapsedMs": 23983
+    },
+    {
+      "file": "chat-first-launch-lifecycle.json",
+      "phase": "chat-first-launch",
+      "exitCode": 0,
+      "survivors": [],
+      "elapsedMs": 7881
+    },
+    {
+      "file": "chat-relaunch-lifecycle.json",
+      "phase": "chat-relaunch",
+      "exitCode": 0,
+      "survivors": [],
+      "elapsedMs": 5929
+    },
+    {
+      "file": "restoration-write-lifecycle.json",
+      "phase": "write",
+      "exitCode": 0,
+      "survivors": [],
+      "elapsedMs": 3867
+    },
+    {
+      "file": "restoration-read-lifecycle.json",
+      "phase": "read",
+      "exitCode": 0,
+      "survivors": [],
+      "elapsedMs": 1525
+    }
+  ],
+  "byteBenchmark": {
+    "version": 1,
+    "environment": {
+      "node": "v26.9.0",
+      "platform": "darwin",
+      "arch": "arm64"
+    },
+    "results": [
+      {
+        "name": "short-history",
+        "baselineUtf8Bytes": 974,
+        "contextFlowUtf8Bytes": 1874,
+        "byteDifference": 900,
+        "serializationMs": 6.467,
+        "inputTokens": null,
+        "outputTokens": null,
+        "costUsd": null,
+        "providerCalls": 0,
+        "completionOutcome": "not tested",
+        "provenance": "synthetic local UTF-8 serialization; manual full-journal baseline"
+      },
+      {
+        "name": "repeated-long-history",
+        "baselineUtf8Bytes": 91319,
+        "contextFlowUtf8Bytes": 4689,
+        "byteDifference": -86630,
+        "serializationMs": 1.189,
+        "inputTokens": null,
+        "outputTokens": null,
+        "costUsd": null,
+        "providerCalls": 0,
+        "completionOutcome": "not tested",
+        "provenance": "synthetic local UTF-8 serialization; manual full-journal baseline"
+      }
+    ],
+    "limitations": "Byte sizes are not token usage, cost savings, provider latency, or evidence of successful continuation. Short histories may grow due to verification metadata."
+  },
+  "hostedCi": [
+    {
+      "conclusion": "failure",
+      "databaseId": 40068093761,
+      "name": "CI",
+      "status": "completed"
+    },
+    {
+      "conclusion": "failure",
+      "databaseId": 40068093755,
+      "name": "Desktop development validation",
+      "status": "completed"
+    }
+  ],
+  "hostedJobs": [
+    {
+      "name": "test (macos-latest)",
+      "executedSteps": 0,
+      "conclusion": "failure"
+    },
+    {
+      "name": "test (windows-latest)",
+      "executedSteps": 0,
+      "conclusion": "failure"
+    },
+    {
+      "name": "test (ubuntu-latest)",
+      "executedSteps": 0,
+      "conclusion": "failure"
+    }
+  ],
+  "hostedAnnotations": [
+    "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings",
+    "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times."
+  ],
+  "installerSha256": "273ae4cd0b9839bfc669e765d9a0cdf9143025fc8a1799d904d3ecbdda58d63c",
+  "notarizationExitCode": 65,
+  "providerCleanupAudit": {
+    "ownedMetadataProcesses": [],
+    "unrelatedOpenCodeProcessesObserved": 1,
+    "noProcessesTerminatedByAudit": true
+  },
+  "sourceHostMatrixSourceCommit": "ecab9d566b376c5be13a0ac0b27eb140f6a4809a"
+}
