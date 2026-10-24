@@ -132,6 +132,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
   let providerSelection;
   if (taskConfiguration?.provider === 'opencode' || taskConfiguration?.modelSource === 'discovered') {
     const catalogue=await (adapters.discoverProvider || discoverProvider)(taskConfiguration.provider,{cwd:value,dataDirectory,modelId:taskConfiguration.modelId,signal});
+    if(catalogue.executionSupported===false)throw new AgentFailure('fatal','OpenCode metadata is verified only; task execution remains blocked by security policy');
     const selected=catalogue.models.find(entry=>taskConfiguration.modelId ? entry.id===taskConfiguration.modelId : entry.model===catalogue.defaultModel);
     if (!selected) throw new TypeError('Selected provider model is unavailable in the current catalogue');
     if (taskConfiguration.reasoning && !selected.reasoning.includes(taskConfiguration.reasoning)) throw new TypeError('Selected provider variant or reasoning setting is unsupported');
@@ -201,7 +202,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
             ? error.message : 'CLI inspection failed.' };
       }
     }));
-    try { const installation=await inspectOpenCodeInstallation(); agents.push({id:'opencode',installation:installation.compatible?'detected':'unsupported-version',version:installation.version,command:installation.command,...openCodeProviderStatus(installation,value),capabilities:{streaming:true,tools:true,writes:process.platform==='darwin',shell:false}}); } catch { agents.push({id:'opencode',installation:'not-detected-or-unsupported',authentication:'unknown',availability:'unknown',capabilities:{},diagnostic:'Install OpenCode 2.1.2 or configure its absolute executable path.'}); }
+    try { const installation=await inspectOpenCodeInstallation(); agents.push({id:'opencode',installation:installation.compatible?'detected':'unsupported-version',version:installation.version,command:installation.command,binarySha256:installation.binarySha256,...openCodeProviderStatus(installation,value),capabilities:{streaming:true,tools:true,writes:process.platform==='darwin',shell:false}}); } catch { agents.push({id:'opencode',installation:'not-detected-or-unsupported',authentication:'unknown',availability:'unknown',capabilities:{},diagnostic:'Install OpenCode 2.1.2 or configure its absolute executable path.'}); }
     output.log(JSON.stringify(stream ? { type: 'result', agents } : { agents })); return 0;
   }
   if (mode === 'issue') {
@@ -314,8 +315,8 @@ export async function main(args = process.argv.slice(2), output = console, signa
         const metadata=await(adapters.discoverProvider||discoverProvider)('opencode',{cwd:repository,dataDirectory,modelId:configuration.modelId,signal});
         const selected=metadata.models.find(entry=>configuration.modelId?entry.id===configuration.modelId:entry.model===metadata.defaultModel);
         if(!selected||configuration.reasoning&&!selected.reasoning.includes(configuration.reasoning))throw new Error('Destination model or variant is not currently advertised');
-        return {configuration,model:selected.model,command:metadata.command,reasoning:configuration.reasoning||undefined,
-          binding:contextFlowBinding({configuration,model:selected.model,command:metadata.command||'',version:metadata.version||'',configuredCommand:process.env.CODOVYN_OPENCODE_COMMAND||''})};
+        return {configuration,executionSupported:metadata.executionSupported,model:selected.model,command:metadata.command,reasoning:configuration.reasoning||undefined,
+          binding:contextFlowBinding({configuration,model:selected.model,command:metadata.command||'',version:metadata.version||'',binarySha256:metadata.binarySha256||'',repositoryIdentity:metadata.repositoryIdentity?.id||'',repositoryState:metadata.repositoryIdentity?.fingerprint||'',configuredCommand:process.env.CODOVYN_OPENCODE_COMMAND||''})};
       };
       if(mode==='contextflow-prepare') {
         lookupTask();if(rest.length!==3||!['--manual','--eligible'].includes(rest[2])||rest[1].length>4096)throw new TypeError('Invalid ContextFlow preparation');
@@ -326,7 +327,9 @@ export async function main(args = process.argv.slice(2), output = console, signa
       const transfer=store.contextFlowTransfer(value);if(!transfer||store.get(transfer.taskId)?.repositoryRoot!==repository)throw new Error('Transfer belongs to a different repository');
       if(mode==='contextflow-reject'){if(rest.length!==2||rest[1]!=='--yes')throw new Error('Explicit rejection required');emit(store.rejectContextFlow(value));return 0;}
       if(rest.length!==3||rest[1]!==transfer.hash||rest[2]!=='--yes')throw new Error('Explicit recipient and context approval required');
+      if(transfer.status!=='prepared'||transfer.expiresAt<=Date.now())throw new Error('ContextFlow approval is expired or consumed');
       const selection=await destination(transfer.configuration);
+      if(selection.executionSupported===false)throw new Error('OpenCode metadata-only compatibility does not authorize ContextFlow execution');
       const verified=await verifyContextFlow({store,transferId:value,hash:rest[1],dataDirectory,binding:selection.binding});
       const registry=new AgentRegistry();registry.register((adapters.createOpenCodeAdapter||createOpenCodeAdapter)({cwd:verified.workspace.cwd,stateDirectory:openCodeStateDirectory(dataDirectory,repository),command:selection.command,model:selection.model,reasoning:selection.reasoning,write:selection.configuration.permission==='read-write'}));
       const snapshot=async()=>{if(recoveryFingerprint(await repositorySnapshot(repository))!==transfer.packet.repository.originalFingerprint)throw new Error('Original repository changed after handoff approval');return repositorySnapshot(verified.workspace.cwd);};

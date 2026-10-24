@@ -25,7 +25,17 @@ let pendingChatRequest = '';
 let acceptedChatRequest = '';
 let taskModelCatalogue = [];
 const providerCatalogues = new Map();
+const providerExecutionBlocked = new Set();
 const requestedCatalogues = new Set();
+function showProviderMetadataObservation(card,metadata) {
+  let row=card.querySelector('.provider-metadata-observation');
+  if(!row){row=document.createElement('p');row.className='provider-metadata-observation';card.append(row);}
+  if(metadata?.source==='verified-repository-broker-metadata'&&metadata.metadataInitialization==='verified'&&metadata.binarySha256===card.dataset.binarySha256){
+    row.textContent=`ACP compatible (metadata only). Authentication unknown; inference unverified; execution blocked. Last check: ${metadata.verifiedAt}. Branch: ${metadata.repositoryIdentity?.branch || 'detached'}.`;
+    row.dataset.repositoryIdentity=metadata.repositoryIdentity?.id || '';
+    const readiness=card.querySelector('.provider-readiness');if(readiness)readiness.textContent='Repository identity compatible at last check · Broker experimental · ACP metadata verified · Inference unverified · Execution blocked.';
+  }else row.textContent='ACP metadata initialization not verified. Refresh Models to inspect the current repository.';
+}
 const allTaskModels = () => [...taskModelCatalogue,...[...providerCatalogues.values()].flatMap(metadata => metadata.models || [])];
 function requestProviderModels(provider,modelId,refresh=false) {
   if(!['codex','opencode'].includes(provider))return;
@@ -610,9 +620,10 @@ window.addEventListener('message', ({ data }) => {
       role.textContent = savedAgentPolicy?.primary === entry.id ? 'Saved primary agent' : backupIndex >= 0 ? `Saved backup ${backupIndex + 1} · automatic switching ${savedAgentPolicy.automatic ? 'enabled' : 'disabled'}` : 'Not in saved project policy';
       const description = document.createElement('p'); description.textContent = `${entry.installation}. Authentication: ${entry.authentication}. Availability: ${entry.availability}.`;
       const capabilities = document.createElement('p'); capabilities.textContent = `Capabilities: ${Object.entries(entry.capabilities || {}).filter(([, enabled]) => enabled === true).map(([name]) => name).join(', ')}`;
+      if(entry.executionSupported===false)providerExecutionBlocked.add(entry.id);else if(entry.executionSupported===true)providerExecutionBlocked.delete(entry.id);
       if(entry.id === 'opencode')role.textContent=entry.executionSupported===false?'Execution blocked · inspect the compatibility diagnostic':entry.readiness==='initialization-unverified'?'Initialization not verified · authentication unknown':'Manual tasks only · continuation requires separate approval';
       const source=document.createElement('p');source.className='provider-source';source.textContent=`Executable: ${entry.command || 'runtime PATH'} · Version: ${entry.version || 'unknown'}`;
-      const defaultModel=document.createElement('p');defaultModel.textContent=entry.executionSupported===false?'Default model: unknown while project execution is blocked':`Default model: ${providerCatalogues.get(entry.id)?.defaultModel || 'not yet discovered'}`;
+      const defaultModel=document.createElement('p');defaultModel.className='provider-default-model';defaultModel.textContent=entry.executionSupported===false?'Default model: unknown while project execution is blocked':`Default model: ${providerCatalogues.get(entry.id)?.defaultModel || 'not yet discovered'}`;
       card.append(title, role, description, source, defaultModel, capabilities);
       if(entry.id==='opencode'&&entry.readiness){const readiness=document.createElement('p');readiness.className='provider-readiness';readiness.textContent=`Compatibility: ${entry.compatibility || 'unknown'} · Readiness: ${entry.readiness}. Metadata initialization: ${entry.metadataInitialization || 'not verified'}.`;card.append(readiness);}
       if(entry.diagnostic){const diagnostic=document.createElement('p');diagnostic.className='provider-diagnostic';diagnostic.textContent=entry.diagnostic;card.append(diagnostic);}
@@ -622,7 +633,7 @@ window.addEventListener('message', ({ data }) => {
       if(['codex','opencode'].includes(entry.id))action('Models',()=>requestProviderModels(entry.id,undefined,true));
       if(entry.id==='opencode'){action('Configure path',()=>vscode.postMessage({type:'provider-configure',provider:'opencode'}));action('Setup',()=>vscode.postMessage({type:'provider-setup',provider:'opencode'}));}
       else action('Setup help',()=>vscode.postMessage({type:'provider-help',provider:entry.id}));
-      card.dataset.provider=entry.id;card.append(controls);agentCards.append(card);
+      card.dataset.provider=entry.id;card.dataset.binarySha256=entry.binarySha256 || '';card.dataset.executionBlocked=String(entry.executionSupported===false);if(entry.id==='opencode')showProviderMetadataObservation(card,providerCatalogues.get(entry.id));card.append(controls);agentCards.append(card);
       if (entry.id === 'gemini' && entry.installation !== 'detected') {
         const setup = document.createElement('p');
         setup.textContent = entry.diagnostic || 'Gemini CLI was not found in CODOVYN’s runtime PATH, or this version lacks required headless flags. Install the official CLI or set its absolute executable path in user settings.';
@@ -961,16 +972,16 @@ flowActions.append(flowPrepare,flowContinue,flowReject);flow.append(flowHeading,
 let flowTransfer=null;
 switchAgent.addEventListener('click',()=>{flow.hidden=false;activateWorkspaceView('changes');flowHeading.focus();flowStatus.textContent=currentTaskId?'Stop any active task before preparing a transfer.':'Choose an interrupted Codex task from History first.';if(currentTaskId&&!cancel.disabled)return;if(currentTaskId)vscode.postMessage({type:'contextflow-read',id:currentTaskId});});
 flowPrepare.addEventListener('click',()=>{if(!currentTaskId)return;const configuration=currentTaskConfiguration();if(configuration.provider!=='opencode'){flowStatus.textContent='Choose OpenCode and the intended model in Chat first. Your active task configuration is unchanged.';return;}vscode.postMessage({type:'contextflow-prepare',id:currentTaskId,configuration});});
-flowContinue.addEventListener('click',()=>{if(flowTransfer)vscode.postMessage({type:'contextflow-run',id:flowTransfer.id});});
+flowContinue.addEventListener('click',()=>{if(providerExecutionBlocked.has('opencode')){flowStatus.textContent='OpenCode execution is blocked; metadata compatibility does not authorize continuation.';return;}if(flowTransfer)vscode.postMessage({type:'contextflow-run',id:flowTransfer.id});});
 flowReject.addEventListener('click',()=>{if(flowTransfer)vscode.postMessage({type:'contextflow-reject',id:flowTransfer.id});});
 window.addEventListener('message',({data})=>{
  if(['history','running'].includes(data.type)&&flowTransfer?.taskId!==data.taskId){flow.hidden=true;flowTransfer=null;flowPacket.textContent='';flowContinue.disabled=flowReject.disabled=true;}
  if(data.type==='contextflow-state') {
   flowTransfer=data.transfer;flow.hidden=false;flowSummary.replaceChildren();flowPacket.textContent='';
   const t=flowTransfer;flowStatus.textContent=t?`Transfer ${t.status} · Codex → OpenCode`:'No transfer prepared. No context has been sent.';
-  flowContinue.disabled=flowReject.disabled=!(t?.status==='prepared'&&t.expiresAt>Date.now());
+  flowContinue.disabled=flowReject.disabled=!(t?.status==='prepared'&&t.expiresAt>Date.now());flowContinue.disabled ||= providerExecutionBlocked.has('opencode');
   if(t){const objective=document.createElement('p');objective.textContent='Task: '+t.packet.task.objective;flowSummary.append(objective);const p=document.createElement('p');p.textContent=`Recipient: ${t.packet.handoff.model}. ${t.packet.context.files.length} host-read excerpts · ${t.metrics?.utf8Bytes??'unknown'} UTF-8 bytes. Tokens and cost: unknown. Permission: ${t.configuration.permission}. Approval expires after 10 minutes.`;flowSummary.append(p);const provenance=document.createElement('p');provenance.textContent='File hashes and host journal entries are observations. Provider summaries and tool completion reports are unverified claims. Unresolved actions block continuation.';flowSummary.append(provenance);for(const attempt of t.metrics?.providerUsage?.attempts||[]){const usage=document.createElement('p');usage.textContent=`${attempt.provider} segment ${attempt.segment} · ${attempt.status}: input ${attempt.usage?.inputTokens??'unknown'}, output ${attempt.usage?.outputTokens??'unknown'}, cached input ${attempt.usage?.cachedInputTokens??'unknown'} tokens. Cost unknown.`;flowSummary.append(usage);}flowPacket.textContent=JSON.stringify(t.packet,null,2);}
- }else if(data.type==='contextflow-busy'){flowPrepare.disabled=data.busy;flowContinue.disabled=data.busy||flowTransfer?.status!=='prepared'||flowTransfer.expiresAt<=Date.now();flowReject.disabled=data.busy||flowTransfer?.status!=='prepared';}
+ }else if(data.type==='contextflow-busy'){flowPrepare.disabled=data.busy;flowContinue.disabled=providerExecutionBlocked.has('opencode')||data.busy||flowTransfer?.status!=='prepared'||flowTransfer.expiresAt<=Date.now();flowReject.disabled=data.busy||flowTransfer?.status!=='prepared';}
  else if(data.type==='contextflow-error'){flowStatus.textContent=data.text;flowContinue.disabled=true;}
  else if(data.type==='project-selected'){flow.hidden=true;flowTransfer=null;flowPacket.textContent='';flowContinue.disabled=flowReject.disabled=true;}
 });
@@ -1084,7 +1095,7 @@ window.addEventListener('message', ({ data }) => {
     metadata.models=(Array.isArray(metadata.models)?metadata.models:[]).slice(0,512).map(model=>({...model,reasoning:metadata.selectedModel&&model.model!==metadata.selectedModel?(previous?.models?.find(old=>old.id===model.id)?.reasoning||model.reasoning):model.reasoning}));
     if(metadata.defaultModel===null&&metadata.selectedModel)metadata.defaultModel=previous?.defaultModel||null;
     providerCatalogues.set(data.provider,metadata);
-    const card=agentCards.querySelector(`[data-provider="${data.provider}"]`);if(card){const info=card.querySelector('.provider-source')?.nextElementSibling;if(info)info.textContent=`Default model: ${metadata.defaultModel || 'unknown'}`;}
+    const card=agentCards.querySelector(`[data-provider="${data.provider}"]`);if(card){const info=card.querySelector('.provider-default-model');if(info)info.textContent=card.dataset.executionBlocked==='true'?`Discovered default: ${metadata.defaultModel || 'unknown'} · metadata only; execution blocked`:`Default model: ${metadata.defaultModel || 'unknown'}`;if(data.provider==='opencode')showProviderMetadataObservation(card,metadata);}
     const previousEffort=taskReasoning.value;
     const selected=taskModel.value;updateTaskModelControls();if([...taskModel.options].some(option=>option.value===selected))taskModel.value=selected;updateTaskReasoning();
     if(compactComposer?.modelMenu.matches(':popover-open'))compactComposer.renderModels();

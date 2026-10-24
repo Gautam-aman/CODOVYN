@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import{execFileSync}from'node:child_process';import{mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync}from'node:fs';import{tmpdir}from'node:os';import{join}from'node:path';
+import{execFileSync}from'node:child_process';import{mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync,existsSync}from'node:fs';import{tmpdir}from'node:os';import{join}from'node:path';
 import{main}from'../src/index.js';
 
 test('OpenCode uses the existing task journal/draft review and never applies before approval',async()=>{
@@ -20,4 +20,14 @@ test('OpenCode uses the existing task journal/draft review and never applies bef
   assert.equal(await main(['draft-review',task.taskId,repo],output),0);const review=JSON.parse(lines.at(-1));assert.match(review.patch,/int value/);
   assert.equal(await main(['draft-accept',task.taskId,repo,review.patchHash,'--yes'],output),0);assert.match(readFileSync(join(repo,'Main.java'),'utf8'),/int value/);
  }finally{for(const[key,value]of Object.entries(saved)){if(value===undefined)delete process.env[key];else process.env[key]=value;}rmSync(temp,{recursive:true,force:true});}
+});
+
+
+test('metadata-only OpenCode compatibility cannot admit a coding task or create an execution adapter',async()=>{
+ const temp=mkdtempSync(join(tmpdir(),'codovyn-metadata-no-execution-'));const saved={data:process.env.CODOVYN_DATA_DIR,configuration:process.env.CODOVYN_TASK_CONFIGURATION};let created=false;
+ try{
+  process.env.CODOVYN_DATA_DIR=join(temp,'data');process.env.CODOVYN_TASK_CONFIGURATION=JSON.stringify({provider:'opencode',modelId:null,permission:'read',routingMode:'manual',reasoning:null,intent:'ask'});
+  await assert.rejects(main(['opencode',temp,'Do not execute'],{log(){},error(){}},undefined,undefined,{discoverProvider:async()=>({executionSupported:false,models:[{id:'p',model:'p/model',reasoning:[]}],defaultModel:'p/model'}),createOpenCodeAdapter(){created=true;}}),/execution remains blocked/);
+  assert.equal(created,false);assert.equal(existsSync(join(temp,'data','tasks.sqlite')),false);
+ }finally{for(const[key,value]of[['CODOVYN_DATA_DIR',saved.data],['CODOVYN_TASK_CONFIGURATION',saved.configuration]])if(value===undefined)delete process.env[key];else process.env[key]=value;rmSync(temp,{recursive:true,force:true});}
 });

@@ -35,6 +35,10 @@ check('broker shutdown revokes abandoned requests and stale clients cannot reuse
  const f=await fixture();let blocked=false;const original=f.authority;await f.broker.close();await assert.rejects(original.read(),/revoked/);
  // A deliberately stalled host ownership check is bounded, including shutdown.
  const root=join(base,'abandoned');mkdirSync(root);git(root,'init','-q');const authority=await createRepositoryAuthority({root,reader,lease:{id:'abandoned',purpose:'metadata-only',expiresAt:Date.now()+60000,isCurrent:()=>blocked?new Promise(()=>{}):true}});const broker=await createRepositoryBroker(authority);blocked=true;
+ await assert.rejects(authority.read(),/deadline exceeded/);
  const request=authority.read();const rejection=assert.rejects(request,/revoked/);const start=Date.now();await broker.close();await rejection;assert.ok(Date.now()-start<1000);await assert.rejects(authority.read(),/revoked/);
 });
 
+check('oversized IPC frames close before any repository inspection',async()=>{
+ const f=await fixture();try{const before=f.authority.measurements.length;await new Promise((resolve,reject)=>{const socket=net.connect(f.broker.endpoint,()=>socket.end('x'.repeat(17000)));socket.on('error',error=>{if(error.code!=='ECONNRESET')reject(error);});socket.on('close',resolve);socket.setTimeout(2000,()=>{socket.destroy();reject(new Error('Oversized frame was not bounded'));});});assert.equal(f.authority.measurements.length,before);}finally{await f.broker.close();}
+});

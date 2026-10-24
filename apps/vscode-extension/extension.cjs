@@ -199,7 +199,7 @@ function createExtension(api, runner = runCli) {
           const key = JSON.stringify([folder.uri.fsPath,provider,modelId,providerEnvironment(api).CODOVYN_OPENCODE_COMMAND]);
           if (providerPending.has(key) || providerPending.size >= 2) return;
           const cached = providerCache.get(key);
-          if (!refresh && cached && Date.now()-cached.at < 300000) { panel.webview.postMessage({type:'provider-models',provider,metadata:cached.metadata}); return; }
+          if (provider!=='opencode' && !refresh && cached && Date.now()-cached.at < 300000) { panel.webview.postMessage({type:'provider-models',provider,metadata:cached.metadata}); return; }
           providerPending.set(key,true);
           panel.webview.postMessage({type:'provider-models-loading',provider});
           try {

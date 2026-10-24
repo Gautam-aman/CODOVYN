@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { realpathSync, statSync, constants, accessSync, lstatSync } from 'node:fs';
+import { realpathSync, statSync, constants, accessSync, lstatSync, readFileSync } from 'node:fs';
 import { join, delimiter, isAbsolute, resolve, relative, dirname } from 'node:path';
 import { createHash } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
@@ -12,7 +12,7 @@ import { createHandoffPacket } from '../../agent-core/src/handoff.js';
 async function ownedOutput(command,args,options) {
   const controller=new AbortController();
   const child=spawn(command,args,{cwd:options.cwd,env:options.env,shell:false,detached:process.platform!=='win32',stdio:['pipe','pipe','pipe']});
-  const lifecycle=manageAgentProcess(child,controller.signal);child.stdin.end();
+  const lifecycle=manageAgentProcess(child,controller.signal);if(child.pid)options.ownedGroups?.push(child.pid);child.stdin.end();
   const abort=()=>controller.abort();options.signal?.addEventListener('abort',abort,{once:true});if(options.signal?.aborted)abort();
   const timer=setTimeout(()=>controller.abort(),options.timeoutMs||15000);let chunks=[],size=0,stderr=0;
   child.stderr.on('data',chunk=>{stderr+=chunk.length;if(stderr>1048576)controller.abort();});
@@ -26,7 +26,7 @@ async function ownedOutput(command,args,options) {
 export const openCodeVersion = '2.1.2';
 export function openCodeProjectReadiness(cwd) {
   let directory;try{directory=realpathSync(cwd);}catch{return {executionSupported:false,diagnostic:'OpenCode project identity could not be verified.'};}
-  for(;;){if(statExists(join(directory,'.git')))return {executionSupported:false,diagnostic:'OpenCode 2.1.2 Git-backed execution is blocked: repository discovery requires git subprocesses denied by CODOVYN. A verified read-only discovery bridge is required; authentication cannot resolve this boundary.'};const parent=dirname(directory);if(parent===directory)break;directory=parent;}
+  for(;;){if(statExists(join(directory,'.git')))return {executionSupported:false,diagnostic:'OpenCode 2.1.2 Git-backed execution is blocked: real git subprocesses denied by CODOVYN; metadata-only broker inspection is experimental. Task-bound execution and provider file-access revalidation are not verified; authentication cannot remove these gates.'};const parent=dirname(directory);if(parent===directory)break;directory=parent;}
   return {executionSupported:process.platform==='darwin'&&process.arch==='arm64',diagnostic:'Non-Git metadata inspection only; this does not prove authenticated Git-backed execution.'};
 }
 /** Installation, process-policy compatibility and authentication are separate facts.
@@ -56,7 +56,7 @@ export async function inspectOpenCodeInstallation(configured) {
   let stdout;try{stdout=await ownedOutput(command,['--version'],{timeoutMs:5000,maxBytes:4096,env:{PATH:'/usr/bin:/bin',HOME:process.env.HOME}});}catch{throw new AgentFailure('fatal','OpenCode version inspection failed');}
   const match=/^(?:opencode(?: v|\s+))?(\d+\.\d+\.\d+)\s*$/.exec(stdout.trim());
   if(!match)throw new AgentFailure('fatal','Unrecognized OpenCode CLI version response');
-  return {command,version:match[1],compatible:match[1]===openCodeVersion};
+  return {command,version:match[1],compatible:match[1]===openCodeVersion,binarySha256:createHash('sha256').update(readFileSync(command)).digest('hex')};
 }
 export function parseOpenCodeModels(text) {
   if(typeof text!=='string'||Buffer.byteLength(text)>262144||text.includes('\x1b'))throw new TypeError('Unsupported or oversized OpenCode catalogue');
@@ -102,20 +102,27 @@ function scopePath(cwd,path,write) {
 }
 function statExists(path){try{lstatSync(path);return true;}catch{return false;}}
 export async function discoverOpenCode({cwd,stateDirectory,configured,model,modelId,signal}={}) {
-  const started=performance.now(),installation=await inspectOpenCodeInstallation(configured);
+  const installation=await inspectOpenCodeInstallation(configured);
   if(!installation.compatible)throw new AgentFailure('fatal',`OpenCode ${installation.version} is unverified; supported version is ${openCodeVersion}`);
-  requireProjectReadiness(cwd);
-  const boundary=openCodeBoundary({cwd,stateDirectory,command:installation.command});
-  const stdout=await ownedOutput(boundary.command,[...boundary.prefixArgs,'models','--standalone'],{...boundary,signal});
+  if(!openCodeProjectReadiness(cwd).executionSupported){
+    const {inspectBrokeredOpenCode}=await import('./opencode-metadata.js');
+    return inspectBrokeredOpenCode({cwd,stateDirectory,installation,model,modelId,signal});
+  }
+  return inspectOpenCodeMetadataBoundary({installation,boundary:openCodeBoundary({cwd,stateDirectory,command:installation.command}),model,modelId,signal});
+}
+/** Host metadata path only; never sends a prompt and never returns a session. */
+export async function inspectOpenCodeMetadataBoundary({installation,boundary,model,modelId,signal}) {
+  const started=performance.now(),ownedGroups=[];
+  const stdout=await ownedOutput(boundary.command,[...boundary.prefixArgs,'models','--standalone'],{...boundary,signal,ownedGroups});
   const models=parseOpenCodeModels(stdout);
   if(modelId){const selected=models.find(entry=>entry.id===modelId);if(!selected)throw new AgentFailure('fatal','Selected OpenCode model is no longer in the discovered catalogue');model=selected.model;}
-  const connection=new AcpConnection({...boundary,args:[...boundary.prefixArgs,'acp'],signal});
+  const connection=new AcpConnection({...boundary,args:[...boundary.prefixArgs,'acp'],signal,execution:{starting(){},spawned(info){if(info.pid)ownedGroups.push(info.pid);},stopped(){}}});
   try{
     const session=await begin(connection,boundary.cwd,model,undefined,false);
     const selected=configOption(session,'model')?.currentValue;
     const entry=models.find(entry=>entry.model===selected);
     if(entry)entry.reasoning=optionValues(configOption(session,'effort')).map(option=>option.value).filter(value=>value!=='default'&&/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/.test(value));
-    return {provider:'opencode',...installation,models,defaultModel:!model?selected:null,selectedModel:selected,elapsedMs:performance.now()-started,authentication:'unknown',availability:'unknown',isolatedAuthentication:true};
+    return {provider:'opencode',...installation,models,defaultModel:!model?selected:null,selectedModel:selected,metadataOwnedGroups:ownedGroups,metadataSessionIdHash:createHash('sha256').update(session.sessionId).digest('hex'),elapsedMs:performance.now()-started,authentication:'unknown',availability:'unknown',isolatedAuthentication:true};
   }finally{await connection.dispose();}
 }
 export function createOpenCodeAdapter({cwd,stateDirectory,command,write=false,model,reasoning}={},runtime={inspect:inspectOpenCodeInstallation,boundary:openCodeBoundary}) {

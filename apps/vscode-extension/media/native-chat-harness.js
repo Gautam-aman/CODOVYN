@@ -3,9 +3,18 @@
   // This script is packaged only for the explicit isolated native test host.
   // Keep asynchronous real metadata replies out of the OpenCode DOM fixture.
   let realProviderDiagnostics=false;
+  // This file is injected before workspace.js only by the isolated native test
+  // host. Suppress real OpenCode discovery during deterministic DOM fixtures;
+  // the final readiness stage deliberately restores the actual transport.
+  const acquire=window.acquireVsCodeApi.bind(window);
+  window.acquireVsCodeApi=()=>{const api=acquire();return Object.freeze({
+    postMessage(message){if(message?.type==='provider-models'&&message.provider==='opencode'&&!realProviderDiagnostics)return;return api.postMessage(message);},
+    getState:()=>api.getState(),setState:state=>api.setState(state)
+  });};
+
   window.addEventListener('message', event => {
     if(['agent-diagnostics','agent-diagnostics-loading','agent-diagnostics-error'].includes(event.data?.type)&&!realProviderDiagnostics&&event.data?.source!=='native-provider-fixture')event.stopImmediatePropagation();
-    if(event.data?.provider === 'opencode' && ['provider-models','provider-models-loading'].includes(event.data.type) && event.data?.metadata?.source !== 'native-opencode-fixture') event.stopImmediatePropagation();
+    if(!realProviderDiagnostics && event.data?.provider === 'opencode' && ['provider-models','provider-models-loading'].includes(event.data.type) && event.data?.metadata?.source !== 'native-opencode-fixture') event.stopImmediatePropagation();
   }, true);
   const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
   const send = data => window.dispatchEvent(new MessageEvent('message', { data }));
@@ -340,7 +349,14 @@
       const actual=diagnostics.agents.find(entry=>entry.id==='opencode');requireValue(actual?.installation==='detected'&&actual.version==='2.1.2'&&actual.executionSupported===false&&actual.authentication==='unknown','Actual OpenCode Git execution blocker was not shown.');
       requireValue(actual.readiness==='blocked-project-boundary'&&actual.compatibility==='version-compatible'&&actual.metadataInitialization==='not-verified','Provider installation was incorrectly promoted to verified initialization.');
       requireValue([...compactComposer.entries()].filter(entry=>entry.provider==='opencode').every(entry=>entry.disabled),'Unavailable OpenCode entries remain selectable.');
-      const card=document.querySelector('[data-provider="opencode"]');requireValue(card?.textContent.includes('git subprocesses denied'),'Native provider card lost the actionable process-boundary diagnostic.');requireValue(card.textContent.includes('Default model: unknown while project execution is blocked')&&!card.textContent.includes('fixture/native-model'),'Blocked provider promoted stale catalogue metadata as a current default.');requireValue(card.textContent.includes('Readiness: blocked-project-boundary')&&card.textContent.includes('Metadata initialization: not-verified'),'Native provider card omitted independently reported readiness facts.');card.closest('details').open=true;card.scrollIntoView({block:'center',behavior:'instant'});report.providerReadinessBlocked=true;stage('real-provider-readiness-without-inference-verified');
+      const card=document.querySelector('[data-provider="opencode"]');requireValue(card?.textContent.includes('git subprocesses denied'),'Native provider card lost the actionable process-boundary diagnostic.');requireValue(card.textContent.includes('Default model: unknown while project execution is blocked')&&!card.textContent.includes('fixture/native-model'),'Blocked provider promoted stale catalogue metadata as a current default.');requireValue(card.textContent.includes('Readiness: blocked-project-boundary')&&card.textContent.includes('Metadata initialization: not-verified'),'Native provider card omitted independently reported readiness facts.');card.closest('details').open=true;card.scrollIntoView({block:'center',behavior:'instant'});report.providerReadinessBlocked=true;
+      const observed=hostMessage('provider-models',data=>data.provider==='opencode'&&data.metadata?.source==='verified-repository-broker-metadata');
+      [...card.querySelectorAll('button')].find(button=>button.textContent==='Models').click();const fresh=await observed;
+      requireValue(fresh.metadata.metadataInitialization==='verified'&&fresh.metadata.authentication==='unknown'&&fresh.metadata.executionSupported===false&&fresh.metadata.inferenceAccess==='unverified','Real metadata startup was promoted into inference access.');
+      requireValue(card.querySelector('.provider-metadata-observation')?.textContent.includes('ACP compatible (metadata only)')&&card.textContent.includes('execution blocked'),'Native provider settings omitted metadata-only readiness.');
+      requireValue([...compactComposer.entries()].filter(entry=>entry.provider==='opencode').every(entry=>entry.disabled),'Metadata inspection enabled an execution model without authorization.');
+      report.providerMetadataVerified=true;report.metadataObservation={identity:fresh.metadata.repositoryIdentity.id,branch:fresh.metadata.repositoryIdentity.branch,verifiedAt:fresh.metadata.verifiedAt,models:fresh.metadata.models.length};
+      card.scrollIntoView({block:'center',behavior:'instant'});stage('real-provider-readiness-without-inference-verified');
     }
     return report;
   }
