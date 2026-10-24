@@ -92,3 +92,11 @@ retains the metadata-only OS profile: direct project-file access and all project
 writes remain denied. Client ACP file capabilities stay false. Agent writes stay
 blocked; neither CLI detection nor authentication can remove that restriction.
 See [task execution boundary evidence](../development/opencode-task-execution-validation.md).
+
+A later Phase 15 continuation is testing a narrowly scoped **read-only MCP**
+bridge with native task-process socket checks and a task-specific TLS endpoint.
+It adds no direct project-file, shell or Git rights to the provider. Only a
+public certificate becomes readable in its sandbox; the private key stays in
+host-only temporary storage. This bridge is experimental, is not enabled by the
+normal coding adapter, and does not yet provide safe Agent writes. Metadata
+registration and fixture tool calls are not live model execution.

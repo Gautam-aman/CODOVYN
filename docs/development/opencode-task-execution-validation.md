@@ -181,3 +181,52 @@ Remaining production gates:
 5. Retain issue #16, hosted CI, development dependency, broader platform and distribution-signing gates.
 
 The delivered result is a tested task-bound **host read foundation**, real task/ACP initialization evidence and a verified development artifact. It does not satisfy Phase 15's complete coding-execution definition of done. **Production execution remains blocked.**
+
+## Post-checkpoint continuation — experimental task read MCP bridge
+
+After the `b2a37ef` installer/evidence checkpoint above, continuation implemented a
+narrow supported MCP read path. The checkpoint DMG predates these new modules and
+is **not** evidence for this continuation; fresh native/artifact verification is
+still required after the remaining work.
+
+The pinned OpenCode ACP `session/new` supports a remote HTTP MCP descriptor. A
+new host-only TLS endpoint exposes exactly `read_project_text`, backed by the
+existing task/file authorities and native reader. It implements no writes,
+shell, general filesystem, resources or sampling service. Protocol bodies,
+connections, method IDs, response sizes and operations are bounded; repeated IDs,
+unknown tools, extra arguments, foreign origins and sensitive paths are rejected.
+
+The endpoint independently verifies the TCP socket belongs to the designated
+bound task process/private server using macOS `proc_pidinfo`/`proc_pidfdinfo`:
+executable path, UID, parent, process birth identity, loopback tuple and socket
+generation. It rechecks ownership before returning data. Caller-supplied PIDs or
+bearer strings do not authorize access. Unknown/replaced processes revoke the
+scope; unrelated local sockets fail without exposing source.
+
+A temporary task-specific TLS certificate authenticates the endpoint to the
+provider, preventing an unrelated server from impersonating a reused port. Only
+the public certificate is readable inside the provider sandbox. The host key
+stays outside approved provider scopes. Scoped `SSL_CERT_FILE` / `NODE_EXTRA_CA_CERTS`
+trust is used; system trust stores and certificate-verification settings are not
+weakened. Actual OpenCode 2.1.2 metadata sessions successfully initialize and list
+the tool over TLS. MCP tool invocations in deterministic OS fixtures read real
+fixture files; **real OpenCode inference/tool invocation remains untested**.
+
+Eight additional tests cover kernel peer identity, a foreign caller possessing
+the public certificate, forged services, malformed/replayed operations,
+revocation, a certificate-rejected impostor endpoint and OS denial of key reads
+and public-certificate writes. The complete local suite reached **300 passing,
+zero failed/skipped** at this development checkpoint. Production coding remains
+blocked: the normal adapter/workflow has not yet adopted this experimental bridge
+and safe Agent writes are still missing.
+
+Two early combined runs saw helper startup/read denials. They failed closed;
+sanitized lifecycle causes were added without changing existing error messages.
+An explicit native identity readiness check precedes endpoint exposure; the
+per-request inspection deadline remains 1.5 seconds. Later combined tests and
+five fresh helper builds passed. The initial intermittent cause is **not proven**;
+these observations are not a claim that every startup stall is resolved.
+
+References: [OpenCode MCP](https://docs.opencode.ai/docs/mcp-servers/),
+[MCP Streamable HTTP](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports),
+[Bun scoped CA environment](https://bun.sh/docs/runtime/environment-variables).

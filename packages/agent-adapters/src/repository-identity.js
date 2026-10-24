@@ -18,7 +18,7 @@ export async function repositoryTool(command,args,{cwd,signal,timeoutMs=10000,ma
  child.stdout.on('data',chunk=>{bytes+=chunk.length;if(bytes<=maxBytes)stdout.push(chunk);else lifecycle.dispose().catch(()=>{});});
  child.stderr.on('data',chunk=>{diagnostics+=chunk.length;if(diagnostics>65536)lifecycle.dispose().catch(()=>{});});
  let code;try{code=await lifecycle.closed;}finally{clearTimeout(timer);await lifecycle.dispose();}
- if(signal?.aborted||timedOut||bytes>maxBytes||diagnostics>65536||lifecycle.error())throw new Error('Repository tool cancelled, failed or exceeded its bound');
+ if(signal?.aborted||timedOut||bytes>maxBytes||diagnostics>65536||lifecycle.error())throw new Error('Repository tool cancelled, failed or exceeded its bound',{cause:{aborted:signal?.aborted===true,timedOut,exitCode:code,exitSignal:child.signalCode,stdoutBytes:bytes,stderrBytes:diagnostics,processErrorCode:lifecycle.error()?.code||null,elapsedMs:performance.now()-start}});
  return {code,stdout:Buffer.concat(stdout).toString('utf8'),pid:child.pid,elapsedMs:performance.now()-start};
 }
 export async function buildRepositoryReader(directory,{signal}={}) {

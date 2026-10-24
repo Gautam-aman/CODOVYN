@@ -4,6 +4,7 @@ import { join, delimiter, isAbsolute, resolve, relative, dirname } from 'node:pa
 import { createHash } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 import {captureOpenCodeServer} from './opencode-process.js';
+import {isTaskMcpBridge} from './task-mcp.js';
 import { AcpConnection } from './acp.js';
 import { manageAgentProcess } from './process.js';
 import { openCodeBoundary } from './opencode-sandbox.js';
@@ -71,10 +72,11 @@ function optionValues(option) {
   return option.options.flatMap(group=>Array.isArray(group.options)?group.options:[group]).filter(entry=>typeof entry.value==='string'&&entry.value.length<=256);
 }
 function configOption(session,id) { return Array.isArray(session?.configOptions)?session.configOptions.find(option=>option.id===id):null; }
-async function begin(connection,cwd,model,variant,write) {
+async function begin(connection,cwd,model,variant,write,fileBridge) {
+  if(fileBridge&&(!isTaskMcpBridge(fileBridge)||fileBridge.workspace!==cwd))throw new AgentFailure('fatal','Only a matching host-issued task file bridge may configure MCP');
   const initialized=await connection.request('initialize',{protocolVersion:1,clientInfo:{name:'codovyn',version:'0.1.0'},clientCapabilities:{fs:{readTextFile:false,writeTextFile:false},terminal:false}});
   if(initialized?.protocolVersion!==1)throw new AgentFailure('fatal','Unsupported ACP protocol version');
-  let session=await connection.request('session/new',{cwd,mcpServers:[]});
+  let session=await connection.request('session/new',{cwd,mcpServers:fileBridge?[fileBridge.descriptor()]:[]});
   if(typeof session?.sessionId!=='string'||!/^[a-zA-Z0-9_-]{1,128}$/.test(session.sessionId))throw new AgentFailure('fatal','Invalid ACP session identity');
   if(model){
     if(!optionValues(configOption(session,'model')).some(entry=>entry.value===model))throw new AgentFailure('fatal','Selected OpenCode model is not advertised for this session');

@@ -7,6 +7,8 @@ import{isTaskExecutionAuthority}from'../../task-engine/src/execution-authority.j
 import{isRepositoryAuthority,repositoryTool}from'./repository-identity.js';
 import{manageAgentProcess}from'./process.js';
 const hash=b=>createHash('sha256').update(b).digest('hex');
+const services=new WeakMap();
+export const isTaskFileAccessFor=(service,execution)=>services.has(service)&&services.get(service)===execution;
 export async function buildTaskFileReader(directory,{signal}={}){
  if(process.platform!=='darwin'||process.arch!=='arm64')throw new Error('Task file boundary requires macOS ARM64');
  mkdirSync(directory,{recursive:true,mode:0o700});directory=realpathSync(directory);if(lstatSync(directory).mode&0o077)throw new Error('Task reader directory must be private');
@@ -42,9 +44,9 @@ export async function createTaskFileAccess({execution,repository,reader}){
    try{execution.audit({operation:'read',path:safePath(path)?path.slice(0,1024):'[rejected path]',repositoryIdentity:initial.id,decision,elapsedMs:performance.now()-started});}catch{if(decision==='allowed'){execution.revoke();throw new Error('Task file audit could not be persisted');}}
   }
  }
- return Object.freeze({repositoryIdentity:initial.id,
+ const service=Object.freeze({repositoryIdentity:initial.id,
   read(path){if(closed||cleanupFailure||pending.size>=4)return Promise.reject(new Error('File access revoked or concurrency bound exceeded'));const work=operation(path);pending.add(work);work.catch(error=>{if(error?.kind==='fatal'){cleanupFailure=error;execution.revoke();}}).finally(()=>pending.delete(work)).catch(()=>{});return work;},
   write(){return Promise.reject(new Error('Draft write mediation is not verified; writes remain blocked'));},
   close(){if(closing)return closing;closing=(async()=>{closed=true;controller.abort();execution.signal.removeEventListener('abort',abort);const results=await Promise.allSettled([...pending]);closeSync(rootFd);if(cleanupFailure||results.some(r=>r.status==='rejected'&&r.reason?.kind==='fatal'))throw new Error('Task file cleanup unverified');})();return closing;}
- });
+ });services.set(service,execution);return service;
 }
