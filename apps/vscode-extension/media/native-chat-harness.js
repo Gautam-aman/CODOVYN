@@ -314,6 +314,13 @@
     requireValue(document.querySelector('#contextflow-packet').textContent.includes('host-read')&&document.querySelector('#contextflow-status').getAttribute('aria-live')==='polite','Context preview or accessible announcement missing.');
     requireValue(!document.querySelector('#contextflow-continue').disabled,'Prepared ContextFlow cannot reach native approval.');
     requireValue(document.activeElement===document.querySelector('#contextflow-review h2'),'Switch Agent did not focus the review heading.');
+    const review=document.querySelector('#contextflow-review');const originalTheme=document.body.dataset.codovynTheme;
+    review.style.width='260px';review.style.boxSizing='border-box';document.body.dataset.codovynTheme='high-contrast';
+    requireValue(review.scrollWidth<=262,'ContextFlow review clips content in a narrow panel.');
+    document.querySelector('#contextflow-continue').focus();requireValue(document.activeElement===document.querySelector('#contextflow-continue'),'Continuation approval is not focusable.');
+    requireValue(getComputedStyle(review).borderStyle==='solid','High-contrast review lost its surface boundary.');
+    review.style.width='';review.style.boxSizing='';document.body.dataset.codovynTheme=originalTheme;report.contextFlowNarrowAndFocus=true;
+
     if(phase==='relaunch'){flowReply=hostMessage('contextflow-state',data=>data.transfer?.status==='rejected');document.querySelector('#contextflow-reject').click();await flowReply;requireValue(document.querySelector('#contextflow-continue').disabled,'Rejected transfer retained execution control.');report.contextFlowRejection=true;}
     report.contextFlowReview=true;stage('contextflow-persisted-review-verified');
     send({type:'history',taskId:'native-segment-fixture',status:'interrupted',request:'Native provider segment fixture',timeline:[{type:'message',text:'Codex earlier response'},{type:'segment',provider:'OpenCode',text:'New approved segment'},{type:'message',text:'OpenCode continuation response'}]});
