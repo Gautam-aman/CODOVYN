@@ -1,0 +1,66 @@
+{
+  "implementationCommit": "a1c3e6dc12427e6f7e49d6750d0fa8ceab1073a2",
+  "sourceCleanAtBuild": true,
+  "unit": {
+    "command": "npm run check",
+    "tests": 310,
+    "passed": 310,
+    "failed": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "syntaxFiles": 155
+  },
+  "extensionHost": {
+    "passed": true,
+    "vscode": "1.143.1"
+  },
+  "sourceNative": {
+    "host": true,
+    "chatTwoLaunches": true,
+    "routingActivity": true,
+    "restorationTwoLaunches": true
+  },
+  "copiedNative": {
+    "host": true,
+    "javaTests": 3,
+    "javaTestExitCode": 0,
+    "chatTwoLaunches": true,
+    "routingActivity": true,
+    "restorationTwoLaunches": true,
+    "realReadinessTwoLaunches": true
+  },
+  "audit": {
+    "all": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 2,
+      "critical": 0,
+      "total": 2
+    },
+    "omitDev": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    }
+  },
+  "hostedCI": {
+    "run": 40109388454,
+    "url": "https://github.com/Gautam-aman/CODOVYN/actions/runs/40109388454",
+    "conclusion": "failure",
+    "jobs": 3,
+    "executedSteps": 0,
+    "annotation": "The job was not started because recent account payments have failed or your spending limit needs to be increased."
+  },
+  "notarization": {
+    "signature": "ad-hoc",
+    "copiedDeepStrictExitCode": 0,
+    "staplerExitCode": 65,
+    "publicReleaseReady": false
+  },
+  "liveInferenceRequests": 0,
+  "productionCodingExecutionEnabled": false
+}

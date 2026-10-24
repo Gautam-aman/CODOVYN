@@ -2,9 +2,9 @@
 
 **PRODUCTION OPENCODE CODING EXECUTION: BLOCKED**
 
-Phase 15 is **partially implemented**, not complete. Task-bound host source reads, real task/ACP initialization and their security regressions are verified. OpenCode's built-in tools do not consume the new host service; descriptor-safe draft writes are not implemented. No live inference occurred, and the production guard remains active.
+Phase 15 is **partially implemented**, not complete. The latest clean-source implementation/installer is `a1c3e6dc12427e6f7e49d6750d0fa8ceab1073a2`. Task-bound host reads, an experimental process-bound TLS MCP read bridge, fresh repository identity, and a host-only create-only publication primitive are tested. Production adapter admission, journaled draft writes and existing-file modification remain incomplete. No live inference occurred; the production guard remains active. The final continuation results below supersede the initial installer checkpoint.
 
-## Repository and artifacts
+## Repository and artifacts — initial b2a37ef checkpoint
 
 - Starting checkpoint: clean `main` at `5589a77ed11ef2b7a3daecf02b7471e56fe81ca1`, synchronized with the same `origin/main` after fetch. The commit is the recoverable checkpoint; no reset/stash/history rewrite.
 - Implementation and clean-source installer SHA: `b2a37ef45c8267e356a596080e11c58f696dff4b`, pushed and independently verified against `origin/main`.
@@ -154,7 +154,7 @@ Existing real abrupt-owner-death and hardened-client injection controls remain i
 
 Hosted [implementation run 40095828908](https://github.com/Gautam-aman/CODOVYN/actions/runs/40095828908) failed before steps executed (macOS/Linux/Windows jobs had empty step lists). Its annotation reports failed recent payments/spending limit and ARM64 runner capacity warnings. Owner action remains GitHub Billing & plans resolution followed by workflow rerun. No billing or workflow settings were changed. Later documentation pushes may create separate runs; no hosted pass is claimed.
 
-## Development DMG
+## Development DMG — initial b2a37ef checkpoint
 
 - `dist/desktop/CODOVYN-darwin-arm64-development.dmg`.
 - Embedded source: `b2a37ef45c8267e356a596080e11c58f696dff4b`; `sourceDirty:false`. [Build provenance](../assets/opencode-task-execution/build-provenance.json).
@@ -280,3 +280,129 @@ performed or authorized by these tests.
 
 With the five publication tests included, `npm run check` passed **310 tests,
 zero failed, cancelled or skipped**, after syntax checking 155 JavaScript files.
+
+
+## Final continuation verification — a1c3e6d
+
+This continuation resumed at `24cdb6a72fec0b9853539e82b83dfc9a24a47f14` after
+preserving the existing implementation and fetching `origin/main`. Both initially
+matched; the in-progress identity/write research was preserved and completed into
+tested milestones. New implementation commits are:
+
+- `00511ef3785d94305d31adf2bc0027c9bf42d759` — accepted filesystem identity,
+  permanently bound repository authority, protected Git-store exclusion,
+  nested-bare/cross-device read checks, and identity-aware recovery fingerprints.
+- `a1c3e6dc12427e6f7e49d6750d0fa8ceab1073a2` — actual macOS create-only
+  publication/denial/control witnesses and explicit remaining write gates.
+
+Both commits were pushed directly to `main` and their exact remote SHAs checked.
+The fresh installer embeds `a1c3e6d` with `sourceDirty:false`. This final evidence
+update is a later documentation-only commit; the completion message records its
+remote HEAD. No application source changed after the clean-source build.
+
+[Machine-readable validation summary](../assets/opencode-task-execution/read-mcp-checkpoint/validation-summary.json)
+and [build provenance](../assets/opencode-task-execution/read-mcp-checkpoint/build-provenance.json).
+
+| Classification | Latest evidence |
+| --- | --- |
+| **TASK AUTHORITY VERIFIED** | Real SQLite/TaskEngine admission and unique process/segment scopes in ordinary and approved draft roots; root substitution and changed authority rejected; cancellation/expiry do not release ownership merely because a callback ran. |
+| **FILE-ACCESS VERIFIED** | Native bounded reads, protected separate stores and bare repositories denied; kernel peer-verified MCP reads in deterministic local client fixtures; source cannot be returned to an unrelated local client. |
+| **REAL OS SECURITY VERIFIED** | Existing real Git/shell/network-executable denial, protected metadata/tamper denial and hardened/unhardened injection controls still pass. Five new create-only sandbox/control tests pass. This is not a completed write service. |
+| **REAL ACP VERIFIED** | Seven repeated broker sessions, two source task-bound TLS/MCP sessions, two copied-runtime task-bound TLS/MCP sessions, and two additional copied native UI metadata refreshes. No `session/prompt`; no real OpenCode file-tool invocation. |
+| **DETERMINISTICALLY TESTED** | Full suite: **310 passed, zero failed/cancelled/skipped**; syntax checked 155 JavaScript files. Existing ContextFlow, one-use approval, queue, crash/recovery, argument-forwarding and patch-review tests preserved. |
+| **LIVE INFERENCE UNVERIFIED** | Zero inference requests. Authentication, entitlement, model responses, coding success, live continuation, token/cost savings remain unverified. |
+| **BLOCKED** | Normal OpenCode coding adapter adoption, durable task-bound draft writes, existing-file edits, complete write cancellation/crash semantics and full execution-policy/ContextFlow binding remain incomplete. |
+
+`npm ci --ignore-scripts`, `npm run check`, `npm run test:extension-host`,
+`npm run build:desktop`, `npm run test:desktop-host`, `npm run test:desktop-chat`,
+`npm run test:desktop-routing-ui`, `npm run test:desktop-restoration`, and
+`npm run package:desktop` all executed successfully. Major native suites ran
+sequentially. Extension host passed on VS Code **1.143.1**. No tests were weakened,
+removed, skipped to hide a failure, or given a larger timeout.
+
+### Real protocol and native results
+
+[Source task-bound ACP evidence](../assets/opencode-task-execution/read-mcp-checkpoint/source-opencode-task-boundary-validation.json)
+and [copied-runtime evidence](../assets/opencode-task-execution/read-mcp-checkpoint/copied-opencode-task-boundary-validation.json)
+prove actual OpenCode 2.1.2 HTTPS MCP initialization/tool listing plus host-invoked
+source reads. The copied probe runs the packaged modules with bundled Node; its
+outer harness records a documentation-dirty checkout separately from the embedded
+clean app provenance. It is not evidence of provider inference or editing.
+
+[Repeated broker campaign](../assets/opencode-task-execution/read-mcp-checkpoint/source-opencode-broker-validation.json)
+passed seven sessions/six transitions, including branch freshness, explicit model
+selection, linked-worktree scope, nested project rejection, path substitution,
+broker shutdown and startup cancellation. Observed inspection durations were
+**2058–3202 ms** across these seven samples (including native helper preparation
+and metadata inspection as recorded by the harness). No before/after performance,
+provider-token or billing improvement is claimed; memory was not profiled.
+
+Both source and copied native host/Chat/routing/restoration suites passed.
+The copied Java host independently ran **three JUnit tests, exit 0**, and opened
+the Java source in the actual editor. Search samples in the saved native evidence
+are **99.10 ms source** and **138.02 ms copied**. These are observations from
+separate fixture runs, not a speed comparison or a causal resolution of issue #16.
+
+The copied app's additional two-launch provider-settings campaign used the actual
+pinned executable and actual broker metadata, independently of fixture Chat.
+Installation/version detection, readiness reset during refresh, actual ACP model
+metadata, authentication unknown, inference unverified, coding blocked and
+non-selectable execution models all passed. Ten catalogue entries were observed;
+this does not establish access or account entitlement.
+
+[Actual copied provider settings](../assets/opencode-task-execution/read-mcp-checkpoint/copied-real-provider-readiness.png)
+shows the real metadata-only observation. [Copied ContextFlow review](../assets/opencode-task-execution/read-mcp-checkpoint/copied-contextflow-fixture.png)
+shows a deterministic task/journal fixture, not live Codex/OpenCode output.
+[Readiness assertions across restart](../assets/opencode-task-execution/read-mcp-checkpoint/copied-real-readiness-chat-host-result.json)
+keep these categories distinct. Existing narrow-layout/focus, model/variant,
+queue, history and one-use handoff UI assertions passed. The routing harness
+still reports native DOM focus observability unavailable; no broader focus or
+accessibility certification is claimed.
+
+### Fresh development installer and cleanup
+
+- DMG: `dist/desktop/CODOVYN-darwin-arm64-development.dmg`.
+- Embedded source: `a1c3e6dc12427e6f7e49d6750d0fa8ceab1073a2`, clean.
+- SHA-256: `1951081ee28c92e09cf143578c7d26045efecae7fd7c35f35e5cd2a1b95a49eb`.
+- Independent `hdiutil verify` passed; mounted read-only, bundle checked,
+  copied to `/private/tmp/codovyn-phase15-final-copy-kaykunth/CODOVYN.app`, detached.
+- Deep/strict signature checks passed on mounted and copied bundles, and again
+  after all copied native tests. Signature remains ad-hoc; `stapler validate`
+  exited **65**, so no valid CODOVYN notarization or public distribution is claimed.
+- Copied native host, Chat, routing/activity, two-launch restoration, real
+  metadata readiness and packaged task-bound ACP probes all passed.
+- [Final cleanup](../assets/opencode-task-execution/read-mcp-checkpoint/cleanup-verification.json)
+  checked **292 recorded owned process groups: zero survivors**. Twelve saved
+  source/copied/readiness lifecycle reports also record exit 0 and empty survivor
+  arrays. These are recorded groups, not a claim that unrelated owner processes
+  were absent. No unrelated process was signalled.
+- [Image verification](../assets/opencode-task-execution/read-mcp-checkpoint/image-verification.json)
+  records the exact checksum, copy location and embedded provenance.
+
+No installed application, user data, Keychain, Gatekeeper, provider credentials,
+Git protections or billing settings were changed. No generated app/DMG is
+committed or publicly published. ARM64 macOS remains the only native validated
+platform.
+
+### External and unfinished gates
+
+The fresh audit still reports two high-severity development findings and zero
+production graph findings. No unsupported override or unrelated dependency churn
+was applied. Hosted [run 40109388454](https://github.com/Gautam-aman/CODOVYN/actions/runs/40109388454)
+failed all three jobs with **zero steps executed**; the annotation explicitly
+cites failed recent payments/spending limit. The owner must resolve GitHub
+Billing & plans and rerun the workflow. Hosted CI is not green.
+
+Phase 15 remains incomplete. The experimental native create operation is **not**
+TaskEngine-authorized production editing: a durable intent must precede its
+publication; ambiguous completion, cancellation, nested-repository changes at
+commit time and crash recovery must be reconciled, then existing-file edits and
+reviewed patch application tested end to end. The experimental read MCP bridge
+also requires normal adapter/tool-policy and complete implementation-digest
+binding before any coding execution guard can be removed. Compilation currently
+uses the development Mac's CLT; public runtime helper provisioning is not verified.
+
+**PRODUCTION OPENCODE CODING EXECUTION: BLOCKED.** No live inference consent was
+requested because the execution-security prerequisites are not yet complete.
+The bounded future six-turn proposal above remains pending those prerequisites
+and separate explicit owner authorization.

@@ -1,0 +1,34 @@
+{
+  "image": "/Users/rigelsmacbook/Java Projects/Codovyn/dist/desktop/CODOVYN-darwin-arm64-development.dmg",
+  "sha256": "1951081ee28c92e09cf143578c7d26045efecae7fd7c35f35e5cd2a1b95a49eb",
+  "copiedApp": "/private/tmp/codovyn-phase15-final-copy-kaykunth/CODOVYN.app",
+  "mountedReadOnly": true,
+  "detached": true,
+  "mountedSignatureVerified": true,
+  "copiedSignatureVerified": true,
+  "provenance": {
+    "identity": {
+      "name": "CODOVYN",
+      "bundleId": "org.codovyn.desktop",
+      "applicationName": "codovyn",
+      "repository": "https://github.com/Gautam-aman/CODOVYN",
+      "version": "0.1.0-alpha.1"
+    },
+    "artifacts": {
+      "editor": {
+        "filename": "VSCodium-darwin-arm64-1.140.06880.zip",
+        "url": "https://github.com/VSCodium/vscodium/releases/download/1.140.06880/VSCodium-darwin-arm64-1.140.06880.zip",
+        "sha256": "3a0ba1a13b6d743f79ffc20bebd7a2ef8bab2b40e54bcc80fae123da9ed552e0"
+      },
+      "runtime": {
+        "filename": "node-v26.9.0-darwin-arm64.tar.gz",
+        "url": "https://nodejs.org/dist/v26.9.0/node-v26.9.0-darwin-arm64.tar.gz",
+        "sha256": "6f3de7ed853ee283b4bf24b6e426618f1d357401ce5815db1866eb85eb4b05d9"
+      }
+    },
+    "sourceCommit": "a1c3e6dc12427e6f7e49d6750d0fa8ceab1073a2",
+    "sourceDirty": false,
+    "signing": "ad-hoc-development",
+    "platform": "darwin-arm64"
+  }
+}

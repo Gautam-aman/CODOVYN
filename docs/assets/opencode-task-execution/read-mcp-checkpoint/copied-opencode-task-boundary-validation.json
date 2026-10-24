@@ -1,0 +1,195 @@
+{
+  "version": 1,
+  "sourceCommit": "a1c3e6dc12427e6f7e49d6750d0fa8ceab1073a2",
+  "sourceDirty": true,
+  "inferenceRequests": 0,
+  "providerFileToolInvocations": 0,
+  "productionExecutionEnabled": false,
+  "phases": [
+    {
+      "mode": "ask",
+      "taskId": "ask-boundary-probe",
+      "providerOutput": "NONE — metadata-only validation adapter",
+      "sourceReadBy": "TRUSTED HOST FILE SERVICE; not OpenCode tools",
+      "ownedGroups": [
+        88284,
+        88293
+      ],
+      "acpInitialized": true,
+      "mcpMetadata": [
+        {
+          "method": "initialize",
+          "peerPid": 88293
+        },
+        {
+          "method": "notifications/initialized",
+          "peerPid": 88293
+        },
+        {
+          "method": "tools/list",
+          "peerPid": 88293
+        }
+      ],
+      "httpsMcpRegistered": true,
+      "readHashes": {
+        "source": "dbb6e2410f4b1f153c3c840ed376b42c9ba1f3f094f899a14767678de9eaf9d4",
+        "manifest": "038f8987ce54d1460794e05f81a4ac79401f5c7b8fed5928c5e849a7596ef6ae"
+      },
+      "writesBlocked": true,
+      "repositoryIdentity": "9aa18365592b7c0ccf6abae9823f843923cbcaac2a9d553b06ce437f7622b6d8",
+      "segment": "d867bf44-377f-4a08-95dd-ec63c6552031",
+      "leaseHeld": true,
+      "cleanupVerified": true,
+      "originalUnchanged": true,
+      "revokedAfterTask": true,
+      "fileAudit": [
+        {
+          "segment": "d867bf44-377f-4a08-95dd-ec63c6552031",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "src/main/java/dev/codovyn/Calculator.java",
+          "repositoryIdentity": "9aa18365592b7c0ccf6abae9823f843923cbcaac2a9d553b06ce437f7622b6d8",
+          "decision": "allowed",
+          "elapsedMs": 1101.2912080000006
+        },
+        {
+          "segment": "d867bf44-377f-4a08-95dd-ec63c6552031",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "pom.xml",
+          "repositoryIdentity": "9aa18365592b7c0ccf6abae9823f843923cbcaac2a9d553b06ce437f7622b6d8",
+          "decision": "allowed",
+          "elapsedMs": 17.480709000000388
+        },
+        {
+          "segment": "d867bf44-377f-4a08-95dd-ec63c6552031",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "[rejected path]",
+          "repositoryIdentity": "9aa18365592b7c0ccf6abae9823f843923cbcaac2a9d553b06ce437f7622b6d8",
+          "decision": "denied",
+          "elapsedMs": 0.02266700000018318
+        },
+        {
+          "segment": "d867bf44-377f-4a08-95dd-ec63c6552031",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "[rejected path]",
+          "repositoryIdentity": "9aa18365592b7c0ccf6abae9823f843923cbcaac2a9d553b06ce437f7622b6d8",
+          "decision": "denied",
+          "elapsedMs": 0.013541999999688414
+        }
+      ]
+    },
+    {
+      "mode": "agent",
+      "taskId": "agent-boundary-probe",
+      "providerOutput": "NONE — metadata-only validation adapter",
+      "sourceReadBy": "TRUSTED HOST FILE SERVICE; not OpenCode tools",
+      "ownedGroups": [
+        89017,
+        89026
+      ],
+      "acpInitialized": true,
+      "mcpMetadata": [
+        {
+          "method": "initialize",
+          "peerPid": 89026
+        },
+        {
+          "method": "notifications/initialized",
+          "peerPid": 89026
+        },
+        {
+          "method": "tools/list",
+          "peerPid": 89026
+        }
+      ],
+      "httpsMcpRegistered": true,
+      "readHashes": {
+        "source": "dbb6e2410f4b1f153c3c840ed376b42c9ba1f3f094f899a14767678de9eaf9d4",
+        "manifest": "038f8987ce54d1460794e05f81a4ac79401f5c7b8fed5928c5e849a7596ef6ae"
+      },
+      "writesBlocked": true,
+      "repositoryIdentity": "ecc5ddd9ed25c55ec4bb79d267a096ca4fe77a371299042674a028d3292f96f4",
+      "segment": "1b1770c0-0fff-4556-8bdf-5f0b67c88d66",
+      "leaseHeld": true,
+      "cleanupVerified": true,
+      "originalUnchanged": true,
+      "revokedAfterTask": true,
+      "fileAudit": [
+        {
+          "segment": "1b1770c0-0fff-4556-8bdf-5f0b67c88d66",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "src/main/java/dev/codovyn/Calculator.java",
+          "repositoryIdentity": "ecc5ddd9ed25c55ec4bb79d267a096ca4fe77a371299042674a028d3292f96f4",
+          "decision": "allowed",
+          "elapsedMs": 9.520832999999584
+        },
+        {
+          "segment": "1b1770c0-0fff-4556-8bdf-5f0b67c88d66",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "pom.xml",
+          "repositoryIdentity": "ecc5ddd9ed25c55ec4bb79d267a096ca4fe77a371299042674a028d3292f96f4",
+          "decision": "allowed",
+          "elapsedMs": 8.142083000000639
+        },
+        {
+          "segment": "1b1770c0-0fff-4556-8bdf-5f0b67c88d66",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "[rejected path]",
+          "repositoryIdentity": "ecc5ddd9ed25c55ec4bb79d267a096ca4fe77a371299042674a028d3292f96f4",
+          "decision": "denied",
+          "elapsedMs": 0.013875000000552973
+        },
+        {
+          "segment": "1b1770c0-0fff-4556-8bdf-5f0b67c88d66",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "[rejected path]",
+          "repositoryIdentity": "ecc5ddd9ed25c55ec4bb79d267a096ca4fe77a371299042674a028d3292f96f4",
+          "decision": "denied",
+          "elapsedMs": 0.006124999999883585
+        }
+      ]
+    }
+  ],
+  "packagedBuild": {
+    "identity": {
+      "name": "CODOVYN",
+      "bundleId": "org.codovyn.desktop",
+      "applicationName": "codovyn",
+      "repository": "https://github.com/Gautam-aman/CODOVYN",
+      "version": "0.1.0-alpha.1"
+    },
+    "artifacts": {
+      "editor": {
+        "filename": "VSCodium-darwin-arm64-1.140.06880.zip",
+        "url": "https://github.com/VSCodium/vscodium/releases/download/1.140.06880/VSCodium-darwin-arm64-1.140.06880.zip",
+        "sha256": "3a0ba1a13b6d743f79ffc20bebd7a2ef8bab2b40e54bcc80fae123da9ed552e0"
+      },
+      "runtime": {
+        "filename": "node-v26.9.0-darwin-arm64.tar.gz",
+        "url": "https://nodejs.org/dist/v26.9.0/node-v26.9.0-darwin-arm64.tar.gz",
+        "sha256": "6f3de7ed853ee283b4bf24b6e426618f1d357401ce5815db1866eb85eb4b05d9"
+      }
+    },
+    "sourceCommit": "a1c3e6dc12427e6f7e49d6750d0fa8ceab1073a2",
+    "sourceDirty": false,
+    "signing": "ad-hoc-development",
+    "platform": "darwin-arm64"
+  },
+  "provider": {
+    "version": "2.1.2",
+    "executableSha256": "3f01e2ba8efd4242c638add9248b88696221d76588d9511e63cb2d727c278fcc"
+  },
+  "nativeSources": {
+    "repository": "513b5d23f5bf11e65210505ca19d9b1cc77c5a2cd1359fb2c27122092c749469",
+    "files": "2df4682bad105ed860bb385cfa38f367105fb14448ce27f686df534de6131bff",
+    "peer": "899a6a90cb77a84bb57b68a25ca510aeb67972b69af99213bb48198c55804224"
+  },
+  "passed": true
+}

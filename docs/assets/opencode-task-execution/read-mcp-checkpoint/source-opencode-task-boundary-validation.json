@@ -1,0 +1,170 @@
+{
+  "version": 1,
+  "sourceCommit": "a1c3e6dc12427e6f7e49d6750d0fa8ceab1073a2",
+  "sourceDirty": false,
+  "inferenceRequests": 0,
+  "providerFileToolInvocations": 0,
+  "productionExecutionEnabled": false,
+  "phases": [
+    {
+      "mode": "ask",
+      "taskId": "ask-boundary-probe",
+      "providerOutput": "NONE — metadata-only validation adapter",
+      "sourceReadBy": "TRUSTED HOST FILE SERVICE; not OpenCode tools",
+      "ownedGroups": [
+        79397,
+        79404
+      ],
+      "acpInitialized": true,
+      "mcpMetadata": [
+        {
+          "method": "initialize",
+          "peerPid": 79404
+        },
+        {
+          "method": "notifications/initialized",
+          "peerPid": 79404
+        },
+        {
+          "method": "tools/list",
+          "peerPid": 79404
+        }
+      ],
+      "httpsMcpRegistered": true,
+      "readHashes": {
+        "source": "dbb6e2410f4b1f153c3c840ed376b42c9ba1f3f094f899a14767678de9eaf9d4",
+        "manifest": "038f8987ce54d1460794e05f81a4ac79401f5c7b8fed5928c5e849a7596ef6ae"
+      },
+      "writesBlocked": true,
+      "repositoryIdentity": "b8d09c12d0516a9808bc6b0797344cf917aca1d8430b281f488c7bead7dfd3e5",
+      "segment": "4ca7ff1d-ffa0-4be1-86e3-cbe3dc92ec16",
+      "leaseHeld": true,
+      "cleanupVerified": true,
+      "originalUnchanged": true,
+      "revokedAfterTask": true,
+      "fileAudit": [
+        {
+          "segment": "4ca7ff1d-ffa0-4be1-86e3-cbe3dc92ec16",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "src/main/java/dev/codovyn/Calculator.java",
+          "repositoryIdentity": "b8d09c12d0516a9808bc6b0797344cf917aca1d8430b281f488c7bead7dfd3e5",
+          "decision": "allowed",
+          "elapsedMs": 90.40837499999998
+        },
+        {
+          "segment": "4ca7ff1d-ffa0-4be1-86e3-cbe3dc92ec16",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "pom.xml",
+          "repositoryIdentity": "b8d09c12d0516a9808bc6b0797344cf917aca1d8430b281f488c7bead7dfd3e5",
+          "decision": "allowed",
+          "elapsedMs": 12.584333999999672
+        },
+        {
+          "segment": "4ca7ff1d-ffa0-4be1-86e3-cbe3dc92ec16",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "[rejected path]",
+          "repositoryIdentity": "b8d09c12d0516a9808bc6b0797344cf917aca1d8430b281f488c7bead7dfd3e5",
+          "decision": "denied",
+          "elapsedMs": 0.019082999999682215
+        },
+        {
+          "segment": "4ca7ff1d-ffa0-4be1-86e3-cbe3dc92ec16",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "[rejected path]",
+          "repositoryIdentity": "b8d09c12d0516a9808bc6b0797344cf917aca1d8430b281f488c7bead7dfd3e5",
+          "decision": "denied",
+          "elapsedMs": 0.013042000000041298
+        }
+      ]
+    },
+    {
+      "mode": "agent",
+      "taskId": "agent-boundary-probe",
+      "providerOutput": "NONE — metadata-only validation adapter",
+      "sourceReadBy": "TRUSTED HOST FILE SERVICE; not OpenCode tools",
+      "ownedGroups": [
+        80098,
+        80105
+      ],
+      "acpInitialized": true,
+      "mcpMetadata": [
+        {
+          "method": "initialize",
+          "peerPid": 80105
+        },
+        {
+          "method": "notifications/initialized",
+          "peerPid": 80105
+        },
+        {
+          "method": "tools/list",
+          "peerPid": 80105
+        }
+      ],
+      "httpsMcpRegistered": true,
+      "readHashes": {
+        "source": "dbb6e2410f4b1f153c3c840ed376b42c9ba1f3f094f899a14767678de9eaf9d4",
+        "manifest": "038f8987ce54d1460794e05f81a4ac79401f5c7b8fed5928c5e849a7596ef6ae"
+      },
+      "writesBlocked": true,
+      "repositoryIdentity": "84289a40e0ead6f58d5036d47cfe84ab5b7cd3d22a076485cb9a81fd6391b380",
+      "segment": "fda6d044-0997-4fcf-ac21-7caf342c9a72",
+      "leaseHeld": true,
+      "cleanupVerified": true,
+      "originalUnchanged": true,
+      "revokedAfterTask": true,
+      "fileAudit": [
+        {
+          "segment": "fda6d044-0997-4fcf-ac21-7caf342c9a72",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "src/main/java/dev/codovyn/Calculator.java",
+          "repositoryIdentity": "84289a40e0ead6f58d5036d47cfe84ab5b7cd3d22a076485cb9a81fd6391b380",
+          "decision": "allowed",
+          "elapsedMs": 12.361207999999351
+        },
+        {
+          "segment": "fda6d044-0997-4fcf-ac21-7caf342c9a72",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "pom.xml",
+          "repositoryIdentity": "84289a40e0ead6f58d5036d47cfe84ab5b7cd3d22a076485cb9a81fd6391b380",
+          "decision": "allowed",
+          "elapsedMs": 8.781833000000006
+        },
+        {
+          "segment": "fda6d044-0997-4fcf-ac21-7caf342c9a72",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "[rejected path]",
+          "repositoryIdentity": "84289a40e0ead6f58d5036d47cfe84ab5b7cd3d22a076485cb9a81fd6391b380",
+          "decision": "denied",
+          "elapsedMs": 0.03125
+        },
+        {
+          "segment": "fda6d044-0997-4fcf-ac21-7caf342c9a72",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "[rejected path]",
+          "repositoryIdentity": "84289a40e0ead6f58d5036d47cfe84ab5b7cd3d22a076485cb9a81fd6391b380",
+          "decision": "denied",
+          "elapsedMs": 0.011209000000235392
+        }
+      ]
+    }
+  ],
+  "provider": {
+    "version": "2.1.2",
+    "executableSha256": "3f01e2ba8efd4242c638add9248b88696221d76588d9511e63cb2d727c278fcc"
+  },
+  "nativeSources": {
+    "repository": "513b5d23f5bf11e65210505ca19d9b1cc77c5a2cd1359fb2c27122092c749469",
+    "files": "2df4682bad105ed860bb385cfa38f367105fb14448ce27f686df534de6131bff",
+    "peer": "899a6a90cb77a84bb57b68a25ca510aeb67972b69af99213bb48198c55804224"
+  },
+  "passed": true
+}
