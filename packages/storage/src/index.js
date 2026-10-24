@@ -175,9 +175,12 @@ export class TaskStore {
     const result = this.#db.prepare(`INSERT INTO execution_leases SELECT ?, ?, ?, ?, NULL WHERE NOT EXISTS (
       SELECT 1 FROM execution_leases held JOIN tasks occupied ON occupied.id=held.task_id
       WHERE held.task_id<>? AND held.released_at IS NULL AND occupied.repository_root=(SELECT repository_root FROM tasks WHERE id=?))
+      AND NOT EXISTS (SELECT 1 FROM draft_write_intents w JOIN tasks occupied ON occupied.id=w.task_id
+        WHERE occupied.repository_root=(SELECT repository_root FROM tasks WHERE id=?)
+        AND w.state IN ('prepared','uncertain','conflict') AND (w.task_id<>? OR ?<>'recovery'))
       ON CONFLICT(task_id) DO UPDATE SET token=excluded.token, owner=excluded.owner,
       acquired_at=excluded.acquired_at, released_at=NULL WHERE execution_leases.released_at IS NOT NULL`)
-      .run(id, token, JSON.stringify({ pid, host, kind }), new Date().toISOString(),id,id);
+      .run(id, token, JSON.stringify({ pid, host, kind }), new Date().toISOString(),id,id,id,id,kind);
     if (result.changes !== 1) throw new Error('Task has an unreconciled execution owner');
     return this.executionLease(id);
   }
@@ -195,6 +198,7 @@ export class TaskStore {
       const lease=this.executionLease(taskId),task=this.get(taskId);
       if(!lease||lease.releasedAt!==null||lease.token!==token||lease.owner.pid!==process.pid||lease.owner.host!==hostname()||task.status!=='running'||task.activeAgent!=='opencode')throw new Error('Draft write has no current execution owner');
       if(this.unresolvedDraftWrites(taskId).length)throw new Error('An unresolved write fences this task');
+      if(this.draftWrites(taskId).length>=64)throw new Error('Task draft write budget exceeded');
       const now=new Date().toISOString();
       this.#db.prepare("INSERT INTO draft_write_intents VALUES (?,?,?,?,?,'prepared',?,?)").run(id,taskId,segment,token,JSON.stringify({...metadata,version:1}),now,now);
       const event={type:'tool-start',actionId:id,action:'file_change',safeToRetry:false};

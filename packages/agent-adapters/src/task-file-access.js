@@ -5,6 +5,7 @@ import{join,dirname,relative,isAbsolute}from'node:path';
 import{performance}from'node:perf_hooks';
 import{isTaskExecutionAuthority}from'../../task-engine/src/execution-authority.js';
 import{isRepositoryAuthority,repositoryTool}from'./repository-identity.js';
+import{createTaskDraftWriter}from'./task-file-write.js';
 import{manageAgentProcess}from'./process.js';
 const hash=b=>createHash('sha256').update(b).digest('hex');
 const services=new WeakMap();
@@ -20,14 +21,14 @@ export async function buildTaskFileReader(directory,{signal}={}){
 const safePath=path=>typeof path==='string'&&path.length>0&&path.length<4096&&!/[\x00-\x1f\\]/.test(path)&&path.split('/').every(part=>part&&part[0]!=='.'&&!/credential|secret|token|^auth\.json$|^id_|\.pem|\.key/i.test(part));
 /** Host-only read seam. Does not expose a public IPC filesystem, advertise ACP
  * fs support, grant project access to the provider, or authorize draft writes. */
-export async function createTaskFileAccess({execution,repository,reader}){
+export async function createTaskFileAccess({execution,repository,reader,writer}){
  if(!isTaskExecutionAuthority(execution)||!isRepositoryAuthority(repository))throw new Error('Host-issued task and repository authorities required');
  const provider=execution.verify();let executable;try{executable=lstatSync(provider.executable,{bigint:true});if(!executable.isFile()||hash(readFileSync(provider.executable))!==provider.sha256)throw new Error('Changed executable');}catch{execution.revoke();throw new Error('Task provider executable integrity changed');}
  let initial;try{initial=await repository.read();if(initial.root!==execution.workspace)throw new Error('Task repository scope mismatch');execution.bindRepository(initial);}catch(error){execution.revoke();throw error;}
  const within=(root,path)=>{const rel=relative(root,path);return !isAbsolute(rel)&&rel!=='..'&&!rel.startsWith('../');};
  const sourcePath=path=>safePath(path)&&![initial.gitDirectory,initial.commonDirectory].some(metadata=>within(metadata,join(initial.root,path)));
  if(reader.command.startsWith(initial.root+'/'))throw new Error('Task reader must be outside the project');
- const rootFd=openSync(initial.root,constants.O_RDONLY|constants.O_DIRECTORY|constants.O_NOFOLLOW),controller=new AbortController(),pending=new Set();let closed=false,budget=0,closing,cleanupFailure;
+ const rootFd=openSync(initial.root,constants.O_RDONLY|constants.O_DIRECTORY|constants.O_NOFOLLOW),controller=new AbortController(),pending=new Set(),versions=new Map();let draftWriter,closed=false,budget=0,closing,cleanupFailure;
  const abort=()=>controller.abort();execution.signal.addEventListener('abort',abort,{once:true});
  async function verify(path){execution.verify();if(closed||controller.signal.aborted)throw new Error('File access revoked');try{const actual=lstatSync(provider.executable,{bigint:true});if(['dev','ino','size','mtimeNs','ctimeNs'].some(key=>actual[key]!==executable[key]))throw new Error('Changed executable');}catch{execution.revoke();throw new Error('Task provider executable changed');}let state;try{state=await repository.read(join(initial.root,dirname(path)));}catch(error){execution.revoke();throw error;}if(state.fingerprint!==initial.fingerprint){execution.revoke();throw new Error('Task repository changed');}}
  async function operation(path){
@@ -35,20 +36,23 @@ export async function createTaskFileAccess({execution,repository,reader}){
   try{
    if(!sourcePath(path)||++budget>128)throw new Error('Unsupported or sensitive task path');await verify(path);
    try{const info=lstatSync(reader.command);if(!info.isFile()||info.mode&0o022||hash(readFileSync(reader.command))!==reader.sha256)throw new Error('Changed reader');}catch{execution.revoke();throw new Error('Task reader integrity changed');}
-   const child=spawn(reader.command,[initial.root,path],{env:{PATH:'/usr/bin:/bin',LANG:'en_US.UTF-8'},shell:false,detached:true,stdio:['pipe','pipe','pipe',rootFd]});const lifecycle=manageAgentProcess(child,controller.signal);child.stdin.end();let bytes=0,errors=0,chunks=[];
-   child.stdout.on('data',chunk=>{bytes+=chunk.length;if(bytes<=131073)chunks.push(chunk);else lifecycle.dispose().catch(()=>{});});child.stderr.on('data',chunk=>{errors+=chunk.length;if(errors>4096)lifecycle.dispose().catch(()=>{});});
+   const child=spawn(reader.command,[initial.root,path,'versioned'],{env:{PATH:'/usr/bin:/bin',LANG:'en_US.UTF-8'},shell:false,detached:true,stdio:['pipe','pipe','pipe',rootFd]});const lifecycle=manageAgentProcess(child,controller.signal);child.stdin.end();let bytes=0,errors=0,chunks=[];
+   child.stdout.on('data',chunk=>{bytes+=chunk.length;if(bytes<=131584)chunks.push(chunk);else lifecycle.dispose().catch(()=>{});});child.stderr.on('data',chunk=>{errors+=chunk.length;if(errors>4096)lifecycle.dispose().catch(()=>{});});
    const timer=setTimeout(()=>lifecycle.dispose().catch(()=>{}),3000);let code;try{code=await lifecycle.closed;}finally{clearTimeout(timer);await lifecycle.dispose();}
-   if(code===77||code===79){execution.revoke();repository.revoke();}if(code!==0||lifecycle.error()||bytes>131073||errors>4096)throw new Error('Task file operation denied');await verify(path);
-   const encoded=Buffer.concat(chunks).toString('ascii').trim();if(!/^(?:[0-9a-f]{2})*$/.test(encoded))throw new Error('Invalid task file response');const content=Buffer.from(encoded,'hex');if(content.includes(0))throw new Error('Task reader supports text files only');
-   const text=new TextDecoder('utf-8',{fatal:true}).decode(content);decision='allowed';return text;
+   if(code===77||code===79){execution.revoke();repository.revoke();}if(code!==0||lifecycle.error()||bytes>131584||errors>4096)throw new Error('Task file operation denied');await verify(path);
+   const record=JSON.parse(Buffer.concat(chunks).toString('ascii'));const encoded=record.hex;if(typeof encoded!=='string'||typeof record.identity!=='string'||!/^\d+(?::\d+){7}$/.test(record.identity)||!/^(?:[0-9a-f]{2})*$/.test(encoded))throw new Error('Invalid task file response');const content=Buffer.from(encoded,'hex');if(content.includes(0))throw new Error('Task reader supports text files only');
+   const text=new TextDecoder('utf-8',{fatal:true}).decode(content);decision='allowed';const version=hash(record.identity+':'+hash(text));const result={text,version,identity:record.identity};versions.set(path,result);return result;
   }finally{
    // Only bounded path/decision metadata, never file contents or credentials.
    try{execution.audit({operation:'read',path:safePath(path)?path.slice(0,1024):'[rejected path]',repositoryIdentity:initial.id,decision,elapsedMs:performance.now()-started});}catch{if(decision==='allowed'){execution.revoke();throw new Error('Task file audit could not be persisted');}}
   }
  }
- const service=Object.freeze({repositoryIdentity:initial.id,
-  read(path){if(closed||cleanupFailure||pending.size>=4)return Promise.reject(new Error('File access revoked or concurrency bound exceeded'));const work=operation(path);pending.add(work);work.catch(error=>{if(error?.kind==='fatal'){cleanupFailure=error;execution.revoke();}}).finally(()=>pending.delete(work)).catch(()=>{});return work;},
-  write(){return Promise.reject(new Error('Draft write mediation is not verified; writes remain blocked'));},
-  close(){if(closing)return closing;closing=(async()=>{closed=true;controller.abort();execution.signal.removeEventListener('abort',abort);const results=await Promise.allSettled([...pending]);closeSync(rootFd);if(cleanupFailure||results.some(r=>r.status==='rejected'&&r.reason?.kind==='fatal'))throw new Error('Task file cleanup unverified');})();return closing;}
+ if(writer&&execution.permission==='read-write')draftWriter=createTaskDraftWriter({execution,repository,writer,inspect:operation,verify,sourcePath,rootFd,versions,signal:controller.signal});
+ function track(work){const tracked=work.catch(error=>{if(error?.kind==='fatal'){cleanupFailure=error;execution.revoke();}throw error;}).finally(()=>pending.delete(tracked));pending.add(tracked);return tracked;}
+ const service=Object.freeze({repositoryIdentity:initial.id,writes:!!draftWriter,
+  inspect(path){if(closed||cleanupFailure||draftWriter?.busy||pending.size>=4)return Promise.reject(new Error('File access revoked or concurrency bound exceeded'));return track(operation(path));},
+  async read(path){return (await service.inspect(path)).text;},
+  write(input){if(!draftWriter)return Promise.reject(new Error('Draft write mediation is not verified; writes remain blocked'));if(closed||cleanupFailure||pending.size||draftWriter.cleanupFailure)return Promise.reject(new Error('Draft write is fenced or file operations are pending'));return track(draftWriter.write(input));},
+  close(){if(closing)return closing;closing=(async()=>{closed=true;controller.abort();execution.signal.removeEventListener('abort',abort);const results=await Promise.allSettled([...pending]);closeSync(rootFd);if(cleanupFailure||draftWriter?.cleanupFailure||results.some(r=>r.status==='rejected'&&r.reason?.kind==='fatal'))throw new Error('Task file cleanup unverified');})();return closing;}
  });services.set(service,execution);return service;
 }

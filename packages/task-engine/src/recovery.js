@@ -10,6 +10,13 @@ export function processAbsent(pid) {
 export function executionRecovery(store, id, { host = hostname(), absent = processAbsent, platform = process.platform } = {}) {
   const lease = store.executionLease(id);
   if (!lease) return { safe: false, reason: 'legacy-process-ownership-unknown' };
+  const writeHistory=store.events(id);
+  for(const intent of store.unresolvedDraftWrites(id)){
+    const launch=writeHistory.findLast(e=>e.kind==='draft-write-process'&&e.data.id===intent.id);
+    if(!launch)return {safe:false,reason:'draft-write-registration-unknown'};
+    const stopped=writeHistory.findLast(e=>e.kind==='draft-write-process-stopped'&&e.data.id===intent.id&&e.data.pid===launch.data.pid);
+    if(!stopped&&(lease.owner.host!==host||platform==='win32'||!absent(-launch.data.pid)))return {safe:false,reason:'draft-writer-alive-or-unverifiable'};
+  }
   if (lease.releasedAt && platform==='win32' && lease.owner.kind!=='recovery')return {safe:false,reason:'windows-process-tree-verification-unsupported'};
   if (lease.releasedAt) return { safe: true, reason: 'cleanup-recorded' };
   if (lease.owner.host !== host) return { safe: false, reason: 'different-host' };

@@ -26,7 +26,7 @@ static int directory(int start,const char *path,int scoped){int fd=dup(start);st
  for(char *s=strtok_r(copy,"/",&save);s;s=strtok_r(NULL,"/",&save)){if(!strcmp(s,".")||!strcmp(s,"..")){close(fd);return -1;}int next=openat(fd,s,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);close(fd);if(next<0)return -1;fd=next;struct stat info;if(scoped&&(fstat(fd,&info)||info.st_dev!=root.st_dev||boundary(fd))){close(fd);return -1;}}return fd;}
 static int root_matches(const char *path){if(path[0]!='/'||strstr(path,"//"))return 0;int slash=open("/",O_RDONLY|O_DIRECTORY|O_CLOEXEC);if(slash<0)return 0;int current=directory(slash,path+1,0);close(slash);if(current<0)return 0;int ok=same(3,current);close(current);return ok;}
 int main(int argc,char **argv){
- if(argc!=3||strlen(argv[1])>=PATH_MAX||strlen(argv[2])>=PATH_MAX)return fail();if(!root_matches(argv[1]))return 77;
+ if((argc!=3&&!(argc==4&&!strcmp(argv[3],"versioned")))||strlen(argv[1])>=PATH_MAX||strlen(argv[2])>=PATH_MAX)return fail();if(!root_matches(argv[1]))return 77;
  const char *path=argv[2];if(!*path||path[0]=='/'||path[strlen(path)-1]=='/'||strstr(path,"//"))return fail();
  pid_t owner=getppid();char copy[PATH_MAX];strcpy(copy,path);int parent=dup(3);char *save=NULL,*name=strtok_r(copy,"/",&save);if(parent<0||!name)return fail();
  for(;;){if(!component(name))return fail();char *next=strtok_r(NULL,"/",&save);if(!next)break;
@@ -45,5 +45,6 @@ int main(int argc,char **argv){
  char parentPath[PATH_MAX];strcpy(parentPath,path);char *slash=strrchr(parentPath,'/');int current;
  if(slash){*slash=0;current=directory(3,parentPath,1);}else current=dup(3);
  if(current<0||!same(current,parent))return fail();close(current);
- for(ssize_t i=0;i<total;i++)printf("%02x",content[i]);putchar('\n');close(file);close(parent);return 0;
+ if(argc==4)printf("{\"identity\":\"%llu:%llu:%lld:%lld:%ld:%lld:%ld:%u\",\"hex\":\"",(unsigned long long)before.st_dev,(unsigned long long)before.st_ino,(long long)before.st_size,(long long)before.st_mtimespec.tv_sec,before.st_mtimespec.tv_nsec,(long long)before.st_ctimespec.tv_sec,before.st_ctimespec.tv_nsec,(unsigned int)before.st_mode);
+ for(ssize_t i=0;i<total;i++)printf("%02x",content[i]);if(argc==4)fputs("\"}",stdout);putchar('\n');close(file);close(parent);return 0;
 }
