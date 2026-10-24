@@ -1,0 +1,693 @@
+{
+  "version": 1,
+  "source": "Phase 13 research boundary, NOT production integration",
+  "inferenceRequests": 0,
+  "openCodeVersion": "2.1.2",
+  "positive": [
+    {
+      "name": "ordinary",
+      "discoveryMs": 620.4944579999999,
+      "buildMs": 379.3540830000002
+    },
+    {
+      "name": "empty",
+      "discoveryMs": 440.9181660000004,
+      "buildMs": 88.18929299999945
+    },
+    {
+      "name": "feature-branch",
+      "discoveryMs": 1083.0039589999997,
+      "buildMs": 89.37408400000095
+    },
+    {
+      "name": "detached-head",
+      "discoveryMs": 426.1862919999994,
+      "buildMs": 99.4622500000005
+    },
+    {
+      "name": "linked-worktree",
+      "discoveryMs": 415.7384169999996,
+      "buildMs": 107.82587599999988
+    },
+    {
+      "name": "spaces",
+      "discoveryMs": 433.56325000000106,
+      "buildMs": 490.6896250000009
+    },
+    {
+      "name": "nested-directory",
+      "discoveryMs": 145.1135839999988,
+      "buildMs": 188.0980839999993
+    },
+    {
+      "name": "separate-common-directory",
+      "discoveryMs": 470.75774999999885,
+      "buildMs": 203.35333400000127
+    },
+    {
+      "name": "non-git-original-boundary",
+      "models": 10
+    }
+  ],
+  "negative": [
+    {
+      "name": "shim rejects push",
+      "denied": true
+    },
+    {
+      "name": "shim rejects commit",
+      "denied": true
+    },
+    {
+      "name": "shim rejects config",
+      "denied": true
+    },
+    {
+      "name": "shim rejects reset",
+      "denied": true
+    },
+    {
+      "name": "shim rejects -C",
+      "denied": true
+    },
+    {
+      "name": "shim rejects rev-parse",
+      "denied": true
+    },
+    {
+      "name": "shim rejects --git-dir",
+      "denied": true
+    },
+    {
+      "name": "shim rejects worktree",
+      "denied": true
+    },
+    {
+      "name": "shim rejects remote",
+      "denied": true
+    },
+    {
+      "name": "configured hook, fsmonitor and credential helper markers remain absent",
+      "denied": true
+    },
+    {
+      "name": "environment cannot redirect fixed replies",
+      "denied": true
+    },
+    {
+      "name": "foreign cwd and symlink cwd escape",
+      "denied": true
+    },
+    {
+      "name": "OS witness read-only: shell, real Git, external/symlink access, metadata and shim mutation",
+      "denied": true,
+      "operations": 10
+    },
+    {
+      "name": "OS witness draft-write: shell, real Git, external/symlink access, metadata and shim mutation",
+      "denied": true,
+      "operations": 10
+    }
+  ],
+  "metadata": [
+    {
+      "name": "ordinary",
+      "acpSessionCreated": true,
+      "sessionPromptSent": false,
+      "models": 10,
+      "defaultModel": "opencode/big-pickle",
+      "variantOptions": 0,
+      "catalogueMs": 1194.4925,
+      "sessionAndCatalogueMs": 1698.1556249999999,
+      "authentication": "unknown"
+    },
+    {
+      "name": "linked-worktree",
+      "acpSessionCreated": true,
+      "sessionPromptSent": false,
+      "models": 10,
+      "defaultModel": "opencode/big-pickle",
+      "variantOptions": 0,
+      "catalogueMs": 1020.5708750000003,
+      "sessionAndCatalogueMs": 1802.8261660000007,
+      "authentication": "unknown"
+    }
+  ],
+  "blockingFindings": [
+    "Immutable shim replies become stale after host repository changes; no freshness attestation.",
+    "Nested repository insertion does not invalidate ancestor-bound replies.",
+    "Replacing the root directory at the same pathname does not invalidate compiled snapshot identity."
+  ],
+  "processes": [
+    {
+      "pid": 19251,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 34.724999999999966
+    },
+    {
+      "pid": 19253,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 22.715750000000014
+    },
+    {
+      "pid": 19255,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 30.337792000000036
+    },
+    {
+      "pid": 19259,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 24.465125
+    },
+    {
+      "pid": 19261,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 24.375625000000014
+    },
+    {
+      "pid": 19263,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 20.927291999999966
+    },
+    {
+      "pid": 19265,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 29.046042
+    },
+    {
+      "pid": 19269,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 24.988125000000025
+    },
+    {
+      "pid": 19271,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 21.013582999999983
+    },
+    {
+      "pid": 19273,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 28.775540999999976
+    },
+    {
+      "pid": 19278,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 24.52612499999998
+    },
+    {
+      "pid": 19280,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 20.412083999999936
+    },
+    {
+      "pid": 19282,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 28.18629199999998
+    },
+    {
+      "pid": 19286,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 24.59945899999991
+    },
+    {
+      "pid": 19288,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 20.633749999999964
+    },
+    {
+      "pid": 19290,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 28.757542000000058
+    },
+    {
+      "pid": 19294,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 24.778792000000067
+    },
+    {
+      "pid": 19296,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 22.832374999999956
+    },
+    {
+      "pid": 19298,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 37.154458999999974
+    },
+    {
+      "pid": 19302,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 19.491416999999956
+    },
+    {
+      "pid": 19304,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 19.255957999999964
+    },
+    {
+      "pid": 19306,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 20.206042000000025
+    },
+    {
+      "pid": 19308,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 19.40387499999997
+    },
+    {
+      "pid": 19319,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 620.4944579999999
+    },
+    {
+      "pid": 19326,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 1194.4925
+    },
+    {
+      "pid": 19341,
+      "survivors": []
+    },
+    {
+      "pid": 19360,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 20.81070800000043
+    },
+    {
+      "pid": 19362,
+      "code": 128,
+      "survivors": [],
+      "elapsedMs": 19.493082999999842
+    },
+    {
+      "pid": 19364,
+      "code": 128,
+      "survivors": [],
+      "elapsedMs": 19.19791699999996
+    },
+    {
+      "pid": 19366,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 19.060625000000073
+    },
+    {
+      "pid": 19374,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 440.9181660000004
+    },
+    {
+      "pid": 19379,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 25.41625000000022
+    },
+    {
+      "pid": 19381,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 19.72900000000027
+    },
+    {
+      "pid": 19383,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 20.06287500000053
+    },
+    {
+      "pid": 19385,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 19.659999999999854
+    },
+    {
+      "pid": 19393,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 1083.0039589999997
+    },
+    {
+      "pid": 19405,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 53.46258300000045
+    },
+    {
+      "pid": 19408,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 30.44079199999942
+    },
+    {
+      "pid": 19410,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 25.875624999999673
+    },
+    {
+      "pid": 19412,
+      "code": 1,
+      "survivors": [],
+      "elapsedMs": 27.581624999999804
+    },
+    {
+      "pid": 19421,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 426.1862919999994
+    },
+    {
+      "pid": 19431,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 31.85204199999953
+    },
+    {
+      "pid": 19433,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 23.516083999999864
+    },
+    {
+      "pid": 19435,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 23.681832999999642
+    },
+    {
+      "pid": 19437,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 20.90666599999986
+    },
+    {
+      "pid": 19445,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 415.7384169999996
+    },
+    {
+      "pid": 19448,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 1020.5708750000003
+    },
+    {
+      "pid": 19468,
+      "survivors": []
+    },
+    {
+      "pid": 19520,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 82.86962500000118
+    },
+    {
+      "pid": 19532,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 27.252000000000407
+    },
+    {
+      "pid": 19535,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 35.58854099999917
+    },
+    {
+      "pid": 19537,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 31.30529100000058
+    },
+    {
+      "pid": 19551,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 433.56325000000106
+    },
+    {
+      "pid": 19562,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 27.282208000000537
+    },
+    {
+      "pid": 19565,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 37.803209000001516
+    },
+    {
+      "pid": 19567,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 34.130959000000075
+    },
+    {
+      "pid": 19571,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 34.802999999999884
+    },
+    {
+      "pid": 19587,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 145.1135839999988
+    },
+    {
+      "pid": 19590,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 52.660250000000815
+    },
+    {
+      "pid": 19592,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 51.40783300000112
+    },
+    {
+      "pid": 19594,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 71.58245800000077
+    },
+    {
+      "pid": 19596,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 44.98820900000101
+    },
+    {
+      "pid": 19606,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 470.75774999999885
+    },
+    {
+      "pid": 19613,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 1174.095874999999
+    },
+    {
+      "pid": 19629,
+      "code": 126,
+      "survivors": [],
+      "elapsedMs": 27.41870800000106
+    },
+    {
+      "pid": 19631,
+      "code": 126,
+      "survivors": [],
+      "elapsedMs": 21.71954100000039
+    },
+    {
+      "pid": 19633,
+      "code": 126,
+      "survivors": [],
+      "elapsedMs": 21.32933299999968
+    },
+    {
+      "pid": 19635,
+      "code": 126,
+      "survivors": [],
+      "elapsedMs": 22.83637500000077
+    },
+    {
+      "pid": 19638,
+      "code": 126,
+      "survivors": [],
+      "elapsedMs": 22.801291000001584
+    },
+    {
+      "pid": 19640,
+      "code": 126,
+      "survivors": [],
+      "elapsedMs": 24.254041000000143
+    },
+    {
+      "pid": 19642,
+      "code": 126,
+      "survivors": [],
+      "elapsedMs": 22.064167000000452
+    },
+    {
+      "pid": 19644,
+      "code": 126,
+      "survivors": [],
+      "elapsedMs": 22.32574999999997
+    },
+    {
+      "pid": 19646,
+      "code": 126,
+      "survivors": [],
+      "elapsedMs": 22.33300000000054
+    },
+    {
+      "pid": 19649,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 26.571375000001353
+    },
+    {
+      "pid": 19651,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 22.30645899999945
+    },
+    {
+      "pid": 19653,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 22.356917000000976
+    },
+    {
+      "pid": 19655,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 22.53687499999978
+    },
+    {
+      "pid": 19658,
+      "code": 126,
+      "survivors": [],
+      "elapsedMs": 22.085124999999607
+    },
+    {
+      "pid": 19661,
+      "code": 126,
+      "survivors": [],
+      "elapsedMs": 21.556375000000116
+    },
+    {
+      "pid": 19663,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 21.022624999999607
+    },
+    {
+      "pid": 19665,
+      "code": 126,
+      "survivors": [],
+      "elapsedMs": 22.087333999999828
+    },
+    {
+      "pid": 19667,
+      "code": 126,
+      "survivors": [],
+      "elapsedMs": 22.280541999998604
+    },
+    {
+      "pid": 19670,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 133.2123330000013
+    },
+    {
+      "pid": 19679,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 132.83308300000135
+    },
+    {
+      "pid": 19688,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 34.157790999999634
+    },
+    {
+      "pid": 19690,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 22.091749999999593
+    },
+    {
+      "pid": 19693,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 31.44958399999996
+    },
+    {
+      "pid": 19695,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 21.67779200000041
+    },
+    {
+      "pid": 19697,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 21.807875000000422
+    },
+    {
+      "pid": 19699,
+      "code": 0,
+      "survivors": [],
+      "elapsedMs": 136.91320799999994
+    }
+  ],
+  "hardlinkWitness": {
+    "linked": false,
+    "changed": false
+  },
+  "productionExecutionEnabled": false,
+  "remainingReview": [
+    "Host collector sandbox and untrusted Git config/includes",
+    "Root/metadata identity, freshness and TOCTOU",
+    "Linked-worktree external common-dir authorization",
+    "Hardened-runtime environment injection and executable integrity",
+    "Immutable metadata lifecycle binding to task leases/approvals",
+    "Safe upgrade and installation/toolchain strategy"
+  ],
+  "result": "Feasibility confirmed; production compatibility BLOCKED. Counterexamples intentionally prevent promoting this probe."
+}
