@@ -12,14 +12,14 @@ async function configuredRemote(root, remote) {
   if (typeof remote !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(remote)) {
     throw new TypeError('Remote must be a configured Git remote name');
   }
-  const remotes = (await execute('git', ['-C', root, 'remote'], { encoding: 'utf8', timeout: 10_000 })).stdout.split('\n');
+  const remotes = (await execute('git', ['-c','core.fsmonitor=false','-C', root, 'remote'], { encoding: 'utf8', timeout: 10_000 })).stdout.split('\n');
   if (!remotes.includes(remote)) throw new Error(`Unknown Git remote: ${remote}`);
 }
 
 /** Read-only repository identity for checkpoints. No file contents leave Git. */
 export async function repositorySnapshot(directory) {
   const cwd = await realpath(directory);
-  const git = async (...args) => (await execute('git', ['-C', cwd, ...args], {
+  const git = async (...args) => (await execute('git', ['-c','core.fsmonitor=false','-C', cwd, ...args], {
     encoding: 'utf8', timeout: 10_000, maxBuffer: 4 * 1024 * 1024,
     env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' },
   })).stdout.trimEnd();
@@ -52,7 +52,7 @@ export async function repositorySnapshot(directory) {
 /** A bounded, read-only patch for the active repository. */
 export async function repositoryDiff(directory, { staged = false } = {}) {
   const cwd = await realpath(directory);
-  const args = ['-C', cwd, 'diff', ...(staged ? ['--cached'] : []), '--no-ext-diff', '--no-textconv', '--no-color', '--no-renames', '--'];
+  const args = ['-c','core.fsmonitor=false','-C', cwd, 'diff', ...(staged ? ['--cached'] : []), '--no-ext-diff', '--no-textconv', '--no-color', '--no-renames', '--'];
   try {
     return (await execute('git', args, { encoding: 'utf8', timeout: 10_000, maxBuffer: 1024 * 1024,
       env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' } })).stdout;
@@ -70,7 +70,7 @@ export async function stagePaths(directory, paths) {
     throw new TypeError('Stage paths must be repository-relative and cannot contain parent traversal');
   }
   const root = (await repositorySnapshot(directory)).root;
-  await execute('git', ['-C', root, 'add', '-A', '--', ...paths], { timeout: 30_000, maxBuffer: 1024 * 1024 });
+  await execute('git', ['-c','core.fsmonitor=false','-C', root, 'add', '-A', '--', ...paths], { timeout: 30_000, maxBuffer: 1024 * 1024 });
   return repositorySnapshot(root);
 }
 
@@ -81,7 +81,7 @@ export async function commitStaged(directory, message) {
   }
   const root = (await repositorySnapshot(directory)).root;
   let hasStagedChanges = false;
-  try { await execute('git', ['-C', root, 'diff', '--cached', '--quiet'], { timeout: 10_000 }); }
+  try { await execute('git', ['-c','core.fsmonitor=false','-C', root, 'diff', '--cached', '--quiet'], { timeout: 10_000 }); }
   catch (error) {
     if (error.code !== 1) throw error;
     hasStagedChanges = true;
@@ -89,7 +89,7 @@ export async function commitStaged(directory, message) {
   if (!hasStagedChanges) throw new Error('No staged changes to commit');
   const emptyHooks = await mkdtemp(join(tmpdir(), 'codovyn-hooks-'));
   try {
-    await execute('git', ['-C', root, '-c', `core.hooksPath=${emptyHooks}`, 'commit', '-m', message],
+    await execute('git', ['-c','core.fsmonitor=false','-C', root, '-c', `core.hooksPath=${emptyHooks}`, 'commit', '-m', message],
       { timeout: 30_000, maxBuffer: 1024 * 1024 });
   } finally { await rm(emptyHooks, { recursive: true, force: true }); }
   return repositorySnapshot(root);
@@ -102,11 +102,11 @@ export async function createBranch(directory, name) {
   }
   const snapshot = await repositorySnapshot(directory);
   if (!snapshot.commit) throw new Error('Commit the repository before creating a branch');
-  try { await execute('git', ['-C', snapshot.root, 'check-ref-format', '--branch', name], { timeout: 10_000 }); }
+  try { await execute('git', ['-c','core.fsmonitor=false','-C', snapshot.root, 'check-ref-format', '--branch', name], { timeout: 10_000 }); }
   catch { throw new TypeError('Invalid Git branch name'); }
   const emptyHooks = await mkdtemp(join(tmpdir(), 'codovyn-hooks-'));
   try {
-    await execute('git', ['-C', snapshot.root, '-c', `core.hooksPath=${emptyHooks}`, 'switch', '-c', name],
+    await execute('git', ['-c','core.fsmonitor=false','-C', snapshot.root, '-c', `core.hooksPath=${emptyHooks}`, 'switch', '-c', name],
       { timeout: 30_000, maxBuffer: 1024 * 1024 });
   } finally { await rm(emptyHooks, { recursive: true, force: true }); }
   return repositorySnapshot(snapshot.root);
@@ -119,7 +119,7 @@ export async function pushCurrentBranch(directory, remote = 'origin') {
   await configuredRemote(snapshot.root, remote);
   const emptyHooks = await mkdtemp(join(tmpdir(), 'codovyn-hooks-'));
   try {
-    await execute('git', ['-C', snapshot.root, '-c', `core.hooksPath=${emptyHooks}`, 'push', '--porcelain', remote, `HEAD:refs/heads/${snapshot.branch}`],
+    await execute('git', ['-c','core.fsmonitor=false','-C', snapshot.root, '-c', `core.hooksPath=${emptyHooks}`, 'push', '--porcelain', remote, `HEAD:refs/heads/${snapshot.branch}`],
       { encoding: 'utf8', timeout: 60_000, maxBuffer: 1024 * 1024,
         env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } });
   } catch { throw new Error('Git push failed; check remote access and branch state'); }
@@ -133,7 +133,7 @@ export async function fetchRemote(directory, remote = 'origin') {
   await configuredRemote(snapshot.root, remote);
   const emptyHooks = await mkdtemp(join(tmpdir(), 'codovyn-hooks-'));
   try {
-    await execute('git', ['-C', snapshot.root, '-c', `core.hooksPath=${emptyHooks}`, '-c', 'protocol.ext.allow=never',
+    await execute('git', ['-c','core.fsmonitor=false','-C', snapshot.root, '-c', `core.hooksPath=${emptyHooks}`, '-c', 'protocol.ext.allow=never',
       'fetch', '--no-tags', remote], { timeout: 60_000, maxBuffer: 1024 * 1024,
       env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } });
   } catch { throw new Error('Git fetch failed; check remote access'); }
@@ -149,7 +149,7 @@ export async function pullFastForward(directory, remote = 'origin') {
   await configuredRemote(snapshot.root, remote);
   const emptyHooks = await mkdtemp(join(tmpdir(), 'codovyn-hooks-'));
   try {
-    await execute('git', ['-C', snapshot.root, '-c', `core.hooksPath=${emptyHooks}`, '-c', 'protocol.ext.allow=never',
+    await execute('git', ['-c','core.fsmonitor=false','-C', snapshot.root, '-c', `core.hooksPath=${emptyHooks}`, '-c', 'protocol.ext.allow=never',
       'pull', '--ff-only', '--no-rebase', remote, snapshot.branch], { timeout: 60_000, maxBuffer: 1024 * 1024,
       env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } });
   } catch { throw new Error('Git pull failed; the branch may have diverged or remote access may be unavailable'); }

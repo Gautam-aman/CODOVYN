@@ -234,3 +234,12 @@ test('pulls only a clean fast-forward branch and skips merge hooks', async () =>
     rmSync(contributor, { recursive: true, force: true });
   }
 });
+
+test('host snapshots, diffs and drafts never execute repository fsmonitor helpers',async()=>{
+ const directory=mkdtempSync(join(tmpdir(),'codovyn-fsmonitor-'));const repo=join(directory,'repo'),marker=join(directory,'executed'),helper=join(directory,'monitor.cjs');const git=(...args)=>execFileSync('git',['-C',repo,...args],{stdio:'pipe'});
+ try{execFileSync('git',['init','-q',repo]);writeFileSync(join(repo,'file.txt'),'baseline\n');git('add','.');git('-c','user.name=Test','-c','user.email=test@example.invalid','commit','-qm','baseline');writeFileSync(helper,'require("node:fs").writeFileSync('+JSON.stringify(marker)+',"controlled marker");process.stdout.write("token\\0");');const quote=value=>"'"+value.replaceAll('\\','/').replaceAll("'","'\\''")+"'";const command=quote(process.execPath)+' '+quote(helper);git('config','core.fsmonitor',command);
+ await repositorySnapshot(repo);writeFileSync(join(repo,'file.txt'),'changed\n');await repositoryDiff(repo);assert.equal(existsSync(marker),false,'Read-only host commands ran a repository helper');writeFileSync(join(repo,'file.txt'),'baseline\n');
+ const {createDraftWorkspace,reviewDraftWorkspace,rejectDraftWorkspace}=await import('../src/draft-workspace.js');const drafts=join(directory,'drafts');const draft=await createDraftWorkspace(repo,drafts,'monitor-task');writeFileSync(join(draft.path,'file.txt'),'draft\n');await reviewDraftWorkspace(repo,drafts,'monitor-task',draft.baseCommit);await rejectDraftWorkspace(repo,drafts,'monitor-task',draft.baseCommit);assert.equal(existsSync(marker),false,'Draft commands ran a repository helper');
+ assert.equal(git('config','--get','core.fsmonitor').toString().trim(),command,'Host must not rewrite owner Git configuration');git('status','--porcelain');assert.equal(existsSync(marker),true,'Control helper must be executable outside the hardened host path');
+ }finally{rmSync(directory,{recursive:true,force:true});}
+});

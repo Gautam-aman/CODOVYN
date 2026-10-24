@@ -7,7 +7,7 @@ import { contextPath,digest,redactContext } from '../../agent-core/src/contextfl
 const execute=promisify(execFile);
 /** Local, tracked-source retrieval only; never follows symlinks or invokes project code. */
 export async function selectContextFiles(root,objective,changedPaths=[],{draft=false}={}) {
- const {stdout}=await execute('git',['-C',root,'ls-files','-z'],{timeout:5000,maxBuffer:1048576,encoding:'utf8',env:{...process.env,GIT_TERMINAL_PROMPT:'0'}});
+ const {stdout}=await execute('git',['-c','core.fsmonitor=false','-C',root,'ls-files','-z'],{timeout:5000,maxBuffer:1048576,encoding:'utf8',env:{...process.env,GIT_TERMINAL_PROMPT:'0'}});
  const paths=[...new Set([...stdout.split('\0').filter(Boolean),...(draft?changedPaths:[])])];if(paths.length>10000)throw new Error('ContextFlow tracked-file catalogue exceeds its bound');
  const words=[...new Set(objective.toLowerCase().match(/[a-z][a-z0-9_]{3,}/g)||[])].slice(0,64);
  const manifest=path=>/(?:^|\/)(?:package.json|pom.xml|build.gradle|pyproject.toml|Cargo.toml|go.mod|README.md)$/.test(path);

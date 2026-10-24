@@ -14,7 +14,7 @@ function draftPath(directory, taskId) {
 }
 
 async function git(root, args, maxBuffer = 1024 * 1024) {
-  const { stdout } = await execute('git', ['-C', root, ...args], {
+  const { stdout } = await execute('git', ['-c','core.fsmonitor=false','-C', root, ...args], {
     encoding: 'utf8', timeout: 30_000, maxBuffer,
     env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
   });
@@ -23,7 +23,7 @@ async function git(root, args, maxBuffer = 1024 * 1024) {
 
 async function gitApply(root, args, patch) {
   await new Promise((resolve, reject) => {
-    const child = spawn('git', ['-C', root, 'apply', ...args, '-'], {
+    const child = spawn('git', ['-c','core.fsmonitor=false','-C', root, 'apply', ...args, '-'], {
       stdio: ['pipe', 'pipe', 'pipe'], shell: false,
       env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
     });
