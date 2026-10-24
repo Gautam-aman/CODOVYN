@@ -302,6 +302,22 @@
     }
     compactComposer.close(taskQueue.menu);storeTaskSelection();
     report.openCodeModelAndVariant=true;stage('opencode-model-queue-verified');
+
+    // Real host + SQLite review: never authorizes a live provider.
+    const restoredTaskId='native-chat-journal';
+    tabs('history').click();
+    const flowCard=[...document.querySelectorAll('#tasks button.task')].find(button=>button.textContent.includes('Explain the native fixture project'));
+    requireValue(flowCard,'Persisted ContextFlow task was missing from history.');
+    let flowReply=hostMessage('history',data=>data.taskId==='native-contextflow-task');flowCard.click();await flowReply;
+    flowReply=hostMessage('contextflow-state');document.querySelector('#switch-agent').click();const flowState=await flowReply;
+    requireValue(flowState.transfer?.status==='prepared'&&text('#contextflow-summary').includes('fixture/native-model'),'Persisted ContextFlow review did not restore its exact recipient.');
+    requireValue(document.querySelector('#contextflow-packet').textContent.includes('host-read')&&document.querySelector('#contextflow-status').getAttribute('aria-live')==='polite','Context preview or accessible announcement missing.');
+    requireValue(!document.querySelector('#contextflow-continue').disabled,'Prepared ContextFlow cannot reach native approval.');
+    requireValue(document.activeElement===document.querySelector('#contextflow-review h2'),'Switch Agent did not focus the review heading.');
+    if(phase==='relaunch'){flowReply=hostMessage('contextflow-state',data=>data.transfer?.status==='rejected');document.querySelector('#contextflow-reject').click();await flowReply;requireValue(document.querySelector('#contextflow-continue').disabled,'Rejected transfer retained execution control.');report.contextFlowRejection=true;}
+    report.contextFlowReview=true;stage('contextflow-persisted-review-verified');
+    // Restore the pre-existing conversation assertions; keep the review visible for screenshots.
+    if(restoredTaskId){flowReply=hostMessage('history',data=>data.taskId===restoredTaskId);vscode.postMessage({type:'history',id:restoredTaskId});await flowReply;}
     report.transcriptMessages = [...chat.querySelectorAll('.chat-message')].map(item => item.textContent);
     report.activityRows = [...document.querySelectorAll('#timeline > li')].map(item => item.textContent);
     return report;

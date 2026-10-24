@@ -224,3 +224,9 @@ button.composer-chip:hover, button.composer-chip[aria-expanded="true"] { color: 
 .provider-actions button { padding: 5px 8px; font-size: 11px; }
 .provider-source, .provider-diagnostic { overflow-wrap: anywhere; color: var(--vscode-descriptionForeground); }
 .agent-cards > li { border: 1px solid var(--vscode-panel-border); border-radius: 8px; padding: 12px; }
+
+.contextflow-review { padding: var(--space-4, 16px); border: 1px solid var(--vscode-panel-border); border-radius: var(--radius-md, 8px); background: var(--vscode-editor-background); margin-bottom: 16px; min-width: 0; }
+.contextflow-review p { line-height: 1.55; overflow-wrap: anywhere; }
+.contextflow-review pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 360px; overflow: auto; font-size: 12px; }
+.contextflow-review .actions { flex-wrap: wrap; gap: 8px; }
+.contextflow-review button { white-space: normal; }

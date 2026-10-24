@@ -41,6 +41,7 @@ let queueDispatching = false;
 let chatFollowsLatest = true;
 let streamedAssistantText = false;
 let assistantTextLength = 0;
+let chatSegmentProvider = null;
 const empty = document.getElementById('empty');
 const jumpToLatest = document.createElement('button');
 jumpToLatest.type = 'button';
@@ -197,6 +198,8 @@ const automaticSwitch = document.createElement('input'); automaticSwitch.type = 
 automaticLabel.append(automaticSwitch, ' Enable automatic switching to configured backups');
 const restoreLabel=document.createElement('label');const restorePrimary=document.createElement('input');restorePrimary.type='checkbox';
 restoreLabel.append(restorePrimary,' Restore primary at a verified retry boundary after recent successful-task evidence');
+const prepareOpenCodeLabel=document.createElement('label');const prepareOpenCode=document.createElement('input');prepareOpenCode.type='checkbox';prepareOpenCode.id='prepare-opencode';
+prepareOpenCodeLabel.append(prepareOpenCode,' Prepare OpenCode review after a confirmed Codex interruption (never auto-run)');
 const modelLabel = document.createElement('label'); modelLabel.textContent = 'Gemini model (optional)';
 const geminiModel = document.createElement('input'); geminiModel.type = 'text'; geminiModel.maxLength = 128;
 geminiModel.placeholder = 'Use CLI default'; modelLabel.append(geminiModel);
@@ -209,7 +212,7 @@ geminiPathSettings.addEventListener('click', () => vscode.postMessage({ type: 'g
 const policyStatus = document.createElement('p'); policyStatus.setAttribute('role', 'status');
 let savedAgentPolicy = null;
 const agentCards = document.createElement('ul'); agentCards.className = 'agent-cards'; agentCards.setAttribute('aria-label', 'Agent diagnostics');
-agentSettings.append(automaticLabel, restoreLabel, modelLabel, policySave, inspectAgents, geminiSetup, geminiPathSettings, policyStatus, agentCards);
+agentSettings.append(automaticLabel, restoreLabel, prepareOpenCodeLabel, modelLabel, policySave, inspectAgents, geminiSetup, geminiPathSettings, policyStatus, agentCards);
 document.querySelector('.composer').after(agentSettings);
 
 const routingSettings = document.createElement('details');
@@ -583,7 +586,7 @@ window.addEventListener('message', ({ data }) => {
 policySave.addEventListener('click', () => {
   if (run.disabled) { policyStatus.textContent = 'Wait for the active operation before changing preferences.'; return; }
   vscode.postMessage({ type: 'agent-policy-save', policy: { primary: primaryProvider.value,
-    fallbacks: [firstBackup.value, secondBackup.value].filter(Boolean), automatic: automaticSwitch.checked, restorePrimary:restorePrimary.checked, geminiModel: geminiModel.value.trim() } });
+    fallbacks: [firstBackup.value, secondBackup.value].filter(Boolean), automatic: automaticSwitch.checked, restorePrimary:restorePrimary.checked, prepareOpenCode:prepareOpenCode.checked, geminiModel: geminiModel.value.trim() } });
 });
 inspectAgents.addEventListener('click', () => vscode.postMessage({ type: 'agent-diagnostics' }));
 window.addEventListener('message', ({ data }) => {
@@ -591,6 +594,7 @@ window.addEventListener('message', ({ data }) => {
     savedAgentPolicy = data.policy;
     primaryProvider.value = data.policy.primary; firstBackup.value = data.policy.fallbacks[0] || '';
     secondBackup.value = data.policy.fallbacks[1] || ''; automaticSwitch.checked = data.policy.automatic;restorePrimary.checked=data.policy.restorePrimary===true;
+    prepareOpenCode.checked=data.policy.prepareOpenCode===true;
     geminiModel.value = data.policy.geminiModel; policyStatus.textContent = data.text;
     inspectAgents.disabled = false; agentCards.replaceChildren();
     if (data.text.startsWith('Agent preferences saved')) agent.value = 'configured';
@@ -867,14 +871,14 @@ function appendChatBubble(kind, text) {
   const followLatest = chatFollowsLatest || isNearLatestChat();
   if (chatEmpty.isConnected) chatEmpty.remove();
   let bubble = kind === 'assistant' ? chatLog.lastElementChild : null;
-  if (!bubble || !bubble.classList.contains('chat-message') || bubble.dataset.kind !== kind || kind === 'user') {
+  if (!bubble || !bubble.classList.contains('chat-message') || bubble.dataset.kind !== kind || kind === 'assistant' && bubble.dataset.provider !== (chatSegmentProvider || '') || kind === 'user') {
     bubble = document.createElement('article');
     bubble.className = `chat-message chat-message-${kind}`;
-    bubble.dataset.kind = kind;
+    bubble.dataset.kind = kind; bubble.dataset.provider = kind === 'assistant' ? chatSegmentProvider || '' : '';
     bubble.setAttribute('aria-label', kind === 'user' ? 'You' : 'Agent response');
     const speaker = document.createElement('strong');
     speaker.className = 'chat-speaker';
-    speaker.textContent = kind === 'user' ? 'You' : 'Agent';
+    speaker.textContent = kind === 'user' ? 'You' : chatSegmentProvider || 'Agent';
     const body = document.createElement('div');
     body.className = 'chat-message-body';
     bubble.append(speaker, body);
@@ -904,7 +908,7 @@ function appendChatBubble(kind, text) {
 function resetChat(requestText = '') {
   chatLog.replaceChildren();
   chatLog.append(chatEmpty);
-  streamedAssistantText = false;
+  streamedAssistantText = false; chatSegmentProvider=null;
   assistantTextLength = 0;
   chatFollowsLatest = true;
   jumpToLatestChat.hidden = true;
@@ -938,6 +942,37 @@ timeline.tabIndex = 0;
 workspacePanels.get('chat').append(chatHeading, chatLog, jumpToLatestChat, document.querySelector('.composer'));
 workspacePanels.get('activity').append(document.querySelector('.activity'));
 workspacePanels.get('history').append(document.querySelector('.recent'));
+// A stopped task's transfer is reviewed separately from ordinary Chat configuration.
+const switchAgent=document.createElement('button');switchAgent.id='switch-agent';switchAgent.type='button';switchAgent.textContent='Switch Agent';switchAgent.title='Review a stopped Codex task for continuation with OpenCode';
+status.after(switchAgent);
+const flow=document.createElement('section');flow.className='contextflow-review';flow.id='contextflow-review';flow.hidden=true;
+const flowHeading=document.createElement('h2');flowHeading.textContent='ContextFlow';flowHeading.tabIndex=-1;
+const flowStatus=document.createElement('p');flowStatus.id='contextflow-status';flowStatus.setAttribute('role','status');flowStatus.setAttribute('aria-live','polite');
+const flowHelp=document.createElement('p');flowHelp.textContent='Stop Codex and wait for cleanup first. For draft edits, inspect and preserve the draft before preparing. Select OpenCode and a model in Chat, then prepare this review. Preparing does not start a provider.';
+const flowActions=document.createElement('div');flowActions.className='actions';
+const flowPrepare=document.createElement('button');flowPrepare.type='button';flowPrepare.id='contextflow-prepare';flowPrepare.textContent='Prepare review';
+const flowContinue=document.createElement('button');flowContinue.type='button';flowContinue.id='contextflow-continue';flowContinue.textContent='Continue with OpenCode…';flowContinue.disabled=true;
+const flowReject=document.createElement('button');flowReject.type='button';flowReject.id='contextflow-reject';flowReject.textContent='Reject transfer';flowReject.disabled=true;
+const flowSummary=document.createElement('div');flowSummary.id='contextflow-summary';
+const flowDetails=document.createElement('details');const flowDetailsTitle=document.createElement('summary');flowDetailsTitle.textContent='Exact context to be shared';
+const flowPacket=document.createElement('pre');flowPacket.id='contextflow-packet';flowPacket.tabIndex=0;flowPacket.setAttribute('aria-label','Exact sanitized transfer packet');flowDetails.append(flowDetailsTitle,flowPacket);
+flowActions.append(flowPrepare,flowContinue,flowReject);flow.append(flowHeading,flowStatus,flowHelp,flowSummary,flowDetails,flowActions);workspacePanels.get('changes').prepend(flow);
+let flowTransfer=null;
+switchAgent.addEventListener('click',()=>{flow.hidden=false;activateWorkspaceView('changes');flowHeading.focus();flowStatus.textContent=currentTaskId?'Stop any active task before preparing a transfer.':'Choose an interrupted Codex task from History first.';if(currentTaskId&&!cancel.disabled)return;if(currentTaskId)vscode.postMessage({type:'contextflow-read',id:currentTaskId});});
+flowPrepare.addEventListener('click',()=>{if(!currentTaskId)return;const configuration=currentTaskConfiguration();if(configuration.provider!=='opencode'){flowStatus.textContent='Choose OpenCode and the intended model in Chat first. Your active task configuration is unchanged.';return;}vscode.postMessage({type:'contextflow-prepare',id:currentTaskId,configuration});});
+flowContinue.addEventListener('click',()=>{if(flowTransfer)vscode.postMessage({type:'contextflow-run',id:flowTransfer.id});});
+flowReject.addEventListener('click',()=>{if(flowTransfer)vscode.postMessage({type:'contextflow-reject',id:flowTransfer.id});});
+window.addEventListener('message',({data})=>{
+ if(data.type==='contextflow-state') {
+  flowTransfer=data.transfer;flow.hidden=false;flowSummary.replaceChildren();flowPacket.textContent='';
+  const t=flowTransfer;flowStatus.textContent=t?`Transfer ${t.status} · Codex → OpenCode`:'No transfer prepared. No context has been sent.';
+  flowContinue.disabled=flowReject.disabled=!(t?.status==='prepared'&&t.expiresAt>Date.now());
+  if(t){const p=document.createElement('p');p.textContent=`Recipient: ${t.packet.handoff.model}. ${t.packet.context.files.length} host-read excerpts · ${t.metrics?.utf8Bytes??'unknown'} UTF-8 bytes. Tokens and cost: unknown. Permission: ${t.configuration.permission}. Approval expires after 10 minutes.`;flowSummary.append(p);const provenance=document.createElement('p');provenance.textContent='File hashes and host journal entries are observations. Provider summaries and tool completion reports are unverified claims. Unresolved actions block continuation.';flowSummary.append(provenance);flowPacket.textContent=JSON.stringify(t.packet,null,2);}
+ }else if(data.type==='contextflow-busy'){flowPrepare.disabled=data.busy;flowContinue.disabled=data.busy||flowTransfer?.status!=='prepared'||flowTransfer.expiresAt<=Date.now();flowReject.disabled=data.busy||flowTransfer?.status!=='prepared';}
+ else if(data.type==='contextflow-error'){flowStatus.textContent=data.text;flowContinue.disabled=true;}
+ else if(data.type==='project-selected'){flow.hidden=true;flowTransfer=null;flowPacket.textContent='';flowContinue.disabled=flowReject.disabled=true;}
+});
+
 workspacePanels.get('changes').append(document.querySelector('.diff'));
 const advancedTaskSettings = document.createElement('details');
 advancedTaskSettings.className = 'advanced-task-settings';
@@ -1112,7 +1147,7 @@ window.addEventListener('message', ({ data }) => {
     activateWorkspaceView('chat');
   } else if (data.type === 'progress') {
     markActivityUnread(data.entries);
-    for (const entry of data.entries || []) if (entry?.type === 'message') appendAssistantText(entry.text);
+    for (const entry of data.entries || []) { if(entry?.type==='segment')chatSegmentProvider=entry.provider; if (entry?.type === 'message') appendAssistantText(entry.text); }
     appendActivity(data.entries);
     if (data.entries?.length) empty.textContent = '';
   } else if (data.type === 'result' || data.type === 'history') {
@@ -1130,10 +1165,10 @@ window.addEventListener('message', ({ data }) => {
     if (data.type === 'history') {
       request.value = data.request || '';
       resetChat(data.request || '');
-      for (const entry of data.timeline || []) if (entry?.type === 'message') appendAssistantText(entry.text);
+      for (const entry of data.timeline || []) { if(entry?.type==='segment')chatSegmentProvider=entry.provider; if (entry?.type === 'message') appendAssistantText(entry.text); }
       activateWorkspaceView('chat');
     } else if (!streamedAssistantText) {
-      for (const entry of data.timeline || []) if (entry?.type === 'message') appendAssistantText(entry.text);
+      for (const entry of data.timeline || []) { if(entry?.type==='segment')chatSegmentProvider=entry.provider; if (entry?.type === 'message') appendAssistantText(entry.text); }
     }
     appendActivity(data.timeline);
     empty.textContent = (data.timeline || []).some(entry => entry?.type !== 'message') ? '' : 'No activity was recorded.';

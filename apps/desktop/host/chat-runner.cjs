@@ -44,6 +44,21 @@ async function seedOrVerifyJournal(folder) {
       assert.equal(existing.status, 'completed');
     }
     assert.ok(store.events('native-chat-journal').some(event => event.kind === 'agent-event' && event.data.event.text === 'Persisted agent response from SQLite.'));
+    // A persisted review fixture uses the real packet engine and SQLite, without inference.
+    if(!store.get('native-contextflow-task')) {
+      const {repositorySnapshot}=await import(pathToFileURL(path.resolve(__dirname,'../../../packages/git-engine/src/index.js')).href);
+      const {prepareContextFlow}=await import(pathToFileURL(path.resolve(__dirname,'../../../packages/task-engine/src/contextflow.js')).href);
+      const snapshot=await repositorySnapshot(folder);
+      store.create({id:'native-contextflow-task',request:'Explain the native fixture project in chat-smoke.txt',repositoryRoot:snapshot.root,primaryAgent:'codex',fallbackAgents:[]});
+      store.append('native-contextflow-task','task-configuration',{provider:'codex',modelId:null,permission:'read',routingMode:'manual',reasoning:'high',intent:'ask'});
+      store.claimExecution('native-contextflow-task',{token:'native-contextflow-lease-token',pid:process.pid,host:require('node:os').hostname()});
+      store.append('native-contextflow-task','agent-started',{agent:'codex',repository:snapshot});
+      store.append('native-contextflow-task','agent-failed',{agent:'codex',kind:'quota'});
+      store.append('native-contextflow-task','checkpoint',{repository:snapshot});
+      store.update('native-contextflow-task',{status:'interrupted',activeAgent:'codex'});
+      store.releaseExecution('native-contextflow-task','native-contextflow-lease-token');
+      await prepareContextFlow({store,taskId:'native-contextflow-task',dataDirectory,configuration:{provider:'opencode',modelId:null,permission:'read',routingMode:'manual',reasoning:null,intent:'ask'},destinationModel:'fixture/native-model',binding:'native-review-fixture-only'});
+    }
     trace('journal-ready', { taskId: 'native-chat-journal', phase: process.env.CODOVYN_NATIVE_CHAT_PHASE });
   } finally { store.close(); }
 }
@@ -89,7 +104,7 @@ exports.run = async () => {
     trace('webview-test-requested');
     const report = await result;
     assert.equal(report?.passed, true, `Native Chat checks failed: ${report?.error || 'unknown failure'}`);
-    for (const name of ['openCodeModelAndVariant', 'queueManagement', 'compactComposer', 'composerControls', 'submissionAcknowledgement', 'submittedPrompt', 'streamingOrderAndTextSafety', 'navigationAndActivitySeparation',
+    for (const name of ['contextFlowReview', 'openCodeModelAndVariant', 'queueManagement', 'compactComposer', 'composerControls', 'submissionAcknowledgement', 'submittedPrompt', 'streamingOrderAndTextSafety', 'navigationAndActivitySeparation',
       'completionState', 'scrollFollowAndJump', 'sqliteJournalRestoration', 'interruptionState']) {
       assert.equal(report.checks?.[name], true, `Native Chat check did not pass: ${name}`);
     }

@@ -4,6 +4,7 @@ import { mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync,realpathSync,sy
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';import {join}from'node:path';
 import {parseOpenCodeModels,createOpenCodeAdapter,resolveOpenCodeCommand,inspectOpenCodeInstallation}from'../src/opencode.js';
+import {createContextFlow,digest} from '../../agent-core/src/contextflow.js';
 import {openCodeBoundary}from'../src/opencode-sandbox.js';
 
 test('OpenCode catalogue parser bounds plain machine output without terminal scraping or invented access',()=>{
@@ -49,4 +50,12 @@ test('OpenCode cancellation stops owned ACP process and cannot be mistaken for c
  const controller=new AbortController();let pid;const timer=setTimeout(()=>controller.abort(),250);
  try{await assert.rejects(async()=>{for await(const event of adapter(process.cwd(),'hang').run({handoff:{request:'Explain',snapshot:{}},signal:controller.signal,execution:{starting(){},spawned:p=>pid=p.pid,stopped(){}}})){}},e=>e.kind==='cancelled');}finally{clearTimeout(timer);}
  assert.throws(()=>process.kill(pid,0));
+});
+
+test('OpenCode transmits only the approved ContextFlow packet, without legacy raw history or request',async()=>{
+ const packet=createContextFlow({task:{id:'safe-transfer',request:'Continue utility'},snapshot:{root:'/repo',branch:'main',commit:'abc',changedPaths:[]},fingerprint:digest('base'),originalFingerprint:digest('base'),history:[],reason:'user-requested-switch'});
+ const code=fixture('success').replace("text:currentModel+' '+effort","text:JSON.stringify(m.params.prompt)");
+ const agent=createOpenCodeAdapter({cwd:process.cwd(),stateDirectory:'/unused',model:'p/model'}, {inspect:async()=>({compatible:true,command:process.execPath}),boundary:()=>({command:process.execPath,prefixArgs:['-e',code],cwd:process.cwd(),env:process.env})});
+ const output=[];for await(const event of agent.run({handoff:{contextFlow:packet,request:'DO NOT TRANSFER THIS RAW REQUEST',history:[{secret:'never copy'}]}}))if(event.type==='text')output.push(event.text);
+ assert.ok(output.join('').includes('Continue utility'));assert.ok(!output.join('').includes('RAW REQUEST'));assert.ok(!output.join('').includes('never copy'));
 });

@@ -48,6 +48,8 @@ function timeline(events) {
     }
     if (entry.kind === 'agent-event' && entry.data.event.type === 'permission') return [{type:'checkpoint',text:`Provider permission: ${entry.data.event.status} (${entry.data.event.action})`}];
     if (entry.kind === 'task-configuration') return [{ type: 'checkpoint', text: `Reasoning effort: ${entry.data.reasoning || 'Auto / provider default'} · requested task setting` }];
+    if (entry.kind === 'contextflow-segment-started') return [{type:'segment',provider:'OpenCode',text:'OpenCode started a new authorized ContextFlow session'}];
+    if (entry.kind.startsWith('contextflow-')) return [{type:'checkpoint',text:`ContextFlow: ${entry.kind.slice(12)}${entry.data.bytes ? ' · '+entry.data.bytes+' bytes; tokens and cost unknown' : ''}`}];
     if (entry.kind === 'agent-started') return [{ type: 'agent', text: `Started ${entry.data.agent}` }];
     if (entry.kind === 'agent-event' && entry.data.event.type === 'tool-start') {
       return [{ type: 'tool', text: ['file_change', 'replace', 'write_file', 'Edit', 'Write'].includes(entry.data.event.action) ? 'Editing draft files…' : entry.data.event.action === 'command_execution' ? 'Running a workspace command…' : `Using agent tool: ${entry.data.event.action}` }];
@@ -149,6 +151,7 @@ function createExtension(api, runner = runCli) {
         const stopDiagnostics=()=>{for(const child of diagnosticChildren)child.kill('SIGTERM');};
         let reviewedDraft = null;
         let recoveryInspection = null;
+        let contextFlowPreview = null;
         let selectedRoot = api.workspace.workspaceFolders?.[0]?.uri.fsPath || null;
         const sendAppearance = (text = '') => panel.webview.postMessage({ type: 'appearance', selectedTheme,
           themes: themes.map(({ id, name, kind }) => ({ id, name, kind })), text });
@@ -261,9 +264,53 @@ function createExtension(api, runner = runCli) {
           try { const result = await queueCommand('queue-list', [folderForTask().uri.fsPath]); if (version === queueRefreshVersion) panel.webview.postMessage({ type: 'queue-state', tasks: result.tasks || [], paused: result.paused === true }); }
           catch { panel.webview.postMessage({ type: 'queue-error', text: 'Could not load this project’s task queue.' }); }
         };
+        const contextFlowCommand = (command, args, folder, executing=false, activity=[]) => runner(runtimePath(api, context),
+          [join(context.extensionPath, 'apps', 'cli', 'src', 'index.js'), command, ...args], {
+            cwd: folder.uri.fsPath, env: { ...providerEnvironment(api), CODOVYN_DATA_DIR: taskDataDirectory, CODOVYN_EVENT_STREAM:'1' },
+            onChild: child => { if(executing) active=child; else trackDiagnostic(child); },
+            onEvent: event => { const entries=timeline([event]); activity.push(...entries); if(entries.length)panel.webview.postMessage({type:'progress',entries}); }
+          });
+        const sendContextFlow = transfer => { contextFlowPreview=transfer; panel.webview.postMessage({type:'contextflow-state',transfer}); };
         const handleMessage = async (message, ownedQueue = null) => {
           if (!message || typeof message !== 'object') return;
           if (message.type === 'cancel') { active?.kill('SIGTERM'); return; }
+          if (['contextflow-read','contextflow-prepare','contextflow-run','contextflow-reject'].includes(message.type)) {
+            const folder=folderForTask();
+            if(!folder||!api.workspace.isTrusted||active||starting||draftBusy||queueBusy||disposed)return;
+            if(typeof message.id!=='string'||!/^[a-zA-Z0-9_-]{1,80}$/.test(message.id))return;
+            draftBusy=true;panel.webview.postMessage({type:'contextflow-busy',busy:true});
+            try {
+              if(message.type==='contextflow-read') {
+                const result=await contextFlowCommand('contextflow-read',[message.id,folder.uri.fsPath],folder);
+                if(folderForTask()===folder&&!disposed)sendContextFlow(result.transfer);
+              } else if(message.type==='contextflow-prepare') {
+                const configuration=validateTaskConfiguration(message.configuration);
+                if(configuration.provider!=='opencode')throw new Error('Select OpenCode as the continuation recipient.');
+                const result=await contextFlowCommand('contextflow-prepare',[message.id,folder.uri.fsPath,JSON.stringify(configuration),'--manual'],folder);
+                if(folderForTask()===folder&&!disposed)sendContextFlow(result.transfer);
+              } else {
+                const preview=contextFlowPreview;
+                if(!preview||preview.id!==message.id||preview.status!=='prepared')throw new Error('Read the prepared ContextFlow review first.');
+                const current=(await contextFlowCommand('contextflow-read',[preview.taskId,folder.uri.fsPath],folder)).transfer;
+                if(current?.id!==preview.id||current.hash!==preview.hash||current.status!=='prepared')throw new Error('ContextFlow changed. Prepare a fresh review.');
+                if(message.type==='contextflow-reject') {
+                  sendContextFlow((await contextFlowCommand('contextflow-reject',[preview.id,folder.uri.fsPath,'--yes'],folder)).transfer);
+                } else {
+                  const approved=await api.window.showWarningMessage(
+                    `Continue with OpenCode (${preview.packet.handoff.model})? This sends the displayed ContextFlow packet (${preview.packet.context.files.length} source excerpts, ${preview.metrics?.utf8Bytes ?? 'unknown'} bytes), objective, repository metadata and action summaries to the selected provider. Permission: ${preview.configuration.permission}. Usage and cost are unknown. This starts one new session; completed actions must not be replayed.`,
+                    {modal:true},'Authorize OpenCode');
+                  if(approved!=='Authorize OpenCode'||disposed||folderForTask()!==folder||!api.workspace.isTrusted||contextFlowPreview!==preview)return;
+                  panel.webview.postMessage({type:'running',taskId:preview.taskId,continuation:true});
+                  const activity=[];
+                  const result=await contextFlowCommand('contextflow-run',[preview.id,folder.uri.fsPath,preview.hash,'--yes'],folder,true,activity);
+                  panel.webview.postMessage({type:'result',...result,timeline:activity});
+                  sendContextFlow((await contextFlowCommand('contextflow-read',[preview.taskId,folder.uri.fsPath],folder)).transfer);
+                }
+              }
+            } catch { panel.webview.postMessage({type:'error',text:'ContextFlow stopped. Inspect the task history before retrying; no ambiguous action will be replayed.'}); panel.webview.postMessage({type:'contextflow-error',text:'ContextFlow could not proceed. Confirm the task is stopped, inspect unresolved actions, reconcile draft changes, and refresh OpenCode model discovery. No new approval was granted by this error.'}); }
+            finally {active=null;draftBusy=false;if(!disposed){panel.webview.postMessage({type:'contextflow-busy',busy:false});await refreshTasks();await refreshQueue();}}
+            return;
+          }
           if (message.type === 'ready') {
             sendProjects(); sendAppearance(); sendAgentPolicy(); sendRoutingPolicy(); sendComposerPreferences(); await refreshTasks(); await refreshQueue();
             if (!disposed && currentPanel === panel) {
@@ -453,7 +500,7 @@ function createExtension(api, runner = runCli) {
                 const result=await runner(nodePath,[script,message.type,message.id,folder.uri.fsPath,inspection.fingerprint,...(message.type==='draft-continue'?[provider]:[]),'--yes'],{
                   cwd:folder.uri.fsPath,env,onChild:child=>{active=child;},onEvent:event=>panel.webview.postMessage({type:'progress',entries:timeline([event])})});
                 active=null;
-                if(message.type==='draft-continue'){panel.webview.postMessage({type:'result',...result});recoveryInspection=null;await refreshTasks();return;}
+                if(message.type==='draft-continue'){panel.webview.postMessage({type:'result',...result,timeline:activity});recoveryInspection=null;await refreshTasks();return;}
                 recoveryInspection=null;reviewedDraft=null;
                 panel.webview.postMessage({type:'draft-reconciled',taskId:message.id});
                 await refreshTasks();return;
@@ -518,7 +565,7 @@ function createExtension(api, runner = runCli) {
               if(approval!=='Resume read task'||disposed||folderForTask()!==folder)return;
               panel.webview.postMessage({type:'running'});
               const result=await runner(command,[script,'resume',message.id,folder.uri.fsPath,'--yes'],{...options,onChild:child=>{active=child;},onEvent:event=>panel.webview.postMessage({type:'progress',entries:timeline([event])})});
-              panel.webview.postMessage({type:'result',...result});await refreshTasks();
+              panel.webview.postMessage({type:'result',...result,timeline:activity});await refreshTasks();
             } catch {panel.webview.postMessage({type:'error',text:'The task could not resume safely. Inspect recovery state and use draft reconciliation when writes or unknown processes are present.'});}
             finally {active=null;draftBusy=false;if(!disposed)panel.webview.postMessage({type:'draft-idle'});}
             return;
@@ -715,6 +762,16 @@ function createExtension(api, runner = runCli) {
               timeline: result.budgetRejected ? [{type:'error',text:'Local budget reservation was refused. Another task may have reserved the remaining estimate, or earlier charges are unknown. No provider started.'}] : result.routing&&!result.routing.selected ? [{type:'error',text:'No eligible routing candidate. Review the decision and budget rejection reasons.'}] : result.events ? timeline(result.events) : activity });
             if(result.routing)panel.webview.postMessage({type:'routing-preview',routing:result.routing});
             await refreshTasks();
+            if(taskPolicy.prepareOpenCode===true&&result.status==='interrupted'&&!disposed&&folderForTask()===folder) {
+              // Discovery and preparation only: execution always requires a later native approval.
+              active=null;draftBusy=true;
+              try {
+                const configuration=validateTaskConfiguration({provider:'opencode',modelId:null,permission:editMode?'read-write':'read',routingMode:'manual',reasoning:null,intent:taskConfiguration?.intent|| (editMode?'agent':'ask')});
+                const prepared=await contextFlowCommand('contextflow-prepare',[result.taskId,folder.uri.fsPath,JSON.stringify(configuration),'--eligible'],folder);
+                sendContextFlow(prepared.transfer);
+              } catch { panel.webview.postMessage({type:'contextflow-error',text:'Automatic preparation stopped at a safety or provider-readiness gate. Inspect the interrupted task and prepare manually after reconciliation.'}); }
+              finally {draftBusy=false;}
+            }
           } catch (error) { panel.webview.postMessage({ type: 'error', text: error.message }); }
           finally { active = null; starting = false; }
         };

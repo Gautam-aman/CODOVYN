@@ -23,3 +23,26 @@ test('restart preserves a prepared preview; consumed approval and another reposi
  f.store.create({id:'other-task',request:'another',repositoryRoot:f.snapshot.root,primaryAgent:'codex'});f.store.claimExecution('other-task',{token:'other-owner-token-1234',pid:process.pid,host:hostname()});assert.throws(()=>f.store.claimContextFlow(t.id,t.hash,{token:'new-owner-token-1234',pid:process.pid,host:hostname()}),/owner/);assert.equal(f.store.contextFlowTransfer(t.id).status,'prepared');f.store.releaseExecution('other-task','other-owner-token-1234');
  f.store.claimContextFlow(t.id,t.hash,{token:'approved-owner-token-1234',pid:process.pid,host:hostname()});f.store.close();f.store=new TaskStore(join(f.dir,'private','tasks.sqlite'));assert.equal(f.store.contextFlowTransfer(t.id).status,'starting');assert.throws(()=>f.store.claimContextFlow(t.id,t.hash,{token:'duplicate-owner-token-1234',pid:process.pid,host:hostname()}),/consumed/);
  }finally{f.store.close();rmSync(f.dir,{recursive:true,force:true});}});
+
+test('draft continuation requires preserve evidence, keeps the original unchanged, and leaves patch approval independent',async()=>{
+ const f=await fixture();try {
+ const {createDraftWorkspace,reviewDraftWorkspace,acceptDraftWorkspace}=await import('../../git-engine/src/draft-workspace.js');const {recoveryFingerprint}=await import('../src/recovery.js');
+ const drafts=join(f.dir,'private','drafts');const draft=await createDraftWorkspace(f.repo,drafts,'transfer-task');f.store.append('transfer-task','draft-created',draft);f.store.append('transfer-task','task-configuration',{...config,provider:'codex',permission:'read-write',intent:'agent'});
+ writeFileSync(join(draft.path,'README.md'),'Preserved draft progress\n');
+ const prepare=()=>prepareContextFlow({store:f.store,taskId:'transfer-task',dataDirectory:join(f.dir,'private'),configuration:{...config,permission:'read-write',intent:'agent'},binding:'draft'});
+ await assert.rejects(prepare(),/Preserve and reconcile/);
+ f.store.append('transfer-task','draft-reconciled',{decision:'preserve',fingerprint:recoveryFingerprint(await repositorySnapshot(draft.path))});const t=await prepare();assert.ok(t.packet.context.files.some(file=>file.excerpt.includes('Preserved draft')));assert.equal((await repositorySnapshot(f.repo)).dirty,false);
+ const registry=new AgentRegistry();registry.register({id:'opencode',capabilities:{shell:false,writes:true},availability:async()=> 'available',async*run(){writeFileSync(join(draft.path,'README.md'),'Preserved draft progress\nContinued in fixture\n');yield{type:'completed'};}});
+ const result=await new TaskEngine({store:f.store,registry,snapshot:()=>repositorySnapshot(draft.path)}).run('transfer-task',{contextFlow:{id:t.id,hash:t.hash}});assert.equal(result.status,'completed');assert.equal((await repositorySnapshot(f.repo)).dirty,false);
+ const review=await reviewDraftWorkspace(f.repo,drafts,'transfer-task',draft.baseCommit);assert.ok(review.patch.includes('Continued in fixture'));await assert.rejects(acceptDraftWorkspace(f.repo,drafts,'transfer-task',draft.baseCommit,digest('wrong review')),/changed since review/);assert.equal((await repositorySnapshot(f.repo)).dirty,false);await acceptDraftWorkspace(f.repo,drafts,'transfer-task',draft.baseCommit,review.patchHash);assert.equal((await repositorySnapshot(f.repo)).dirty,true);
+ }finally{f.store.close();rmSync(f.dir,{recursive:true,force:true});}
+});
+test('pending transfer fences queue dispatch and cancellation consumes approval without replay',async()=>{
+ const f=await fixture();try {
+ const t=await prepareContextFlow({store:f.store,taskId:'transfer-task',dataDirectory:join(f.dir,'private'),configuration:config,binding:'cancel'});
+ f.store.enqueueTask({id:'queued-after-handoff',repositoryRoot:f.snapshot.root,request:'later',configuration:config,baselineFingerprint:t.packet.repository.fingerprint});
+ assert.throws(()=>f.store.claimQueuedTask('queued-after-handoff',t.packet.repository.fingerprint),/ContextFlow/);
+ const controller=new AbortController();controller.abort();let runs=0;const registry=new AgentRegistry();registry.register({id:'opencode',capabilities:{shell:false,writes:false},availability:async()=> 'available',async*run(){runs++;yield{type:'completed'};}});
+ const result=await new TaskEngine({store:f.store,registry,snapshot:()=>repositorySnapshot(f.repo)}).run('transfer-task',{signal:controller.signal,contextFlow:{id:t.id,hash:t.hash}});assert.equal(result.status,'cancelled');assert.equal(runs,0);assert.equal(f.store.contextFlowTransfer(t.id).status,'cancelled');assert.ok(f.store.executionLease('transfer-task').releasedAt);
+ }finally{f.store.close();rmSync(f.dir,{recursive:true,force:true});}
+});
