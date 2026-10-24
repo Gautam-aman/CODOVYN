@@ -18,16 +18,16 @@ export async function repositoryTool(command,args,{cwd,signal,timeoutMs=10000,ma
  if(signal?.aborted||timedOut||bytes>maxBytes||diagnostics>65536||lifecycle.error())throw new Error('Repository tool cancelled, failed or exceeded its bound');
  return {code,stdout:Buffer.concat(stdout).toString('utf8'),pid:child.pid,elapsedMs:performance.now()-start};
 }
-export async function buildRepositoryReader(directory) {
+export async function buildRepositoryReader(directory,{signal}={}) {
  if(process.platform!=='darwin'||process.arch!=='arm64')throw new Error('Repository reader requires verified macOS ARM64');
  mkdirSync(directory,{recursive:true,mode:0o700});directory=realpathSync(directory);
  if(lstatSync(directory).mode&0o077)throw new Error('Repository helper directory must be owner-only');
  const source=readFileSync(new URL('../native/repository-reader.c',import.meta.url));
  const input=join(directory,'reader.c'),command=join(directory,'repository-reader');writeFileSync(input,source,{mode:0o600});
- const compile=await repositoryTool('/usr/bin/xcrun',['clang','-std=c11','-D_DARWIN_C_SOURCE','-O2','-Wall','-Wextra','-Werror',input,'-o',command],{timeoutMs:30000});
+ const compile=await repositoryTool('/usr/bin/xcrun',['clang','-std=c11','-D_DARWIN_C_SOURCE','-O2','-fstack-protector-strong','-D_FORTIFY_SOURCE=2','-Wall','-Wextra','-Werror',input,'-o',command],{timeoutMs:30000,signal});
  if(compile.code!==0)throw new Error('Repository reader compilation failed');
- if((await repositoryTool('/usr/bin/codesign',['-s','-','--options','runtime',command])).code!==0)throw new Error('Repository reader signature failed');
- chmodSync(command,0o500);return Object.freeze({command,sha256:hash(readFileSync(command)),sourceSha256:hash(source)});
+ const signed=await repositoryTool('/usr/bin/codesign',['-s','-','--options','runtime',command],{signal});if(signed.code!==0)throw new Error('Repository reader signature failed');
+ chmodSync(command,0o500);return Object.freeze({command,sha256:hash(readFileSync(command)),sourceSha256:hash(source),ownedGroups:[compile.pid,signed.pid]});
 }
 function verifyReader(reader) {
  const fd=openSync(reader.command,constants.O_RDONLY|constants.O_NOFOLLOW|constants.O_NONBLOCK);
@@ -57,7 +57,13 @@ export async function createRepositoryAuthority({root,gitDirectory,commonDirecto
  gitDirectory=realpathSync(gitDirectory);commonDirectory=realpathSync(commonDirectory||gitDirectory);
  if([root,gitDirectory,commonDirectory].some(path=>/[\0\r\n]/.test(path)))throw new Error('Unsupported Git path encoding');
  let expected='-',active=true;const controller=new AbortController();const measurements=[];
- async function validLease(){if(!active||Date.now()>=frozenLease.expiresAt||await frozenLease.isCurrent()!==true)throw new Error('Repository authorization expired or revoked');}
+ async function validLease(){
+  if(!active||Date.now()>=frozenLease.expiresAt)throw new Error('Repository authorization expired or revoked');
+  let timer,abort;try{
+   const current=await Promise.race([Promise.resolve().then(()=>frozenLease.isCurrent()),new Promise((_,reject)=>{abort=()=>reject(new Error('Repository authorization revoked'));controller.signal.addEventListener('abort',abort,{once:true});timer=setTimeout(()=>reject(new Error('Repository lease verification deadline exceeded')),500);})]);
+   if(current!==true||!active||Date.now()>=frozenLease.expiresAt)throw new Error('Repository authorization expired or revoked');
+  }finally{clearTimeout(timer);controller.signal.removeEventListener('abort',abort);}
+ }
  async function inspect(cwd,op='state',object=''){
   await validLease();const rel=relative(root,cwd);if(isAbsolute(rel)||rel==='..'||rel.startsWith('../'))throw new Error('Cross-project repository query denied');
   if(measurements.length>=512)throw new Error('Repository inspection budget exceeded');
@@ -78,7 +84,7 @@ export async function createRepositoryAuthority({root,gitDirectory,commonDirecto
     const read=await inspect(cwd,'object',oid);if(!sameState(read.state,start.state))throw new Error('Concurrent repository state transition');
     const content=inflateSync(decode(read.record.object),{maxOutputLength:1048576});const digest=createHash(oid.length===40?'sha1':'sha256').update(content).digest('hex');if(digest!==oid)throw new Error('Git object content hash mismatch');
     const nul=content.indexOf(0);if(nul<0||!/^commit [0-9]+$/.test(content.subarray(0,nul).toString())||Number(content.subarray(7,nul).toString())!==content.length-nul-1)throw new Error('Unsupported Git object');
-    const body=content.subarray(nul+1).toString('utf8'),separator=body.indexOf('\n\n');if(separator<0)throw new Error('Malformed Git commit');const parents=body.slice(0,separator).split('\n').filter(line=>line.startsWith('parent ')).map(line=>line.slice(7));if(parents.some(parent=>!oidPattern.test(parent)))throw new Error('Malformed parent identity');if(!parents.length)roots.push(oid);else pending.push(...parents);
+    const body=content.subarray(nul+1).toString('utf8'),separator=body.indexOf('\n\n');if(separator<0)throw new Error('Malformed Git commit');const parents=body.slice(0,separator).split('\n').filter(line=>line.startsWith('parent ')).map(line=>line.slice(7));if(parents.length>32||pending.length+parents.length>512)throw new Error('Git history fanout exceeds metadata budget');if(parents.some(parent=>!oidPattern.test(parent)||parent.length!==oid.length))throw new Error('Malformed parent identity');if(!parents.length)roots.push(oid);else pending.push(...parents);
    }
    const final=await inspect(cwd);if(!sameState(start.state,final.state))throw new Error('Concurrent repository state transition');return roots.sort();
   },

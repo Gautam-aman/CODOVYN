@@ -1,6 +1,7 @@
 /* Host-only bounded Git metadata reader. No exec, configuration or network API.
  * All traversal is relative to verified directory descriptors, without symlinks. */
 #include <sys/stat.h>
+#include <sys/mount.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -52,6 +53,8 @@ int main(int argc,char **argv){
  const char *root=argv[1],*gd=argv[2],*common=argv[3],*cwd=argv[4],*expected=argv[5],*op=argv[6],*oid=argv[7];
  if(strcmp(op,"state")&&strcmp(op,"object"))return fail();if(cwd[0]=='/'||strstr(cwd,"//"))return fail();
  int r=absolute(root),g=absolute(gd),c=absolute(common);if(r<0||g<0||c<0)return fail();
+ struct statfs local;if(fstatfs(r,&local)||!(local.f_flags&MNT_LOCAL)||fstatfs(g,&local)||!(local.f_flags&MNT_LOCAL)||fstatfs(c,&local)||!(local.f_flags&MNT_LOCAL))return fail();
+ pid_t parent=getppid();
  struct stat marker;if(fstatat(r,".git",&marker,AT_SYMLINK_NOFOLLOW)||S_ISLNK(marker.st_mode))return fail();
  unsigned char data[BOUND+2],head[BOUND+2],ref[BOUND+2],packed[BOUND+2],end[BOUND+2];long n=0;
  if(S_ISDIR(marker.st_mode)) {int actual=openat(r,".git",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);if(actual<0||!same(actual,g)||!same(g,c))return fail();close(actual);}
@@ -75,8 +78,20 @@ int main(int argc,char **argv){
   size_t len=strlen(oid);if(len!=40&&len!=64)return fail();for(size_t i=0;i<len;i++)if(!strchr("0123456789abcdef",oid[i]))return fail();char path[100];snprintf(path,sizeof path,"objects/%.2s/%s",oid,oid+2);on=read_at(c,path,data,0);if(on<1)return fail();
  }
  long en=read_at(g,"HEAD",end,0);if(en<1)return fail();trim(end,&en);if(en!=hn||memcmp(end,head,(size_t)hn))return fail();
+ /* Recheck control-file contents, not only their inodes: in-place edits must
+  * invalidate a read just as atomic pathname replacement does. */
+ if(!strncmp((char*)head,"ref: ",5)){long again=read_at(c,(char*)head+5,end,1);if(again!=rn||again<0||memcmp(end,ref,(size_t)rn))return fail();if(!rn){again=read_at(c,"packed-refs",end,1);if(again!=pn||again<0||memcmp(end,packed,(size_t)pn))return fail();}}
+ if(S_ISREG(marker.st_mode)){
+  long again=read_at(r,".git",end,0);if(again<1)return fail();trim(end,&again);char pointer[PATH_MAX];if(snprintf(pointer,sizeof pointer,"gitdir: %s",gd)>=(int)sizeof pointer||memchr(end,0,(size_t)again)||strcmp((char*)end,pointer))return fail();
+  if(strcmp(gd,common)){
+   char back[PATH_MAX],path[PATH_MAX],resolved[PATH_MAX];again=read_at(g,"gitdir",end,0);if(again<1)return fail();trim(end,&again);if(snprintf(back,sizeof back,"%s/.git",root)>=(int)sizeof back||memchr(end,0,(size_t)again)||strcmp((char*)end,back))return fail();
+   again=read_at(g,"commondir",end,0);if(again<1)return fail();trim(end,&again);if(memchr(end,0,(size_t)again))return fail();if(end[0]=='/'){if(strlen((char*)end)>=sizeof path)return fail();strcpy(path,(char*)end);}else if(snprintf(path,sizeof path,"%s/%s",gd,end)>=(int)sizeof path)return fail();if(!normalized(path,resolved)||strcmp(resolved,common))return fail();
+  }
+ }
+ if(!strcmp(gd,common)){struct stat unexpected;if(!fstatat(g,"commondir",&unexpected,AT_SYMLINK_NOFOLLOW)||errno!=ENOENT)return fail();}
  int r2=absolute(root),g2=absolute(gd),c2=absolute(common),w2=nested(r,cwd);struct stat m2;
  if(r2<0||g2<0||c2<0||w2<0||!same(r,r2)||!same(g,g2)||!same(c,c2)||!same(working,w2)||fstatat(r,".git",&m2,AT_SYMLINK_NOFOLLOW)||marker.st_dev!=m2.st_dev||marker.st_ino!=m2.st_ino)return fail();
+ if(getppid()!=parent)return fail();
  printf("{\"version\":1,\"identity\":\"%s\",\"cwdIdentity\":\"%s\",",ids,wi);hex("head",head,hn);putchar(',');hex("ref",ref,rn);putchar(',');hex("packed",packed,pn);putchar(',');hex("object",data,on);puts("}");
  return 0;
 }

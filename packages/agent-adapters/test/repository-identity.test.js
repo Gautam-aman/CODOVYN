@@ -1,3 +1,4 @@
+import {inflateSync,deflateSync} from 'node:zlib';
 import {fileURLToPath} from 'node:url';
 import test,{before,after} from 'node:test';
 import assert from 'node:assert/strict';
@@ -35,7 +36,7 @@ check('configuration/helpers are never evaluated and symbolic Git files cannot e
  const root=repo(),marker=join(base,'helper-ran');const helper=join(base,'helper');writeFileSync(helper,'#!/bin/sh\necho yes > '+JSON.stringify(marker)+'\n',{mode:0o700});git(root,'config','core.fsmonitor',helper);git(root,'config','credential.helper','!'+helper);git(root,'config','include.path',join(base,'missing-sensitive-config'));const a=await auth(root);assert.ok((await a.read()).head);assert.equal(await repositoryTool(reader.command,['/missing','/missing','/missing','','-','config','bad']).then(r=>r.code),76);assert.throws(()=>readFileSync(marker));const branch=(await a.read()).branch;rmSync(join(root,'.git','refs','heads',branch));symlinkSync(helper,join(root,'.git','refs','heads',branch));await assert.rejects(a.read(),/metadata is unsupported/);a.revoke();
 });
 check('packed objects, corrupted loose objects and unsupported capabilities fail closed',async()=>{
- const root=repo(),a=await auth(root);git(root,'repack','-ad');git(root,'prune-packed');await assert.rejects(a.roots(),/metadata is unsupported/);const other=repo(),b=await auth(other),oid=(await b.read()).head;rmSync(join(other,'.git','objects',oid.slice(0,2),oid.slice(2)));writeFileSync(join(other,'.git','objects',oid.slice(0,2),oid.slice(2)),'corrupt');await assert.rejects(b.roots());a.revoke();b.revoke();
+ const root=repo(),a=await auth(root);git(root,'repack','-ad');git(root,'prune-packed');await assert.rejects(a.roots(),/metadata is unsupported/);const other=repo(),b=await auth(other),oid=(await b.read()).head;const path=join(other,'.git','objects',oid.slice(0,2),oid.slice(2)),content=inflateSync(readFileSync(path));content[content.length-2]^=1;rmSync(path);writeFileSync(path,deflateSync(content));await assert.rejects(b.roots(),/content hash mismatch/);a.revoke();b.revoke();
 });
 check('expired, revoked and changed leases cannot return metadata',async()=>{
  const root=repo();await assert.rejects(auth(root,{lease:lease({expiresAt:Date.now()-1})}),/expired/);let current=true;const a=await auth(root,{lease:lease({isCurrent:()=>current})});current=false;await assert.rejects(a.read(),/revoked/);const b=await auth(root);b.revoke();await assert.rejects(b.read(),/revoked/);await assert.rejects(auth(root,{lease:lease({purpose:'execution'})}),/metadata lease/);
@@ -44,4 +45,10 @@ check('native descriptor race barrier rejects a substituted root between validat
  const root=repo(),a=await auth(root),race=join(base,'race-reader');const compiled=await repositoryTool('/usr/bin/xcrun',['clang','-D_DARWIN_C_SOURCE','-DCODOVYN_READER_TEST_PAUSE','-O2',fileURLToPath(new URL('../native/repository-reader.c',import.meta.url)),'-o',race]);assert.equal(compiled.code,0);
  const child=spawn(race,[root,join(root,'.git'),join(root,'.git'),'',a.identity.filesystemIdentity,'state',''],{detached:true,stdio:['pipe','pipe','pipe'],env});const life=manageAgentProcess(child);let output='';child.stdout.on('data',d=>output+=d);const timer=setTimeout(()=>life.dispose().catch(()=>{}),3000);
  try{while(!output.includes('PINNED')){await new Promise(r=>setTimeout(r,5));if(child.exitCode!==null)throw new Error('Race witness exited before barrier');}renameSync(root,root+'-moved');mkdirSync(root);git(root,'init','-q');child.stdin.end('\n');assert.equal(await life.closed,76);assert.equal(output.trim(),'PINNED');}finally{clearTimeout(timer);await life.dispose();a.revoke();}
+});
+
+check('in-place Git pointer mutation at the native race barrier invalidates the read',async()=>{
+ const root=repo({separate:true}),a=await auth(root,{gitDirectory:root+'-git',commonDirectory:root+'-git'}),race=join(base,'pointer-race-reader');assert.equal((await repositoryTool('/usr/bin/xcrun',['clang','-D_DARWIN_C_SOURCE','-DCODOVYN_READER_TEST_PAUSE','-O2',fileURLToPath(new URL('../native/repository-reader.c',import.meta.url)),'-o',race])).code,0);
+ const child=spawn(race,[root,root+'-git',root+'-git','',a.identity.filesystemIdentity,'state',''],{detached:true,stdio:['pipe','pipe','pipe'],env});const life=manageAgentProcess(child);let output='';child.stdout.on('data',d=>output+=d);const timer=setTimeout(()=>life.dispose().catch(()=>{}),3000);
+ try{while(!output.includes('PINNED')){await new Promise(r=>setTimeout(r,5));if(child.exitCode!==null)throw new Error('Pointer witness exited before barrier');}writeFileSync(join(root,'.git'),'gitdir: /unapproved/other-repository\n');child.stdin.end('\n');assert.equal(await life.closed,76);assert.equal(output.trim(),'PINNED');}finally{clearTimeout(timer);await life.dispose();a.revoke();}
 });
