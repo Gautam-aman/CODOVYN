@@ -59,6 +59,7 @@ export class TaskEngine {
     }
     const token = randomUUID();
     if(options.contextFlow && options.continuation)throw new Error('Choose one continuation policy');
+    if(options.contextFlow&&this.store.contextFlowTransfer(options.contextFlow.id)?.taskId!==id)throw new Error('ContextFlow belongs to a different task');
     const transfer=options.contextFlow?this.store.claimContextFlow(options.contextFlow.id,options.contextFlow.hash,{token,pid:process.pid,host:hostname()}):null;
     if(!transfer)this.store.claimExecution(id, { token, pid: process.pid, host: hostname() });
     const start = this.#record(id, 'execution-owned', { token });
