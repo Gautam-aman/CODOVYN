@@ -69,6 +69,10 @@ exports.run = async () => {
   const folder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   assert.ok(folder, 'Native Chat test has an isolated project workspace.');
   await seedOrVerifyJournal(folder);
+  if(process.env.CODOVYN_NATIVE_READINESS_COMMAND){
+    assert.equal(process.env.CODOVYN_NATIVE_READINESS_COMMAND,'/opt/homebrew/Cellar/opencode/2.1.2/bin/opencode','Readiness probe only uses the pinned official test executable.');
+    await vscode.workspace.getConfiguration('codovyn').update('opencodeCliPath',process.env.CODOVYN_NATIVE_READINESS_COMMAND,vscode.ConfigurationTarget.Global);
+  }
 
   const extension = vscode.extensions.getExtension('codovyn-local.codovyn');
   assert.ok(extension, 'Packaged CODOVYN extension is installed in the standalone app.');
@@ -98,7 +102,7 @@ exports.run = async () => {
   try {
     await withDeadline(webviewReady, 20000, 'CODOVYN Chat webview did not report ready within 20 seconds.');
     await withDeadline(harnessReady, 20000, 'Native Chat harness script did not initialize within 20 seconds.');
-    const posted = await panel.webview.postMessage({ type: 'codovyn-native-chat-test', token, phase: process.env.CODOVYN_NATIVE_CHAT_PHASE });
+    const posted = await panel.webview.postMessage({ type: 'codovyn-native-chat-test', token, phase: process.env.CODOVYN_NATIVE_CHAT_PHASE,readinessCheck:!!process.env.CODOVYN_NATIVE_READINESS_COMMAND });
     assert.equal(posted, true, 'The trusted extension host delivered the native Chat test request to its webview.');
     trace('webview-test-requested');
     const report = await result;
@@ -107,6 +111,7 @@ exports.run = async () => {
       'completionState', 'scrollFollowAndJump', 'sqliteJournalRestoration', 'interruptionState']) {
       assert.equal(report.checks?.[name], true, `Native Chat check did not pass: ${name}`);
     }
+    if(process.env.CODOVYN_NATIVE_READINESS_COMMAND)assert.equal(report.checks.providerReadinessBlocked,true);
     assert.ok(report.checks.transcriptMessages.some(message => message.includes('Persisted agent response from SQLite.')));
     const output = process.env.CODOVYN_NATIVE_CHAT_REPORT;
     assert.ok(output, 'Native Chat report path is required.');

@@ -2,7 +2,9 @@
 (() => {
   // This script is packaged only for the explicit isolated native test host.
   // Keep asynchronous real metadata replies out of the OpenCode DOM fixture.
+  let realProviderDiagnostics=false;
   window.addEventListener('message', event => {
+    if(['agent-diagnostics','agent-diagnostics-loading','agent-diagnostics-error'].includes(event.data?.type)&&!realProviderDiagnostics&&event.data?.source!=='native-provider-fixture')event.stopImmediatePropagation();
     if(event.data?.provider === 'opencode' && ['provider-models','provider-models-loading'].includes(event.data.type) && event.data?.metadata?.source !== 'native-opencode-fixture') event.stopImmediatePropagation();
   }, true);
   const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -10,7 +12,7 @@
   const text = selector => document.querySelector(selector)?.textContent || '';
   const requireValue = (condition, message) => { if (!condition) throw new Error(message); };
 
-  async function run(token, phase) {
+  async function run(token, phase, readinessCheck=false) {
     const prompt = 'Render this literally: <img src=x onerror=alert(1)>';
     const report = {};
     const stage = name => vscode.postMessage({ type: 'codovyn-native-chat-test-progress', token, stage: name });
@@ -19,6 +21,7 @@
     const tabs = view => document.querySelector(`[data-workspace-view="${view}"]`);
     requireValue(request && chat && tabs('chat') && tabs('activity'), 'The actual CODOVYN Chat workspace did not initialize.');
     stage('webview-dom-ready');
+    send({type:'agent-diagnostics',source:'native-provider-fixture',agents:[{id:'codex',installation:'detected',authentication:'unknown',availability:'unknown'},{id:'opencode',installation:'detected',authentication:'unknown',availability:'unknown',executionSupported:true,diagnostic:'DOM fixture only; no execution'}]});
     if (phase === 'relaunch') requireValue(compactComposer.efforts['default:codex'] === 'high', 'Per-model reasoning preference did not survive normal application restart.');
     if (phase === 'relaunch') requireValue(compactComposer.favorites.includes('model:native-fixture-codex'), 'Favorite models did not restore from host storage after restart.');
 
@@ -332,13 +335,19 @@
     flowReply=hostMessage('history',data=>data.taskId==='native-contextflow-task');vscode.postMessage({type:'history',id:'native-contextflow-task'});await flowReply;
     flowReply=hostMessage('contextflow-state');document.querySelector('#switch-agent').click();await flowReply;
     activateWorkspaceView('changes');
+    if(readinessCheck){
+      realProviderDiagnostics=true;activateWorkspaceView('settings');const readiness=hostMessage('agent-diagnostics',data=>data.agents?.some(entry=>entry.id==='opencode'&&entry.version==='2.1.2'));inspectAgents.click();const diagnostics=await readiness;
+      const actual=diagnostics.agents.find(entry=>entry.id==='opencode');requireValue(actual?.installation==='detected'&&actual.version==='2.1.2'&&actual.executionSupported===false&&actual.authentication==='unknown','Actual OpenCode Git execution blocker was not shown.');
+      requireValue([...compactComposer.entries()].filter(entry=>entry.provider==='opencode').every(entry=>entry.disabled),'Unavailable OpenCode entries remain selectable.');
+      const card=document.querySelector('[data-provider="opencode"]');requireValue(card?.textContent.includes('git subprocesses denied'),'Native provider card lost the actionable process-boundary diagnostic.');card.closest('details').open=true;card.scrollIntoView({block:'center',behavior:'instant'});report.providerReadinessBlocked=true;stage('real-provider-readiness-without-inference-verified');
+    }
     return report;
   }
 
   window.addEventListener('message', async ({ data }) => {
     if (data?.type !== 'codovyn-native-chat-test' || typeof data.token !== 'string' || !/^[a-f0-9]{32}$/.test(data.token)) return;
     let report;
-    try { report = { passed: true, checks: await run(data.token, data.phase) }; }
+    try { report = { passed: true, checks: await run(data.token, data.phase,data.readinessCheck===true) }; }
     catch (error) { report = { passed: false, error: String(error?.message || error) }; }
     vscode.postMessage({ type: 'codovyn-native-chat-test-result', token: data.token, report });
   });
