@@ -40,3 +40,12 @@ test('ACP standard authentication/cancellation codes are typed without exposing 
 test('ACP peer startup failure settles exit before reporting disconnection',async()=>{
  const client=connect('process.exit(2)');try{await assert.rejects(client.request('initialize',{}),/disconnected/);}finally{await client.dispose();}
 });
+
+test('ACP cleanup failure never records a stopped provider or releases recovery evidence',async()=>{
+ let stopped=0;const client=connect(peer(`rl.on('line',()=>{});`),{execution:{starting(){},spawned(){},stopped(){stopped++;}}});
+ const actualDispose=client.lifecycle.dispose.bind(client.lifecycle);
+ client.lifecycle.dispose=async()=>{throw new Error('Injected owned-process cleanup failure');};
+ try{await assert.rejects(client.dispose(),/cleanup failure/);assert.equal(stopped,0,'An unproven process exit must retain ownership');}
+ finally{client.lifecycle.dispose=actualDispose;await client.dispose();}
+ assert.equal(stopped,1);
+});

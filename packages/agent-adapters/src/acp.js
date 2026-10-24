@@ -75,6 +75,8 @@ export class AcpConnection {
   async dispose() {
     this.signal?.removeEventListener('abort',this.abort);
     this.fail(new AgentFailure('cancelled','ACP connection disposed'));
-    try { await this.lifecycle.dispose(); await this.pump; } finally { this.execution?.stopped(); }
+    await this.lifecycle.dispose();
+    await this.pump;
+    this.execution?.stopped();
   }
 }
