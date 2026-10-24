@@ -322,6 +322,8 @@
     if(restoredTaskId){flowReply=hostMessage('history',data=>data.taskId===restoredTaskId);vscode.postMessage({type:'history',id:restoredTaskId});await flowReply;}
     report.transcriptMessages = [...chat.querySelectorAll('.chat-message')].map(item => item.textContent);
     report.activityRows = [...document.querySelectorAll('#timeline > li')].map(item => item.textContent);
+    flowReply=hostMessage('history',data=>data.taskId==='native-contextflow-task');vscode.postMessage({type:'history',id:'native-contextflow-task'});await flowReply;
+    flowReply=hostMessage('contextflow-state');document.querySelector('#switch-agent').click();await flowReply;
     activateWorkspaceView('changes');
     return report;
   }

@@ -20,3 +20,8 @@ test('sensitive paths and known token formats are excluded without a perfect-det
  for(const path of ['.env','.env.local','.ssh/id_rsa','secrets/key.txt','src/../file','a\\b','auth.json','private.pem','/outside','node_modules/x.js'])assert.equal(contextPath(path),false,path);
  assert.equal(contextPath('src/Main.java'),true);assert.equal(redactContext('Bearer abcdefghijklmnop'),'Bearer [REDACTED]');assert.equal(redactContext('ghp_'+ 'a'.repeat(30)),'[REDACTED TOKEN]');
 });
+
+test('ContextFlow bounds UTF-8 bytes and redacts structured secrets before transfer',()=>{
+ const data=input();data.task.request='{"apiKey":"private-value","client_secret":"do-not-share"}';const packet=createContextFlow(data);assert.ok(!packet.task.objective.includes('private-value'));assert.ok(!packet.task.objective.includes('do-not-share'));
+ const p=createContextFlow(input());p.task.requirements=Array(16).fill('🌍'.repeat(128));p.task.acceptanceCriteria=Array(16).fill('🌍'.repeat(128));p.context.pendingSteps=Array(16).fill('🌍'.repeat(128));p.context.decisions=Array(16).fill('🌍'.repeat(128));assert.throws(()=>validateContextFlow(p),/32 KiB/);
+});

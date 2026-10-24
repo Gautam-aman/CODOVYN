@@ -617,6 +617,7 @@ function createExtension(api, runner = runCli) {
                 onChild: () => {}, onEvent: () => {},
               });
               const events = result.events || [];
+              if(contextFlowPreview?.taskId!==message.id)contextFlowPreview=null;
               panel.webview.postMessage({ type: 'history', request: result.task.request, status: result.task.status,
                 taskId: message.id, draftReviewAvailable: events.some((entry) => entry.kind === 'draft-created') &&
                   !events.some((entry) => ['draft-accepted', 'draft-rejected'].includes(entry.kind)),

@@ -963,6 +963,7 @@ flowPrepare.addEventListener('click',()=>{if(!currentTaskId)return;const configu
 flowContinue.addEventListener('click',()=>{if(flowTransfer)vscode.postMessage({type:'contextflow-run',id:flowTransfer.id});});
 flowReject.addEventListener('click',()=>{if(flowTransfer)vscode.postMessage({type:'contextflow-reject',id:flowTransfer.id});});
 window.addEventListener('message',({data})=>{
+ if(['history','running'].includes(data.type)&&flowTransfer?.taskId!==data.taskId){flow.hidden=true;flowTransfer=null;flowPacket.textContent='';flowContinue.disabled=flowReject.disabled=true;}
  if(data.type==='contextflow-state') {
   flowTransfer=data.transfer;flow.hidden=false;flowSummary.replaceChildren();flowPacket.textContent='';
   const t=flowTransfer;flowStatus.textContent=t?`Transfer ${t.status} · Codex → OpenCode`:'No transfer prepared. No context has been sent.';
