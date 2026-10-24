@@ -29,3 +29,19 @@ Queued requests keep the provider, stable model ID, exact variant, permission an
 Automatic OpenCode execution, session resume, provider-reported usage and Windows/Linux execution remain disabled or unverified. ContextFlow review is implemented, but actual Git-backed OpenCode continuation is blocked as described above. Live authenticated read/edit validation is a separate gate; deterministic tests do not satisfy it.
 
 Official interfaces: [ACP](https://docs.opencode.ai/docs/acp/), [CLI](https://docs.opencode.ai/docs/cli/), [models](https://docs.opencode.ai/docs/models/), [permissions](https://docs.opencode.ai/docs/permissions/).
+
+### Git discovery compatibility research
+
+OpenCode 2.1.2's Git-backed execution remains **blocked**. Its project resolver
+starts Git subprocesses; permitting unrestricted Git or a shell would weaken the
+verified execution boundary. CLI installation, a model catalogue and successful
+metadata-only ACP initialization do not establish safe task execution or account
+access.
+
+Maintainers can reproduce the isolated, non-inference feasibility experiment with
+`node scripts/probe-opencode-git.js` on macOS ARM64 with Xcode Command Line Tools
+and the pinned CLI. It accepts no existing-project arguments. The research-only
+native shim has known identity/freshness failures and is **never installed into
+the production adapter**. Do not use it to bypass the execution guard. See the
+[security investigation and evidence](../development/opencode-git-compatibility-validation.md)
+for the supported experiment cases, rejected operations and outstanding review.

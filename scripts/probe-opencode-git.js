@@ -8,17 +8,18 @@ import {performance} from 'node:perf_hooks';
 import {inspectOpenCodeInstallation,parseOpenCodeModels,openCodeProjectReadiness} from '../packages/agent-adapters/src/opencode.js';
 import {openCodeBoundary} from '../packages/agent-adapters/src/opencode-sandbox.js';
 import {AcpConnection} from '../packages/agent-adapters/src/acp.js';
-import {ownedProcessMembers} from './lib/desktop-process.js';
+import {nativeTestCancellation,ownedProcessMembers} from './lib/desktop-process.js';
 import {probeProcess,buildProbeShim} from './lib/opencode-git-probe.js';
 
 if(process.platform!=='darwin'||process.arch!=='arm64')throw new Error('This probe requires the pinned macOS ARM64 boundary');
 if(process.argv.length!==2)throw new Error('This probe accepts no project or command arguments');
+const cancellation=nativeTestCancellation();
 const installation=await inspectOpenCodeInstallation();
 if(!installation.compatible)throw new Error('This probe supports only official OpenCode 2.1.2');
 const base=realpathSync(mkdtempSync(join(tmpdir(),'codovyn-phase13-git-')));
 const report={version:1,source:'Phase 13 research boundary, NOT production integration',inferenceRequests:0,openCodeVersion:installation.version,positive:[],negative:[],metadata:[],blockingFindings:[],processes:[]};
 const cleanEnv={PATH:'/usr/bin:/bin:/usr/sbin:/sbin',HOME:base,LANG:'en_US.UTF-8',GIT_CONFIG_NOSYSTEM:'1',GIT_CONFIG_GLOBAL:'/dev/null',GIT_TERMINAL_PROMPT:'0'};
-async function command(executable,args,options={}){const r=await probeProcess(executable,args,{env:cleanEnv,...options});report.processes.push({pid:r.pid,code:r.code,survivors:r.survivors,elapsedMs:r.elapsedMs});return r;}
+async function command(executable,args,options={}){const r=await probeProcess(executable,args,{env:cleanEnv,signal:cancellation.signal,...options});report.processes.push({pid:r.pid,code:r.code,survivors:r.survivors,elapsedMs:r.elapsedMs});return r;}
 async function git(root,...args){const r=await command('/usr/bin/git',['-c','core.fsmonitor=false','-C',root,...args]);if(r.code!==0)throw new Error('Disposable fixture Git setup failed');return r.stdout.trim();}
 async function repository(name,{commit=true,separate=false}={}){const root=join(base,name);mkdirSync(root);await git(root,'init','-q',...(separate?['--separate-git-dir',join(base,`${name}-metadata`)]:[]));writeFileSync(join(root,'README.md'),'Disposable OpenCode Git discovery fixture.\n');if(commit){await git(root,'add','README.md');await git(root,'-c','user.name=CODOVYN Test','-c','user.email=test@example.invalid','commit','-qm','baseline');}return root;}
 async function snapshot(root){const known=await git(root,'rev-parse','--git-dir','--git-common-dir','--show-toplevel');const lines=known.split('\n');const absolute=path=>realpathSync(path.startsWith('/')?path:join(root,path));const get=async(...args)=>(await command('/usr/bin/git',['-c','core.fsmonitor=false','-C',root,...args])).stdout.trim();return {root:absolute(lines[2]),gitDirectory:absolute(lines[0]),commonDirectory:absolute(lines[1]),head:await get('rev-parse','--verify','HEAD'),roots:await get('rev-list','--max-parents=0','HEAD'),branch:await get('symbolic-ref','--quiet','--short','HEAD')};}
@@ -31,12 +32,12 @@ try{
  const linked=join(base,'linked');await git(ordinary,'worktree','add','-q','-b','linked',linked);mkdirSync(join(ordinary,'nested'));
  const cases=[['ordinary',ordinary],['empty',empty],['feature-branch',feature],['detached-head',detached],['linked-worktree',linked],['spaces',spaced],['nested-directory',ordinary],['separate-common-directory',separate]];
  let mainShim,mainSnapshot;
- for(const [name,root] of cases){const dir=join(base,`build-${name}`);mkdirSync(dir);const data=await snapshot(root),shim=await buildProbeShim(dir,data);const cwd=name==='nested-directory'?join(root,'nested'):root;const r=await shimCall(shim,cwd,discovery);assert.equal(r.code,0,name);assert.equal(r.stdout,[data.gitDirectory,data.commonDirectory,data.root].join('\n')+'\n');report.positive.push({name,discoveryMs:r.elapsedMs,buildMs:shim.elapsedMs});
+ for(const [name,root] of cases){const dir=join(base,`build-${name}`);mkdirSync(dir);const data=await snapshot(root),shim=await buildProbeShim(dir,data,cancellation.signal);const cwd=name==='nested-directory'?join(root,'nested'):root;const r=await shimCall(shim,cwd,discovery);assert.equal(r.code,0,name);assert.equal(r.stdout,[data.gitDirectory,data.commonDirectory,data.root].join('\n')+'\n');report.positive.push({name,discoveryMs:r.elapsedMs,buildMs:shim.elapsedMs});
   if(name==='ordinary'){mainShim=shim;mainSnapshot=data;}
   if(['ordinary','linked-worktree'].includes(name)){
    const b=experimentalBoundary(root,shim,name),started=performance.now();
    const catalogue=await command(b.command,[...b.prefixArgs,'models','--standalone'],{cwd:b.cwd,env:b.env});assert.equal(catalogue.code,0,'actual OpenCode model discovery');const models=parseOpenCodeModels(catalogue.stdout);assert.ok(models.length>0);
-   const connection=new AcpConnection({...b,args:[...b.prefixArgs,'acp']});let session;
+   const connection=new AcpConnection({...b,signal:cancellation.signal,args:[...b.prefixArgs,'acp']});let session;
    try{const init=await connection.request('initialize',{protocolVersion:1,clientInfo:{name:'codovyn-metadata-probe',version:'1'},clientCapabilities:{fs:{readTextFile:false,writeTextFile:false},terminal:false}});assert.equal(init.protocolVersion,1);session=await connection.request('session/new',{cwd:b.cwd,mcpServers:[]});assert.ok(session.sessionId);assert.ok(session.configOptions?.some(entry=>entry.id==='model'));}
    finally{await connection.dispose();}
    const survivors=await ownedProcessMembers(connection.child.pid);assert.deepEqual(survivors,[]);report.processes.push({pid:connection.child.pid,survivors});report.metadata.push({name,acpSessionCreated:true,sessionPromptSent:false,models:models.length,defaultModel:session.configOptions.find(e=>e.id==='model')?.currentValue,variantOptions:session.configOptions.find(e=>e.id==='effort')?.options?.length??0,catalogueMs:catalogue.elapsedMs,sessionAndCatalogueMs:performance.now()-started,authentication:'unknown'});
@@ -70,5 +71,6 @@ try{
  report.remainingReview=['Host collector sandbox and untrusted Git config/includes','Root/metadata identity, freshness and TOCTOU','Linked-worktree external common-dir authorization','Hardened-runtime environment injection and executable integrity','Immutable metadata lifecycle binding to task leases/approvals','Safe upgrade and installation/toolchain strategy'];
  report.result='Feasibility confirmed; production compatibility BLOCKED. Counterexamples intentionally prevent promoting this probe.';
 }finally{
+ cancellation.dispose();
  const output=join(process.cwd(),'dist','desktop','opencode-git-probe.json');mkdirSync(dirname(output),{recursive:true});writeFileSync(output,JSON.stringify(report,null,2)+'\n',{mode:0o600});console.log(JSON.stringify({evidence:output,disposableDirectory:base,positive:report.positive.length,negative:report.negative.length,metadata:report.metadata.length,blockingFindings:report.blockingFindings,result:report.result}));
 }

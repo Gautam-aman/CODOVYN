@@ -6,43 +6,43 @@
   "positive": [
     {
       "name": "ordinary",
-      "discoveryMs": 620.4944579999999,
-      "buildMs": 379.3540830000002
+      "discoveryMs": 552.768125,
+      "buildMs": 505.4182079999998
     },
     {
       "name": "empty",
-      "discoveryMs": 440.9181660000004,
-      "buildMs": 88.18929299999945
+      "discoveryMs": 424.19166700000005,
+      "buildMs": 113.89216700000088
     },
     {
       "name": "feature-branch",
-      "discoveryMs": 1083.0039589999997,
-      "buildMs": 89.37408400000095
+      "discoveryMs": 452.5008749999997,
+      "buildMs": 88.75025000000005
     },
     {
       "name": "detached-head",
-      "discoveryMs": 426.1862919999994,
-      "buildMs": 99.4622500000005
+      "discoveryMs": 437.97533399999975,
+      "buildMs": 97.19762600000013
     },
     {
       "name": "linked-worktree",
-      "discoveryMs": 415.7384169999996,
-      "buildMs": 107.82587599999988
+      "discoveryMs": 422.1403330000003,
+      "buildMs": 106.07850000000053
     },
     {
       "name": "spaces",
-      "discoveryMs": 433.56325000000106,
-      "buildMs": 490.6896250000009
+      "discoveryMs": 457.79270800000086,
+      "buildMs": 144.73866699999962
     },
     {
       "name": "nested-directory",
-      "discoveryMs": 145.1135839999988,
-      "buildMs": 188.0980839999993
+      "discoveryMs": 125.67841700000099,
+      "buildMs": 93.581833000002
     },
     {
       "name": "separate-common-directory",
-      "discoveryMs": 470.75774999999885,
-      "buildMs": 203.35333400000127
+      "discoveryMs": 441.4147499999999,
+      "buildMs": 144.76004100000137
     },
     {
       "name": "non-git-original-boundary",
@@ -117,8 +117,8 @@
       "models": 10,
       "defaultModel": "opencode/big-pickle",
       "variantOptions": 0,
-      "catalogueMs": 1194.4925,
-      "sessionAndCatalogueMs": 1698.1556249999999,
+      "catalogueMs": 1627.6268329999998,
+      "sessionAndCatalogueMs": 2190.9960419999998,
       "authentication": "unknown"
     },
     {
@@ -128,8 +128,8 @@
       "models": 10,
       "defaultModel": "opencode/big-pickle",
       "variantOptions": 0,
-      "catalogueMs": 1020.5708750000003,
-      "sessionAndCatalogueMs": 1802.8261660000007,
+      "catalogueMs": 1024.3122919999996,
+      "sessionAndCatalogueMs": 1549.3882089999997,
       "authentication": "unknown"
     }
   ],
@@ -140,540 +140,540 @@
   ],
   "processes": [
     {
-      "pid": 19251,
+      "pid": 82338,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 34.724999999999966
+      "elapsedMs": 54.260167000000024
     },
     {
-      "pid": 19253,
+      "pid": 82340,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 22.715750000000014
+      "elapsedMs": 24.013124999999945
     },
     {
-      "pid": 19255,
+      "pid": 82342,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 30.337792000000036
+      "elapsedMs": 31.174582999999984
     },
     {
-      "pid": 19259,
+      "pid": 82346,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 24.465125
+      "elapsedMs": 26.433332999999948
     },
     {
-      "pid": 19261,
+      "pid": 82348,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 24.375625000000014
+      "elapsedMs": 26.353124999999977
     },
     {
-      "pid": 19263,
+      "pid": 82350,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 20.927291999999966
+      "elapsedMs": 23.21808299999998
     },
     {
-      "pid": 19265,
+      "pid": 82352,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 29.046042
+      "elapsedMs": 30.871541999999977
     },
     {
-      "pid": 19269,
+      "pid": 82356,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 24.988125000000025
+      "elapsedMs": 31.58554199999992
     },
     {
-      "pid": 19271,
+      "pid": 82358,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 21.013582999999983
+      "elapsedMs": 28.027833999999984
     },
     {
-      "pid": 19273,
+      "pid": 82361,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 28.775540999999976
+      "elapsedMs": 60.87962500000003
     },
     {
-      "pid": 19278,
+      "pid": 82365,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 24.52612499999998
+      "elapsedMs": 37.081208999999944
     },
     {
-      "pid": 19280,
+      "pid": 82369,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 20.412083999999936
+      "elapsedMs": 34.439750000000004
     },
     {
-      "pid": 19282,
+      "pid": 82372,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 28.18629199999998
+      "elapsedMs": 63.553583
     },
     {
-      "pid": 19286,
+      "pid": 82376,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 24.59945899999991
+      "elapsedMs": 55.62566700000002
     },
     {
-      "pid": 19288,
+      "pid": 82378,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 20.633749999999964
+      "elapsedMs": 32.624915999999985
     },
     {
-      "pid": 19290,
+      "pid": 82380,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 28.757542000000058
+      "elapsedMs": 37.63820799999985
     },
     {
-      "pid": 19294,
+      "pid": 82384,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 24.778792000000067
+      "elapsedMs": 29.426582999999937
     },
     {
-      "pid": 19296,
+      "pid": 82387,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 22.832374999999956
+      "elapsedMs": 28.097125000000005
     },
     {
-      "pid": 19298,
+      "pid": 82389,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 37.154458999999974
+      "elapsedMs": 58.263124999999945
     },
     {
-      "pid": 19302,
+      "pid": 82394,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 19.491416999999956
+      "elapsedMs": 31.93058300000007
     },
     {
-      "pid": 19304,
+      "pid": 82396,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 19.255957999999964
+      "elapsedMs": 53.109416999999894
     },
     {
-      "pid": 19306,
+      "pid": 82398,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 20.206042000000025
+      "elapsedMs": 33.146582999999964
     },
     {
-      "pid": 19308,
+      "pid": 82400,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 19.40387499999997
+      "elapsedMs": 26.077916000000187
     },
     {
-      "pid": 19319,
+      "pid": 82411,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 620.4944579999999
+      "elapsedMs": 552.768125
     },
     {
-      "pid": 19326,
+      "pid": 82415,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 1194.4925
+      "elapsedMs": 1627.6268329999998
     },
     {
-      "pid": 19341,
+      "pid": 82431,
       "survivors": []
     },
     {
-      "pid": 19360,
+      "pid": 82445,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 20.81070800000043
+      "elapsedMs": 23.738000000000284
     },
     {
-      "pid": 19362,
+      "pid": 82447,
       "code": 128,
       "survivors": [],
-      "elapsedMs": 19.493082999999842
+      "elapsedMs": 22.94750000000022
     },
     {
-      "pid": 19364,
+      "pid": 82449,
       "code": 128,
       "survivors": [],
-      "elapsedMs": 19.19791699999996
+      "elapsedMs": 21.397541999999703
     },
     {
-      "pid": 19366,
+      "pid": 82451,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 19.060625000000073
+      "elapsedMs": 20.379166000000623
     },
     {
-      "pid": 19374,
+      "pid": 82460,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 440.9181660000004
+      "elapsedMs": 424.19166700000005
     },
     {
-      "pid": 19379,
+      "pid": 82463,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 25.41625000000022
+      "elapsedMs": 36.20512500000041
     },
     {
-      "pid": 19381,
+      "pid": 82466,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 19.72900000000027
+      "elapsedMs": 22.655375000000276
     },
     {
-      "pid": 19383,
+      "pid": 82468,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 20.06287500000053
+      "elapsedMs": 21.513041999999587
     },
     {
-      "pid": 19385,
+      "pid": 82470,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 19.659999999999854
+      "elapsedMs": 20.061750000000757
     },
     {
-      "pid": 19393,
+      "pid": 82478,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 1083.0039589999997
+      "elapsedMs": 452.5008749999997
     },
     {
-      "pid": 19405,
+      "pid": 82480,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 53.46258300000045
+      "elapsedMs": 35.20145799999955
     },
     {
-      "pid": 19408,
+      "pid": 82482,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 30.44079199999942
+      "elapsedMs": 23.205415999999786
     },
     {
-      "pid": 19410,
+      "pid": 82484,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 25.875624999999673
+      "elapsedMs": 25.279333000000406
     },
     {
-      "pid": 19412,
+      "pid": 82486,
       "code": 1,
       "survivors": [],
-      "elapsedMs": 27.581624999999804
+      "elapsedMs": 30.11070800000016
     },
     {
-      "pid": 19421,
+      "pid": 82494,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 426.1862919999994
+      "elapsedMs": 437.97533399999975
     },
     {
-      "pid": 19431,
+      "pid": 82496,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 31.85204199999953
+      "elapsedMs": 37.9877919999999
     },
     {
-      "pid": 19433,
+      "pid": 82498,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 23.516083999999864
+      "elapsedMs": 23.500958999999966
     },
     {
-      "pid": 19435,
+      "pid": 82500,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 23.681832999999642
+      "elapsedMs": 21.237750000000233
     },
     {
-      "pid": 19437,
+      "pid": 82502,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 20.90666599999986
+      "elapsedMs": 20.453999999999724
     },
     {
-      "pid": 19445,
+      "pid": 82512,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 415.7384169999996
+      "elapsedMs": 422.1403330000003
     },
     {
-      "pid": 19448,
+      "pid": 82515,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 1020.5708750000003
+      "elapsedMs": 1024.3122919999996
     },
     {
-      "pid": 19468,
+      "pid": 82529,
       "survivors": []
     },
     {
-      "pid": 19520,
+      "pid": 82545,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 82.86962500000118
+      "elapsedMs": 25.812542000001486
     },
     {
-      "pid": 19532,
+      "pid": 82547,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 27.252000000000407
+      "elapsedMs": 22.911458000000493
     },
     {
-      "pid": 19535,
+      "pid": 82549,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 35.58854099999917
+      "elapsedMs": 21.67016599999988
     },
     {
-      "pid": 19537,
+      "pid": 82551,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 31.30529100000058
+      "elapsedMs": 20.426041999999143
     },
     {
-      "pid": 19551,
+      "pid": 82559,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 433.56325000000106
+      "elapsedMs": 457.79270800000086
     },
     {
-      "pid": 19562,
+      "pid": 82561,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 27.282208000000537
+      "elapsedMs": 22.973916999999346
     },
     {
-      "pid": 19565,
+      "pid": 82563,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 37.803209000001516
+      "elapsedMs": 22.983625000000757
     },
     {
-      "pid": 19567,
+      "pid": 82565,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 34.130959000000075
+      "elapsedMs": 23.80145799999991
     },
     {
-      "pid": 19571,
+      "pid": 82567,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 34.802999999999884
+      "elapsedMs": 21.86370899999929
     },
     {
-      "pid": 19587,
+      "pid": 82576,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 145.1135839999988
+      "elapsedMs": 125.67841700000099
     },
     {
-      "pid": 19590,
+      "pid": 82578,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 52.660250000000815
+      "elapsedMs": 36.508749999999054
     },
     {
-      "pid": 19592,
+      "pid": 82580,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 51.40783300000112
+      "elapsedMs": 30.09795899999881
     },
     {
-      "pid": 19594,
+      "pid": 82582,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 71.58245800000077
+      "elapsedMs": 30.34558399999878
     },
     {
-      "pid": 19596,
+      "pid": 82584,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 44.98820900000101
+      "elapsedMs": 33.46745799999917
     },
     {
-      "pid": 19606,
+      "pid": 82593,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 470.75774999999885
+      "elapsedMs": 441.4147499999999
     },
     {
-      "pid": 19613,
+      "pid": 82595,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 1174.095874999999
+      "elapsedMs": 1498.701833000001
     },
     {
-      "pid": 19629,
+      "pid": 82607,
       "code": 126,
       "survivors": [],
-      "elapsedMs": 27.41870800000106
+      "elapsedMs": 39.63129200000003
     },
     {
-      "pid": 19631,
+      "pid": 82609,
       "code": 126,
       "survivors": [],
-      "elapsedMs": 21.71954100000039
+      "elapsedMs": 28.77795900000092
     },
     {
-      "pid": 19633,
+      "pid": 82611,
       "code": 126,
       "survivors": [],
-      "elapsedMs": 21.32933299999968
+      "elapsedMs": 30.832416999999623
     },
     {
-      "pid": 19635,
+      "pid": 82613,
       "code": 126,
       "survivors": [],
-      "elapsedMs": 22.83637500000077
+      "elapsedMs": 31.90099999999984
     },
     {
-      "pid": 19638,
+      "pid": 82615,
       "code": 126,
       "survivors": [],
-      "elapsedMs": 22.801291000001584
+      "elapsedMs": 26.17595799999981
     },
     {
-      "pid": 19640,
+      "pid": 82617,
       "code": 126,
       "survivors": [],
-      "elapsedMs": 24.254041000000143
+      "elapsedMs": 28.20837500000016
     },
     {
-      "pid": 19642,
+      "pid": 82619,
       "code": 126,
       "survivors": [],
-      "elapsedMs": 22.064167000000452
+      "elapsedMs": 26.654167000000598
     },
     {
-      "pid": 19644,
+      "pid": 82621,
       "code": 126,
       "survivors": [],
-      "elapsedMs": 22.32574999999997
+      "elapsedMs": 23.91833399999996
     },
     {
-      "pid": 19646,
+      "pid": 82623,
       "code": 126,
       "survivors": [],
-      "elapsedMs": 22.33300000000054
+      "elapsedMs": 27.396209000000454
     },
     {
-      "pid": 19649,
+      "pid": 82625,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 26.571375000001353
+      "elapsedMs": 43.245709000000716
     },
     {
-      "pid": 19651,
+      "pid": 82627,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 22.30645899999945
+      "elapsedMs": 25.975415999999313
     },
     {
-      "pid": 19653,
+      "pid": 82629,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 22.356917000000976
+      "elapsedMs": 26.85791699999936
     },
     {
-      "pid": 19655,
+      "pid": 82631,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 22.53687499999978
+      "elapsedMs": 21.106332999999722
     },
     {
-      "pid": 19658,
+      "pid": 82633,
       "code": 126,
       "survivors": [],
-      "elapsedMs": 22.085124999999607
+      "elapsedMs": 22.228957999999693
     },
     {
-      "pid": 19661,
+      "pid": 82635,
       "code": 126,
       "survivors": [],
-      "elapsedMs": 21.556375000000116
+      "elapsedMs": 22.227167000000918
     },
     {
-      "pid": 19663,
+      "pid": 82637,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 21.022624999999607
+      "elapsedMs": 20.354874999999083
     },
     {
-      "pid": 19665,
+      "pid": 82639,
       "code": 126,
       "survivors": [],
-      "elapsedMs": 22.087333999999828
+      "elapsedMs": 20.401958000000377
     },
     {
-      "pid": 19667,
+      "pid": 82641,
       "code": 126,
       "survivors": [],
-      "elapsedMs": 22.280541999998604
+      "elapsedMs": 20.277416999999332
     },
     {
-      "pid": 19670,
+      "pid": 82643,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 133.2123330000013
+      "elapsedMs": 280.70558300000084
     },
     {
-      "pid": 19679,
+      "pid": 82651,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 132.83308300000135
+      "elapsedMs": 132.1822089999987
     },
     {
-      "pid": 19688,
+      "pid": 82659,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 34.157790999999634
+      "elapsedMs": 34.81266599999981
     },
     {
-      "pid": 19690,
+      "pid": 82661,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 22.091749999999593
+      "elapsedMs": 22.01945799999885
     },
     {
-      "pid": 19693,
+      "pid": 82663,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 31.44958399999996
+      "elapsedMs": 28.802083000000493
     },
     {
-      "pid": 19695,
+      "pid": 82665,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 21.67779200000041
+      "elapsedMs": 21.350666999998793
     },
     {
-      "pid": 19697,
+      "pid": 82667,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 21.807875000000422
+      "elapsedMs": 23.744416000001365
     },
     {
-      "pid": 19699,
+      "pid": 82669,
       "code": 0,
       "survivors": [],
-      "elapsedMs": 136.91320799999994
+      "elapsedMs": 135.34316600000056
     }
   ],
   "hardlinkWitness": {
