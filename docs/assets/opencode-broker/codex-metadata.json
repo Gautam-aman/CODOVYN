@@ -1,0 +1,20 @@
+{
+  "source": "actual Codex metadata RPCs; no thread or turn",
+  "version": "codex-cli 0.164.0",
+  "defaultModel": "gpt-6.1-sol",
+  "defaultEfforts": [
+    "low",
+    "medium",
+    "high",
+    "xhigh",
+    "max",
+    "ultra"
+  ],
+  "modelCount": 7,
+  "authentication": "unknown",
+  "inferenceVerified": false,
+  "inferenceRequests": 0,
+  "rawConfigurationRecorded": false,
+  "fixtureBaseline": "8f16b959763703eab55ea792fc848e1843fed888",
+  "versionExitCode": 0
+}
