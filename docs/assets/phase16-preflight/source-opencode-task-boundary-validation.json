@@ -1,0 +1,176 @@
+{
+  "version": 1,
+  "sourceCommit": "510faa6647dcf366056368217be4ebcad2ab4bd7",
+  "sourceDirty": false,
+  "inferenceRequests": 0,
+  "providerFileToolInvocations": 0,
+  "productionExecutionEnabled": false,
+  "phases": [
+    {
+      "mode": "ask",
+      "taskId": "ask-boundary-probe",
+      "providerOutput": "NONE \u2014 metadata-only validation adapter",
+      "sourceReadBy": "TRUSTED HOST FILE SERVICE; not OpenCode tools",
+      "ownedGroups": [
+        6652,
+        6659
+      ],
+      "acpInitialized": true,
+      "mcpMetadata": [
+        {
+          "route": "/mcp",
+          "method": "initialize",
+          "peerPid": 6659
+        },
+        {
+          "route": "/mcp",
+          "method": "notifications/initialized",
+          "peerPid": 6659
+        },
+        {
+          "route": "/mcp",
+          "method": "tools/list",
+          "peerPid": 6659
+        }
+      ],
+      "httpsMcpRegistered": true,
+      "readHashes": {
+        "source": "dbb6e2410f4b1f153c3c840ed376b42c9ba1f3f094f899a14767678de9eaf9d4",
+        "manifest": "038f8987ce54d1460794e05f81a4ac79401f5c7b8fed5928c5e849a7596ef6ae"
+      },
+      "writesBlocked": true,
+      "repositoryIdentity": "1ae6693d874fefb1e97a9e0643e82bcbcf37c7e7af9e78d2da6cc1397655071b",
+      "segment": "f42d2c59-0e4a-4724-9d82-1a9f44f84e4d",
+      "leaseHeld": true,
+      "cleanupVerified": true,
+      "originalUnchanged": true,
+      "revokedAfterTask": true,
+      "fileAudit": [
+        {
+          "segment": "f42d2c59-0e4a-4724-9d82-1a9f44f84e4d",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "src/main/java/dev/codovyn/Calculator.java",
+          "repositoryIdentity": "1ae6693d874fefb1e97a9e0643e82bcbcf37c7e7af9e78d2da6cc1397655071b",
+          "decision": "allowed",
+          "elapsedMs": 421.96337499999936
+        },
+        {
+          "segment": "f42d2c59-0e4a-4724-9d82-1a9f44f84e4d",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "pom.xml",
+          "repositoryIdentity": "1ae6693d874fefb1e97a9e0643e82bcbcf37c7e7af9e78d2da6cc1397655071b",
+          "decision": "allowed",
+          "elapsedMs": 8.336333999999624
+        },
+        {
+          "segment": "f42d2c59-0e4a-4724-9d82-1a9f44f84e4d",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "[rejected path]",
+          "repositoryIdentity": "1ae6693d874fefb1e97a9e0643e82bcbcf37c7e7af9e78d2da6cc1397655071b",
+          "decision": "denied",
+          "elapsedMs": 0.012416999999913969
+        },
+        {
+          "segment": "f42d2c59-0e4a-4724-9d82-1a9f44f84e4d",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "[rejected path]",
+          "repositoryIdentity": "1ae6693d874fefb1e97a9e0643e82bcbcf37c7e7af9e78d2da6cc1397655071b",
+          "decision": "denied",
+          "elapsedMs": 0.006542000000081316
+        }
+      ]
+    },
+    {
+      "mode": "agent",
+      "taskId": "agent-boundary-probe",
+      "providerOutput": "NONE \u2014 metadata-only validation adapter",
+      "sourceReadBy": "TRUSTED HOST FILE SERVICE; not OpenCode tools",
+      "ownedGroups": [
+        7341,
+        7347
+      ],
+      "acpInitialized": true,
+      "mcpMetadata": [
+        {
+          "route": "/mcp",
+          "method": "initialize",
+          "peerPid": 7347
+        },
+        {
+          "route": "/mcp",
+          "method": "notifications/initialized",
+          "peerPid": 7347
+        },
+        {
+          "route": "/mcp",
+          "method": "tools/list",
+          "peerPid": 7347
+        }
+      ],
+      "httpsMcpRegistered": true,
+      "readHashes": {
+        "source": "dbb6e2410f4b1f153c3c840ed376b42c9ba1f3f094f899a14767678de9eaf9d4",
+        "manifest": "038f8987ce54d1460794e05f81a4ac79401f5c7b8fed5928c5e849a7596ef6ae"
+      },
+      "writesBlocked": true,
+      "repositoryIdentity": "898ebeee41ea3d8ed1ae304107645eb9d94b60ac9cc627ad481324e22c6df8aa",
+      "segment": "3e98c225-890d-46fe-b1e5-75f2f3dee6d0",
+      "leaseHeld": true,
+      "cleanupVerified": true,
+      "originalUnchanged": true,
+      "revokedAfterTask": true,
+      "fileAudit": [
+        {
+          "segment": "3e98c225-890d-46fe-b1e5-75f2f3dee6d0",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "src/main/java/dev/codovyn/Calculator.java",
+          "repositoryIdentity": "898ebeee41ea3d8ed1ae304107645eb9d94b60ac9cc627ad481324e22c6df8aa",
+          "decision": "allowed",
+          "elapsedMs": 14.504124999999476
+        },
+        {
+          "segment": "3e98c225-890d-46fe-b1e5-75f2f3dee6d0",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "pom.xml",
+          "repositoryIdentity": "898ebeee41ea3d8ed1ae304107645eb9d94b60ac9cc627ad481324e22c6df8aa",
+          "decision": "allowed",
+          "elapsedMs": 13.4818750000004
+        },
+        {
+          "segment": "3e98c225-890d-46fe-b1e5-75f2f3dee6d0",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "[rejected path]",
+          "repositoryIdentity": "898ebeee41ea3d8ed1ae304107645eb9d94b60ac9cc627ad481324e22c6df8aa",
+          "decision": "denied",
+          "elapsedMs": 0.028707999999824096
+        },
+        {
+          "segment": "3e98c225-890d-46fe-b1e5-75f2f3dee6d0",
+          "provider": "opencode",
+          "operation": "read",
+          "path": "[rejected path]",
+          "repositoryIdentity": "898ebeee41ea3d8ed1ae304107645eb9d94b60ac9cc627ad481324e22c6df8aa",
+          "decision": "denied",
+          "elapsedMs": 0.008624999999483407
+        }
+      ]
+    }
+  ],
+  "provider": {
+    "version": "2.1.2",
+    "executableSha256": "3f01e2ba8efd4242c638add9248b88696221d76588d9511e63cb2d727c278fcc"
+  },
+  "nativeSources": {
+    "repository": "513b5d23f5bf11e65210505ca19d9b1cc77c5a2cd1359fb2c27122092c749469",
+    "files": "104083ea14be50fdbd0046001ecda676a0f679ed5d834f8d9b28fd0345097e2d",
+    "peer": "88299faa85c5ad5032f30f7964949cf929a8cc622d59b387233f5013fecc91cf"
+  },
+  "passed": true
+}

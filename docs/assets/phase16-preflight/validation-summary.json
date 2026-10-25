@@ -1,0 +1,31 @@
+{
+  "startingSha": "c023383b3d58d610f995122c06c9b7538fdcee59",
+  "testedSource": "abb6529bb7355d7ecdebfdd5d78f2c4e6f21783f",
+  "installerSource": "7ddd404d863d77ac7d3ebaab334cf57d5882d86b",
+  "unitTests": {
+    "passed": 334,
+    "failed": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "syntaxFiles": 170
+  },
+  "nativeCopied": {
+    "host": true,
+    "chatTwoLaunch": true,
+    "routingFirstAttempt": false,
+    "routingCorrectedRepeat": true,
+    "restorationTwoLaunch": true,
+    "javaEditorAndTerminal": true,
+    "signature": true
+  },
+  "liveModelRequests": 0,
+  "liveCampaignAuthorized": false,
+  "liveCampaignAdmission": "blocked",
+  "hostedCi": {
+    "run": 40205114146,
+    "jobs": 3,
+    "steps": 0,
+    "accountBlocked": true
+  },
+  "dmgSha256": "d8d354ed61f94d2c6915d1d833aecc523a7c23d0eff919523a2a342add21055a"
+}

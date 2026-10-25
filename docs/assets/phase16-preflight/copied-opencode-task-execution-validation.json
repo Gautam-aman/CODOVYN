@@ -1,0 +1,83 @@
+{
+  "sourceCommit": "abb6529bb7355d7ecdebfdd5d78f2c4e6f21783f",
+  "sourceDirty": false,
+  "provider": "2.1.2",
+  "inferenceRequests": 0,
+  "phases": [
+    {
+      "mode": "ask",
+      "initialized": true,
+      "promptBlocked": true,
+      "originalUnchanged": true,
+      "cleanupVerified": true,
+      "groups": [
+        12150,
+        12161
+      ],
+      "evidence": {
+        "type": "execution-boundary",
+        "provider": "opencode",
+        "mode": "ask",
+        "metadataOnly": true,
+        "acpMethods": [
+          "initialize",
+          "session/new",
+          "session/set_config_option"
+        ],
+        "repositoryIdentity": "deaeaea8431f52e4a1f247641239c95eb56a33f987172f57175e7527879a9581",
+        "mcpMethods": [
+          {
+            "route": "/mcp",
+            "method": "initialize"
+          },
+          {
+            "route": "/mcp",
+            "method": "notifications/initialized"
+          },
+          {
+            "route": "/mcp",
+            "method": "tools/list"
+          }
+        ]
+      }
+    },
+    {
+      "mode": "agent",
+      "initialized": true,
+      "promptBlocked": true,
+      "originalUnchanged": true,
+      "cleanupVerified": true,
+      "groups": [
+        12995,
+        13000
+      ],
+      "evidence": {
+        "type": "execution-boundary",
+        "provider": "opencode",
+        "mode": "agent",
+        "metadataOnly": true,
+        "acpMethods": [
+          "initialize",
+          "session/new",
+          "session/set_config_option"
+        ],
+        "repositoryIdentity": "bfc89dd10e474dc55e99425a760816847ed206c8d67bc8bddecae40843b425a1",
+        "mcpMethods": [
+          {
+            "route": "/mcp",
+            "method": "initialize"
+          },
+          {
+            "route": "/mcp",
+            "method": "notifications/initialized"
+          },
+          {
+            "route": "/mcp",
+            "method": "tools/list"
+          }
+        ]
+      }
+    }
+  ],
+  "passed": true
+}

@@ -1,0 +1,18 @@
+{
+  "initialRun": "failed",
+  "assertion": "Discovered model and exact variant reach the native task snapshot",
+  "actual": {
+    "provider": "codex",
+    "modelId": null,
+    "reasoning": "high"
+  },
+  "expected": {
+    "provider": "opencode",
+    "modelId": "discovered-opencode-nativecapture",
+    "reasoning": "deep"
+  },
+  "cause": "Real blocked provider state retained after fixture-only transport switch",
+  "fix": "Initialize explicit provider diagnostics fixture inside fixture-only section; actual blocked-provider assertion remains in separate native Chat test",
+  "repeatRun": "passed",
+  "inferenceRequests": 0
+}

@@ -1,0 +1,185 @@
+{
+  "sourceCommit": "7ddd404d863d77ac7d3ebaab334cf57d5882d86b",
+  "classification": "PREPARED \u2014 NOT EXECUTED",
+  "java": {
+    "version": 1,
+    "project": "/var/folders/m6/yq18_j7n0l70y1zllfgm50s80000gn/T/codovyn-live-validation-52ABtM/project",
+    "evidence": "/var/folders/m6/yq18_j7n0l70y1zllfgm50s80000gn/T/codovyn-live-validation-52ABtM/evidence",
+    "baselineCommit": "ac00214528f004350bbd7b53349861726e270323",
+    "fingerprint": "f2e5855a1206d1092cbfa7479411f0b4820f91a38967e79f301245bd582a051e",
+    "fileHashes": {
+      ".gitignore": "b53ee26e6ff1da219b0563333a76d2c9ec19eec713d6ee54e11a1edacb0e9f3d",
+      "pom.xml": "038f8987ce54d1460794e05f81a4ac79401f5c7b8fed5928c5e849a7596ef6ae",
+      "README.md": "9f8d7c85cd6756f60eb1fac483e2358eff2be5b59f31d81b05d82c9cee177155",
+      "src/main/java/dev/codovyn/Calculator.java": "dee76c8f9584ba9286e2bd67948499030760f3978bb6a3e4074cbcf731088c26",
+      "src/main/java/dev/codovyn/TaskService.java": "4dc81d3a1e69235b0455bb6f5835ed4bf2056e1d65edad7abc80c2fdc930eaf8",
+      "src/test/java/dev/codovyn/CalculatorTest.java": "2c6ae1209b342ca6bb414b2744fb89b8b332035be8360e7a09b2fa53aeec22fc"
+    },
+    "initialTasks": [],
+    "inferenceTurns": 0,
+    "liveAuthorization": "not-granted"
+  },
+  "baseline": {
+    "exitCode": 0,
+    "tests": 3,
+    "failures": 0,
+    "skipped": 0
+  },
+  "oracle": {
+    "project": "/var/folders/m6/yq18_j7n0l70y1zllfgm50s80000gn/T/codovyn-live-validation-K9GgVA/project",
+    "regression": {
+      "exitCode": 1,
+      "expectedFailure": true
+    },
+    "fixed": {
+      "exitCode": 0,
+      "tests": 4,
+      "failures": 0,
+      "skipped": 0
+    },
+    "origin": "independent host fixture repair; no provider"
+  },
+  "providers": {
+    "codex": {
+      "version": "codex-cli 0.164.0",
+      "authentication": "unknown",
+      "accountIdentity": "not inspected",
+      "adapter": "exec --json; app-server not integrated",
+      "model": "gpt-6.1-sol",
+      "modelProvenance": "local app-server model/list metadata only",
+      "inferenceAccess": "unverified"
+    },
+    "opencode": {
+      "version": "opencode v2.1.2",
+      "sha256": "3f01e2ba8efd4242c638add9248b88696221d76588d9511e63cb2d727c278fcc",
+      "authentication": "unknown; separate CODOVYN owner-only context",
+      "inferenceAccess": "unverified"
+    }
+  },
+  "campaign": {
+    "version": 1,
+    "status": "PREPARED \u2014 NOT EXECUTED",
+    "authorization": "not-granted",
+    "actualModelRequests": 0,
+    "estimatedCost": "unknown",
+    "providerInternalRequestCount": "unknown",
+    "limits": {
+      "submissions": 6,
+      "requestMilliseconds": 120000,
+      "toolActions": 8,
+      "parallelism": 1,
+      "retries": 0,
+      "fallbacks": 0
+    },
+    "sourceDisclosure": "Permitted source can contain sensitive data. Review excerpts before provider transfer.",
+    "requiredApprovals": [
+      "Explicit owner approval of exact campaign and provider/model scope",
+      "Fresh native Agent draft approval",
+      "Separate one-use native ContextFlow recipient/packet approval"
+    ],
+    "blockers": [
+      "codex: eight-action pre-execution budget not verified",
+      "codex: restricted tool boundary not verified",
+      "opencode: exact model not selected"
+    ],
+    "eligibleForApproval": false,
+    "requests": [
+      {
+        "id": "codex-ask",
+        "provider": "codex",
+        "model": "gpt-6.1-sol",
+        "mode": "ask",
+        "prompt": "Explain Calculator, identify division-by-zero behavior and recommend the smallest safe fix. Do not modify files.",
+        "freshBaseline": true,
+        "logicalTask": "codex-ask",
+        "submissions": 1,
+        "requestMilliseconds": 120000,
+        "toolActions": 8,
+        "parallelism": 1,
+        "retries": 0,
+        "fallbacks": 0,
+        "automaticPatchApplication": false
+      },
+      {
+        "id": "codex-agent",
+        "provider": "codex",
+        "model": "gpt-6.1-sol",
+        "mode": "agent",
+        "prompt": "Add a division-by-zero regression test and the minimal fix. Keep all changes in the approved draft.",
+        "freshBaseline": true,
+        "logicalTask": "codex-agent",
+        "submissions": 1,
+        "requestMilliseconds": 120000,
+        "toolActions": 8,
+        "parallelism": 1,
+        "retries": 0,
+        "fallbacks": 0,
+        "automaticPatchApplication": false
+      },
+      {
+        "id": "opencode-ask",
+        "provider": "opencode",
+        "model": null,
+        "mode": "ask",
+        "prompt": "Use the authorized MCP project-reading tool to read Calculator and explain division. Do not modify files.",
+        "freshBaseline": true,
+        "logicalTask": "opencode-ask",
+        "submissions": 1,
+        "requestMilliseconds": 120000,
+        "toolActions": 8,
+        "parallelism": 1,
+        "retries": 0,
+        "fallbacks": 0,
+        "automaticPatchApplication": false
+      },
+      {
+        "id": "opencode-agent",
+        "provider": "opencode",
+        "model": null,
+        "mode": "agent",
+        "prompt": "Use only approved project MCP tools to add a division-by-zero regression test and minimal fix in the draft.",
+        "freshBaseline": true,
+        "logicalTask": "opencode-agent",
+        "submissions": 1,
+        "requestMilliseconds": 120000,
+        "toolActions": 8,
+        "parallelism": 1,
+        "retries": 0,
+        "fallbacks": 0,
+        "automaticPatchApplication": false
+      },
+      {
+        "id": "handoff-source",
+        "provider": "codex",
+        "model": "gpt-6.1-sol",
+        "mode": "agent",
+        "prompt": "Inspect Calculator and prepare a bounded plan for fixing division by zero. Do not modify files.",
+        "freshBaseline": false,
+        "logicalTask": "same-handoff-task",
+        "submissions": 1,
+        "requestMilliseconds": 120000,
+        "toolActions": 8,
+        "parallelism": 1,
+        "retries": 0,
+        "fallbacks": 0,
+        "automaticPatchApplication": false
+      },
+      {
+        "id": "handoff-destination",
+        "provider": "opencode",
+        "model": null,
+        "mode": "agent",
+        "prompt": "Continue the approved original division task using the recipient-bound ContextFlow packet and approved MCP draft tools.",
+        "freshBaseline": false,
+        "logicalTask": "same-handoff-task",
+        "submissions": 1,
+        "requestMilliseconds": 120000,
+        "toolActions": 8,
+        "parallelism": 1,
+        "retries": 0,
+        "fallbacks": 0,
+        "automaticPatchApplication": false
+      }
+    ]
+  }
+}

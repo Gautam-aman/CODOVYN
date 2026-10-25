@@ -1,0 +1,13 @@
+{
+  "phase": "host-fresh-profile",
+  "pid": 4548,
+  "result": {
+    "cancelled": true
+  },
+  "survivors": [],
+  "elapsedMs": 7558,
+  "timeoutMs": 120000,
+  "graceMs": 1500,
+  "killGraceMs": 2500,
+  "lastProgress": "{\"phase\":\"inspection-hold\",\"state\":\"pending\",\"pid\":4655,\"elapsedMs\":420.22725,\"at\":\"2026-10-25T15:00:25.308Z\"}"
+}

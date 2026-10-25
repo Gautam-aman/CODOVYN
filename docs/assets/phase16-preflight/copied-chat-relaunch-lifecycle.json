@@ -1,0 +1,14 @@
+{
+  "phase": "chat-relaunch",
+  "pid": 3290,
+  "result": {
+    "code": 0,
+    "signal": null
+  },
+  "survivors": [],
+  "elapsedMs": 15107,
+  "timeoutMs": 120000,
+  "graceMs": 1500,
+  "killGraceMs": 2500,
+  "lastProgress": "{\"phase\":\"relaunch\",\"state\":\"all-chat-assertions-passed\",\"pid\":3478,\"monotonicNs\":\"126715188653958\",\"at\":\"2026-10-25T15:00:20.053Z\",\"report\":\"/var/folders/m6/yq18_j7n0l70y1zllfgm50s80000gn/T/codovyn-desktop-chat-cDVmqS/relaunch/chat-result.json\"}"
+}

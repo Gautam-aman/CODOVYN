@@ -1,0 +1,1243 @@
+{
+  "sourceCommit": "abb6529bb7355d7ecdebfdd5d78f2c4e6f21783f",
+  "sourceDirty": false,
+  "inferenceRequests": 0,
+  "phases": [
+    {
+      "review": "accept",
+      "passed": true,
+      "taskId": "java-task",
+      "execution": "DETERMINISTIC ACP/MCP NODE FIXTURE \u2014 NOT LIVE INFERENCE",
+      "fixtureSha256": "cc2bad1bb37304a73dd2cbeb5f6afb4bcc2c2470dfb79267753b6c9741c880da",
+      "moduleRoot": "/private/tmp/codovyn-phase16-copy-_pmmhine/CODOVYN.app/Contents/Resources/app/extensions/codovyn",
+      "taskStatus": "completed",
+      "tests": {
+        "command": "mvn -o test",
+        "exitCode": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "patchHash": "7abb9704d26afd3ec3a159f2565fbaed5731fd35ca3075e6c66f22010bf340d2",
+      "changedPaths": [
+        "src/main/java/dev/codovyn/Calculator.java",
+        "src/test/java/dev/codovyn/CalculatorTest.java"
+      ],
+      "originalUnchangedBeforeApproval": true,
+      "originalUnchangedAfterRejection": false,
+      "reviewedAcceptance": true,
+      "writeIntents": [
+        {
+          "id": "36358aeb-8581-4f89-a669-c71e85aab554",
+          "taskId": "java-task",
+          "segment": "a57b6e97-ab5c-4e27-84ce-587ec2dc9301",
+          "lockIdentity": "16777233:122500812",
+          "path": "src/main/java/dev/codovyn/Calculator.java",
+          "beforeHash": "dbb6e2410f4b1f153c3c840ed376b42c9ba1f3f094f899a14767678de9eaf9d4",
+          "afterHash": "d60aa13917636423cb11a4a17490de6aaf40b04ddd78bbdd9aaf317277d225f5",
+          "bytes": 254,
+          "repositoryIdentity": "792e9a4ca6d91995aa069f04c18b18efa55bd8b0dd826a04a6b9a47cb03ab6c3",
+          "stageDirectory": "/private/tmp/codovyn-task-runtime-gmdqyO/publisher/write-sEDQp9",
+          "configurationDigest": "a7d557d055cf0384b83d8eae15b42282b91db011482a2e69aa21bedde37b2118",
+          "version": 1,
+          "state": "published"
+        },
+        {
+          "id": "66c64fbd-ce0d-45cb-8e90-27311cce6b06",
+          "taskId": "java-task",
+          "segment": "a57b6e97-ab5c-4e27-84ce-587ec2dc9301",
+          "lockIdentity": "16777233:122500815",
+          "path": "src/test/java/dev/codovyn/CalculatorTest.java",
+          "beforeHash": "2c6ae1209b342ca6bb414b2744fb89b8b332035be8360e7a09b2fa53aeec22fc",
+          "afterHash": "57690e8c8bde1e684337bfd4565e620ba6ddefea2ef04a28b3488f559226d114",
+          "bytes": 492,
+          "repositoryIdentity": "792e9a4ca6d91995aa069f04c18b18efa55bd8b0dd826a04a6b9a47cb03ab6c3",
+          "stageDirectory": "/private/tmp/codovyn-task-runtime-gmdqyO/publisher/write-sNP3eO",
+          "configurationDigest": "a7d557d055cf0384b83d8eae15b42282b91db011482a2e69aa21bedde37b2118",
+          "version": 1,
+          "state": "published"
+        }
+      ],
+      "journal": [
+        {
+          "seq": 1,
+          "kind": "task-configuration",
+          "data": {
+            "provider": "opencode",
+            "permission": "read-write",
+            "intent": "agent",
+            "modelId": "fixture/java",
+            "reasoning": "deep"
+          },
+          "createdAt": "2026-10-25T15:03:31.112Z"
+        },
+        {
+          "seq": 2,
+          "kind": "draft-created",
+          "data": {
+            "baseCommit": "8f16b959763703eab55ea792fc848e1843fed888"
+          },
+          "createdAt": "2026-10-25T15:03:31.112Z"
+        },
+        {
+          "seq": 3,
+          "kind": "execution-owned",
+          "data": {
+            "token": "[redacted execution capability]"
+          },
+          "createdAt": "2026-10-25T15:03:31.114Z"
+        },
+        {
+          "seq": 4,
+          "kind": "agent-started",
+          "data": {
+            "agent": "opencode",
+            "repository": {
+              "root": "/private/var/folders/m6/yq18_j7n0l70y1zllfgm50s80000gn/T/codovyn-guarded-java-kUv5lX/drafts/java-task",
+              "filesystemIdentity": "16777233:122500708",
+              "branch": null,
+              "commit": "8f16b959763703eab55ea792fc848e1843fed888",
+              "dirty": false,
+              "changedPaths": [],
+              "workingTreeHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:31.295Z"
+        },
+        {
+          "seq": 5,
+          "kind": "handoff-prepared",
+          "data": {
+            "agent": "opencode",
+            "packet": {
+              "schemaVersion": 1,
+              "request": "Fix Calculator subtraction and add a JUnit regression test in the approved isolated draft",
+              "step": 0,
+              "repository": {
+                "worktreeIdentity": "fc148c79709098a514614336ae8e0d93e13c0d25bf793e8fc75eb94c45ca100f",
+                "branch": null,
+                "commit": "8f16b959763703eab55ea792fc848e1843fed888",
+                "workingTreeHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "dirty": false,
+                "changedPaths": []
+              },
+              "reconciliations": [],
+              "actions": [],
+              "providerReports": [],
+              "failures": [],
+              "continuation": "Inspect the verified worktree before continuing. Do not replay unresolved or write-capable actions automatically."
+            }
+          },
+          "createdAt": "2026-10-25T15:03:31.296Z"
+        },
+        {
+          "seq": 6,
+          "kind": "provider-starting",
+          "data": {
+            "agent": "opencode"
+          },
+          "createdAt": "2026-10-25T15:03:33.245Z"
+        },
+        {
+          "seq": 7,
+          "kind": "provider-spawned",
+          "data": {
+            "agent": "opencode",
+            "pid": 9127,
+            "group": true
+          },
+          "createdAt": "2026-10-25T15:03:33.246Z"
+        },
+        {
+          "seq": 8,
+          "kind": "execution-authority-bound",
+          "data": {
+            "segment": "a57b6e97-ab5c-4e27-84ce-587ec2dc9301",
+            "provider": "opencode",
+            "pid": 9127,
+            "configurationDigest": "a7d557d055cf0384b83d8eae15b42282b91db011482a2e69aa21bedde37b2118",
+            "permission": "read-write"
+          },
+          "createdAt": "2026-10-25T15:03:33.247Z"
+        },
+        {
+          "seq": 9,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "session",
+              "sessionId": "fixture-session",
+              "model": "fixture/java",
+              "reasoning": "deep"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:33.422Z"
+        },
+        {
+          "seq": 10,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "tool-start",
+              "actionId": "fixture-4",
+              "action": "other"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:33.423Z"
+        },
+        {
+          "seq": 11,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "permission",
+              "status": "approved-scope",
+              "action": "other"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:33.424Z"
+        },
+        {
+          "seq": 12,
+          "kind": "file-access",
+          "data": {
+            "segment": "a57b6e97-ab5c-4e27-84ce-587ec2dc9301",
+            "provider": "opencode",
+            "operation": "read",
+            "path": "src/main/java/dev/codovyn/Calculator.java",
+            "repositoryIdentity": "792e9a4ca6d91995aa069f04c18b18efa55bd8b0dd826a04a6b9a47cb03ab6c3",
+            "decision": "allowed",
+            "elapsedMs": 381.1100000000001
+          },
+          "createdAt": "2026-10-25T15:03:33.810Z"
+        },
+        {
+          "seq": 13,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "tool-complete",
+              "actionId": "fixture-4",
+              "action": "other"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:33.814Z"
+        },
+        {
+          "seq": 14,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "tool-start",
+              "actionId": "fixture-6",
+              "action": "other"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:33.814Z"
+        },
+        {
+          "seq": 15,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "permission",
+              "status": "approved-scope",
+              "action": "other"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:33.814Z"
+        },
+        {
+          "seq": 16,
+          "kind": "file-access",
+          "data": {
+            "segment": "a57b6e97-ab5c-4e27-84ce-587ec2dc9301",
+            "provider": "opencode",
+            "operation": "read",
+            "path": "src/main/java/dev/codovyn/Calculator.java",
+            "repositoryIdentity": "792e9a4ca6d91995aa069f04c18b18efa55bd8b0dd826a04a6b9a47cb03ab6c3",
+            "decision": "allowed",
+            "elapsedMs": 10.539083000000119
+          },
+          "createdAt": "2026-10-25T15:03:33.885Z"
+        },
+        {
+          "seq": 17,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "tool-start",
+              "actionId": "36358aeb-8581-4f89-a669-c71e85aab554",
+              "action": "file_change",
+              "safeToRetry": false
+            }
+          },
+          "createdAt": "2026-10-25T15:03:34.234Z"
+        },
+        {
+          "seq": 18,
+          "kind": "draft-write-prepared",
+          "data": {
+            "id": "36358aeb-8581-4f89-a669-c71e85aab554",
+            "segment": "a57b6e97-ab5c-4e27-84ce-587ec2dc9301",
+            "lockIdentity": "16777233:122500812",
+            "path": "src/main/java/dev/codovyn/Calculator.java",
+            "beforeHash": "dbb6e2410f4b1f153c3c840ed376b42c9ba1f3f094f899a14767678de9eaf9d4",
+            "afterHash": "d60aa13917636423cb11a4a17490de6aaf40b04ddd78bbdd9aaf317277d225f5",
+            "bytes": 254,
+            "repositoryIdentity": "792e9a4ca6d91995aa069f04c18b18efa55bd8b0dd826a04a6b9a47cb03ab6c3",
+            "stageDirectory": "/private/tmp/codovyn-task-runtime-gmdqyO/publisher/write-sEDQp9",
+            "configurationDigest": "a7d557d055cf0384b83d8eae15b42282b91db011482a2e69aa21bedde37b2118"
+          },
+          "createdAt": "2026-10-25T15:03:34.235Z"
+        },
+        {
+          "seq": 19,
+          "kind": "draft-write-process",
+          "data": {
+            "id": "36358aeb-8581-4f89-a669-c71e85aab554",
+            "segment": "a57b6e97-ab5c-4e27-84ce-587ec2dc9301",
+            "pid": 9257,
+            "group": true
+          },
+          "createdAt": "2026-10-25T15:03:34.235Z"
+        },
+        {
+          "seq": 20,
+          "kind": "draft-write-process-stopped",
+          "data": {
+            "id": "36358aeb-8581-4f89-a669-c71e85aab554",
+            "segment": "a57b6e97-ab5c-4e27-84ce-587ec2dc9301",
+            "pid": 9257
+          },
+          "createdAt": "2026-10-25T15:03:34.251Z"
+        },
+        {
+          "seq": 21,
+          "kind": "file-access",
+          "data": {
+            "segment": "a57b6e97-ab5c-4e27-84ce-587ec2dc9301",
+            "provider": "opencode",
+            "operation": "read",
+            "path": "src/main/java/dev/codovyn/Calculator.java",
+            "repositoryIdentity": "792e9a4ca6d91995aa069f04c18b18efa55bd8b0dd826a04a6b9a47cb03ab6c3",
+            "decision": "allowed",
+            "elapsedMs": 9.26845800000001
+          },
+          "createdAt": "2026-10-25T15:03:34.264Z"
+        },
+        {
+          "seq": 22,
+          "kind": "draft-write-published",
+          "data": {
+            "id": "36358aeb-8581-4f89-a669-c71e85aab554"
+          },
+          "createdAt": "2026-10-25T15:03:34.265Z"
+        },
+        {
+          "seq": 23,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "tool-complete",
+              "actionId": "36358aeb-8581-4f89-a669-c71e85aab554",
+              "action": "file_change"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:34.265Z"
+        },
+        {
+          "seq": 24,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "tool-complete",
+              "actionId": "fixture-6",
+              "action": "other"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:34.268Z"
+        },
+        {
+          "seq": 25,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "tool-start",
+              "actionId": "fixture-8",
+              "action": "other"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:34.268Z"
+        },
+        {
+          "seq": 26,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "permission",
+              "status": "approved-scope",
+              "action": "other"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:34.268Z"
+        },
+        {
+          "seq": 27,
+          "kind": "file-access",
+          "data": {
+            "segment": "a57b6e97-ab5c-4e27-84ce-587ec2dc9301",
+            "provider": "opencode",
+            "operation": "read",
+            "path": "src/test/java/dev/codovyn/CalculatorTest.java",
+            "repositoryIdentity": "792e9a4ca6d91995aa069f04c18b18efa55bd8b0dd826a04a6b9a47cb03ab6c3",
+            "decision": "allowed",
+            "elapsedMs": 10.89666699999998
+          },
+          "createdAt": "2026-10-25T15:03:34.284Z"
+        },
+        {
+          "seq": 28,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "tool-complete",
+              "actionId": "fixture-8",
+              "action": "other"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:34.288Z"
+        },
+        {
+          "seq": 29,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "tool-start",
+              "actionId": "fixture-10",
+              "action": "other"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:34.288Z"
+        },
+        {
+          "seq": 30,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "permission",
+              "status": "approved-scope",
+              "action": "other"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:34.289Z"
+        },
+        {
+          "seq": 31,
+          "kind": "file-access",
+          "data": {
+            "segment": "a57b6e97-ab5c-4e27-84ce-587ec2dc9301",
+            "provider": "opencode",
+            "operation": "read",
+            "path": "src/test/java/dev/codovyn/CalculatorTest.java",
+            "repositoryIdentity": "792e9a4ca6d91995aa069f04c18b18efa55bd8b0dd826a04a6b9a47cb03ab6c3",
+            "decision": "allowed",
+            "elapsedMs": 10.487999999999829
+          },
+          "createdAt": "2026-10-25T15:03:34.363Z"
+        },
+        {
+          "seq": 32,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "tool-start",
+              "actionId": "66c64fbd-ce0d-45cb-8e90-27311cce6b06",
+              "action": "file_change",
+              "safeToRetry": false
+            }
+          },
+          "createdAt": "2026-10-25T15:03:34.368Z"
+        },
+        {
+          "seq": 33,
+          "kind": "draft-write-prepared",
+          "data": {
+            "id": "66c64fbd-ce0d-45cb-8e90-27311cce6b06",
+            "segment": "a57b6e97-ab5c-4e27-84ce-587ec2dc9301",
+            "lockIdentity": "16777233:122500815",
+            "path": "src/test/java/dev/codovyn/CalculatorTest.java",
+            "beforeHash": "2c6ae1209b342ca6bb414b2744fb89b8b332035be8360e7a09b2fa53aeec22fc",
+            "afterHash": "57690e8c8bde1e684337bfd4565e620ba6ddefea2ef04a28b3488f559226d114",
+            "bytes": 492,
+            "repositoryIdentity": "792e9a4ca6d91995aa069f04c18b18efa55bd8b0dd826a04a6b9a47cb03ab6c3",
+            "stageDirectory": "/private/tmp/codovyn-task-runtime-gmdqyO/publisher/write-sNP3eO",
+            "configurationDigest": "a7d557d055cf0384b83d8eae15b42282b91db011482a2e69aa21bedde37b2118"
+          },
+          "createdAt": "2026-10-25T15:03:34.368Z"
+        },
+        {
+          "seq": 34,
+          "kind": "draft-write-process",
+          "data": {
+            "id": "66c64fbd-ce0d-45cb-8e90-27311cce6b06",
+            "segment": "a57b6e97-ab5c-4e27-84ce-587ec2dc9301",
+            "pid": 9376,
+            "group": true
+          },
+          "createdAt": "2026-10-25T15:03:34.369Z"
+        },
+        {
+          "seq": 35,
+          "kind": "draft-write-process-stopped",
+          "data": {
+            "id": "66c64fbd-ce0d-45cb-8e90-27311cce6b06",
+            "segment": "a57b6e97-ab5c-4e27-84ce-587ec2dc9301",
+            "pid": 9376
+          },
+          "createdAt": "2026-10-25T15:03:34.385Z"
+        },
+        {
+          "seq": 36,
+          "kind": "file-access",
+          "data": {
+            "segment": "a57b6e97-ab5c-4e27-84ce-587ec2dc9301",
+            "provider": "opencode",
+            "operation": "read",
+            "path": "src/test/java/dev/codovyn/CalculatorTest.java",
+            "repositoryIdentity": "792e9a4ca6d91995aa069f04c18b18efa55bd8b0dd826a04a6b9a47cb03ab6c3",
+            "decision": "allowed",
+            "elapsedMs": 10.452249999999822
+          },
+          "createdAt": "2026-10-25T15:03:34.400Z"
+        },
+        {
+          "seq": 37,
+          "kind": "draft-write-published",
+          "data": {
+            "id": "66c64fbd-ce0d-45cb-8e90-27311cce6b06"
+          },
+          "createdAt": "2026-10-25T15:03:34.400Z"
+        },
+        {
+          "seq": 38,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "tool-complete",
+              "actionId": "66c64fbd-ce0d-45cb-8e90-27311cce6b06",
+              "action": "file_change"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:34.400Z"
+        },
+        {
+          "seq": 39,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "tool-complete",
+              "actionId": "fixture-10",
+              "action": "other"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:34.403Z"
+        },
+        {
+          "seq": 40,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "text",
+              "text": "Deterministic local ACP/MCP fixture completed; no model inference. fixture/java deep build"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:34.403Z"
+        },
+        {
+          "seq": 41,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "completed"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:34.403Z"
+        },
+        {
+          "seq": 42,
+          "kind": "provider-stopped",
+          "data": {
+            "agent": "opencode"
+          },
+          "createdAt": "2026-10-25T15:03:34.407Z"
+        },
+        {
+          "seq": 43,
+          "kind": "task-completed",
+          "data": {
+            "agent": "opencode"
+          },
+          "createdAt": "2026-10-25T15:03:34.407Z"
+        }
+      ],
+      "groups": [
+        9127,
+        9257,
+        9376
+      ],
+      "cleanupVerified": true,
+      "inferenceRequests": 0
+    },
+    {
+      "review": "reject",
+      "passed": true,
+      "taskId": "java-task",
+      "execution": "DETERMINISTIC ACP/MCP NODE FIXTURE \u2014 NOT LIVE INFERENCE",
+      "fixtureSha256": "cc2bad1bb37304a73dd2cbeb5f6afb4bcc2c2470dfb79267753b6c9741c880da",
+      "moduleRoot": "/private/tmp/codovyn-phase16-copy-_pmmhine/CODOVYN.app/Contents/Resources/app/extensions/codovyn",
+      "taskStatus": "completed",
+      "tests": {
+        "command": "mvn -o test",
+        "exitCode": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "patchHash": "7abb9704d26afd3ec3a159f2565fbaed5731fd35ca3075e6c66f22010bf340d2",
+      "changedPaths": [
+        "src/main/java/dev/codovyn/Calculator.java",
+        "src/test/java/dev/codovyn/CalculatorTest.java"
+      ],
+      "originalUnchangedBeforeApproval": true,
+      "originalUnchangedAfterRejection": true,
+      "reviewedAcceptance": false,
+      "writeIntents": [
+        {
+          "id": "154e33f5-7328-4c63-af07-bad8db9b718d",
+          "taskId": "java-task",
+          "segment": "d160905a-43df-4b11-9e7b-4c5e4c9f4d53",
+          "lockIdentity": "16777233:122501145",
+          "path": "src/main/java/dev/codovyn/Calculator.java",
+          "beforeHash": "dbb6e2410f4b1f153c3c840ed376b42c9ba1f3f094f899a14767678de9eaf9d4",
+          "afterHash": "d60aa13917636423cb11a4a17490de6aaf40b04ddd78bbdd9aaf317277d225f5",
+          "bytes": 254,
+          "repositoryIdentity": "5392c07a378bbe073cd8c4774c33f22786b1eb7e99c5c02cc0afa75aa7f0a478",
+          "stageDirectory": "/private/tmp/codovyn-task-runtime-1IyfGz/publisher/write-DQO2d8",
+          "configurationDigest": "a7d557d055cf0384b83d8eae15b42282b91db011482a2e69aa21bedde37b2118",
+          "version": 1,
+          "state": "published"
+        },
+        {
+          "id": "fc4f9044-eeb0-4acd-864a-10aa7b9a32b5",
+          "taskId": "java-task",
+          "segment": "d160905a-43df-4b11-9e7b-4c5e4c9f4d53",
+          "lockIdentity": "16777233:122501148",
+          "path": "src/test/java/dev/codovyn/CalculatorTest.java",
+          "beforeHash": "2c6ae1209b342ca6bb414b2744fb89b8b332035be8360e7a09b2fa53aeec22fc",
+          "afterHash": "57690e8c8bde1e684337bfd4565e620ba6ddefea2ef04a28b3488f559226d114",
+          "bytes": 492,
+          "repositoryIdentity": "5392c07a378bbe073cd8c4774c33f22786b1eb7e99c5c02cc0afa75aa7f0a478",
+          "stageDirectory": "/private/tmp/codovyn-task-runtime-1IyfGz/publisher/write-iMMuUK",
+          "configurationDigest": "a7d557d055cf0384b83d8eae15b42282b91db011482a2e69aa21bedde37b2118",
+          "version": 1,
+          "state": "published"
+        }
+      ],
+      "journal": [
+        {
+          "seq": 1,
+          "kind": "task-configuration",
+          "data": {
+            "provider": "opencode",
+            "permission": "read-write",
+            "intent": "agent",
+            "modelId": "fixture/java",
+            "reasoning": "deep"
+          },
+          "createdAt": "2026-10-25T15:03:38.227Z"
+        },
+        {
+          "seq": 2,
+          "kind": "draft-created",
+          "data": {
+            "baseCommit": "8f16b959763703eab55ea792fc848e1843fed888"
+          },
+          "createdAt": "2026-10-25T15:03:38.227Z"
+        },
+        {
+          "seq": 3,
+          "kind": "execution-owned",
+          "data": {
+            "token": "[redacted execution capability]"
+          },
+          "createdAt": "2026-10-25T15:03:38.228Z"
+        },
+        {
+          "seq": 4,
+          "kind": "agent-started",
+          "data": {
+            "agent": "opencode",
+            "repository": {
+              "root": "/private/var/folders/m6/yq18_j7n0l70y1zllfgm50s80000gn/T/codovyn-guarded-java-hT5eop/drafts/java-task",
+              "filesystemIdentity": "16777233:122501055",
+              "branch": null,
+              "commit": "8f16b959763703eab55ea792fc848e1843fed888",
+              "dirty": false,
+              "changedPaths": [],
+              "workingTreeHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:38.507Z"
+        },
+        {
+          "seq": 5,
+          "kind": "handoff-prepared",
+          "data": {
+            "agent": "opencode",
+            "packet": {
+              "schemaVersion": 1,
+              "request": "Fix Calculator subtraction and add a JUnit regression test in the approved isolated draft",
+              "step": 0,
+              "repository": {
+                "worktreeIdentity": "3bcc077b92e6d9a4eae18ff6c5e9832d6558ddb0db8d1802538a314c04df23e2",
+                "branch": null,
+                "commit": "8f16b959763703eab55ea792fc848e1843fed888",
+                "workingTreeHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "dirty": false,
+                "changedPaths": []
+              },
+              "reconciliations": [],
+              "actions": [],
+              "providerReports": [],
+              "failures": [],
+              "continuation": "Inspect the verified worktree before continuing. Do not replay unresolved or write-capable actions automatically."
+            }
+          },
+          "createdAt": "2026-10-25T15:03:38.508Z"
+        },
+        {
+          "seq": 6,
+          "kind": "provider-starting",
+          "data": {
+            "agent": "opencode"
+          },
+          "createdAt": "2026-10-25T15:03:40.082Z"
+        },
+        {
+          "seq": 7,
+          "kind": "provider-spawned",
+          "data": {
+            "agent": "opencode",
+            "pid": 10896,
+            "group": true
+          },
+          "createdAt": "2026-10-25T15:03:40.082Z"
+        },
+        {
+          "seq": 8,
+          "kind": "execution-authority-bound",
+          "data": {
+            "segment": "d160905a-43df-4b11-9e7b-4c5e4c9f4d53",
+            "provider": "opencode",
+            "pid": 10896,
+            "configurationDigest": "a7d557d055cf0384b83d8eae15b42282b91db011482a2e69aa21bedde37b2118",
+            "permission": "read-write"
+          },
+          "createdAt": "2026-10-25T15:03:40.083Z"
+        },
+        {
+          "seq": 9,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "session",
+              "sessionId": "fixture-session",
+              "model": "fixture/java",
+              "reasoning": "deep"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:40.229Z"
+        },
+        {
+          "seq": 10,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "tool-start",
+              "actionId": "fixture-4",
+              "action": "other"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:40.230Z"
+        },
+        {
+          "seq": 11,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "permission",
+              "status": "approved-scope",
+              "action": "other"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:40.230Z"
+        },
+        {
+          "seq": 12,
+          "kind": "file-access",
+          "data": {
+            "segment": "d160905a-43df-4b11-9e7b-4c5e4c9f4d53",
+            "provider": "opencode",
+            "operation": "read",
+            "path": "src/main/java/dev/codovyn/Calculator.java",
+            "repositoryIdentity": "5392c07a378bbe073cd8c4774c33f22786b1eb7e99c5c02cc0afa75aa7f0a478",
+            "decision": "allowed",
+            "elapsedMs": 107.6028750000005
+          },
+          "createdAt": "2026-10-25T15:03:40.342Z"
+        },
+        {
+          "seq": 13,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "tool-complete",
+              "actionId": "fixture-4",
+              "action": "other"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:40.345Z"
+        },
+        {
+          "seq": 14,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "tool-start",
+              "actionId": "fixture-6",
+              "action": "other"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:40.345Z"
+        },
+        {
+          "seq": 15,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "permission",
+              "status": "approved-scope",
+              "action": "other"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:40.345Z"
+        },
+        {
+          "seq": 16,
+          "kind": "file-access",
+          "data": {
+            "segment": "d160905a-43df-4b11-9e7b-4c5e4c9f4d53",
+            "provider": "opencode",
+            "operation": "read",
+            "path": "src/main/java/dev/codovyn/Calculator.java",
+            "repositoryIdentity": "5392c07a378bbe073cd8c4774c33f22786b1eb7e99c5c02cc0afa75aa7f0a478",
+            "decision": "allowed",
+            "elapsedMs": 9.020125000000917
+          },
+          "createdAt": "2026-10-25T15:03:40.420Z"
+        },
+        {
+          "seq": 17,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "tool-start",
+              "actionId": "154e33f5-7328-4c63-af07-bad8db9b718d",
+              "action": "file_change",
+              "safeToRetry": false
+            }
+          },
+          "createdAt": "2026-10-25T15:03:40.510Z"
+        },
+        {
+          "seq": 18,
+          "kind": "draft-write-prepared",
+          "data": {
+            "id": "154e33f5-7328-4c63-af07-bad8db9b718d",
+            "segment": "d160905a-43df-4b11-9e7b-4c5e4c9f4d53",
+            "lockIdentity": "16777233:122501145",
+            "path": "src/main/java/dev/codovyn/Calculator.java",
+            "beforeHash": "dbb6e2410f4b1f153c3c840ed376b42c9ba1f3f094f899a14767678de9eaf9d4",
+            "afterHash": "d60aa13917636423cb11a4a17490de6aaf40b04ddd78bbdd9aaf317277d225f5",
+            "bytes": 254,
+            "repositoryIdentity": "5392c07a378bbe073cd8c4774c33f22786b1eb7e99c5c02cc0afa75aa7f0a478",
+            "stageDirectory": "/private/tmp/codovyn-task-runtime-1IyfGz/publisher/write-DQO2d8",
+            "configurationDigest": "a7d557d055cf0384b83d8eae15b42282b91db011482a2e69aa21bedde37b2118"
+          },
+          "createdAt": "2026-10-25T15:03:40.510Z"
+        },
+        {
+          "seq": 19,
+          "kind": "draft-write-process",
+          "data": {
+            "id": "154e33f5-7328-4c63-af07-bad8db9b718d",
+            "segment": "d160905a-43df-4b11-9e7b-4c5e4c9f4d53",
+            "pid": 11019,
+            "group": true
+          },
+          "createdAt": "2026-10-25T15:03:40.511Z"
+        },
+        {
+          "seq": 20,
+          "kind": "draft-write-process-stopped",
+          "data": {
+            "id": "154e33f5-7328-4c63-af07-bad8db9b718d",
+            "segment": "d160905a-43df-4b11-9e7b-4c5e4c9f4d53",
+            "pid": 11019
+          },
+          "createdAt": "2026-10-25T15:03:40.530Z"
+        },
+        {
+          "seq": 21,
+          "kind": "file-access",
+          "data": {
+            "segment": "d160905a-43df-4b11-9e7b-4c5e4c9f4d53",
+            "provider": "opencode",
+            "operation": "read",
+            "path": "src/main/java/dev/codovyn/Calculator.java",
+            "repositoryIdentity": "5392c07a378bbe073cd8c4774c33f22786b1eb7e99c5c02cc0afa75aa7f0a478",
+            "decision": "allowed",
+            "elapsedMs": 8.747459000000163
+          },
+          "createdAt": "2026-10-25T15:03:40.542Z"
+        },
+        {
+          "seq": 22,
+          "kind": "draft-write-published",
+          "data": {
+            "id": "154e33f5-7328-4c63-af07-bad8db9b718d"
+          },
+          "createdAt": "2026-10-25T15:03:40.543Z"
+        },
+        {
+          "seq": 23,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "tool-complete",
+              "actionId": "154e33f5-7328-4c63-af07-bad8db9b718d",
+              "action": "file_change"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:40.543Z"
+        },
+        {
+          "seq": 24,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "tool-complete",
+              "actionId": "fixture-6",
+              "action": "other"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:40.546Z"
+        },
+        {
+          "seq": 25,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "tool-start",
+              "actionId": "fixture-8",
+              "action": "other"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:40.546Z"
+        },
+        {
+          "seq": 26,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "permission",
+              "status": "approved-scope",
+              "action": "other"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:40.546Z"
+        },
+        {
+          "seq": 27,
+          "kind": "file-access",
+          "data": {
+            "segment": "d160905a-43df-4b11-9e7b-4c5e4c9f4d53",
+            "provider": "opencode",
+            "operation": "read",
+            "path": "src/test/java/dev/codovyn/CalculatorTest.java",
+            "repositoryIdentity": "5392c07a378bbe073cd8c4774c33f22786b1eb7e99c5c02cc0afa75aa7f0a478",
+            "decision": "allowed",
+            "elapsedMs": 9.072041000001263
+          },
+          "createdAt": "2026-10-25T15:03:40.559Z"
+        },
+        {
+          "seq": 28,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "tool-complete",
+              "actionId": "fixture-8",
+              "action": "other"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:40.562Z"
+        },
+        {
+          "seq": 29,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "tool-start",
+              "actionId": "fixture-10",
+              "action": "other"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:40.562Z"
+        },
+        {
+          "seq": 30,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "permission",
+              "status": "approved-scope",
+              "action": "other"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:40.562Z"
+        },
+        {
+          "seq": 31,
+          "kind": "file-access",
+          "data": {
+            "segment": "d160905a-43df-4b11-9e7b-4c5e4c9f4d53",
+            "provider": "opencode",
+            "operation": "read",
+            "path": "src/test/java/dev/codovyn/CalculatorTest.java",
+            "repositoryIdentity": "5392c07a378bbe073cd8c4774c33f22786b1eb7e99c5c02cc0afa75aa7f0a478",
+            "decision": "allowed",
+            "elapsedMs": 13.612750000000233
+          },
+          "createdAt": "2026-10-25T15:03:40.640Z"
+        },
+        {
+          "seq": 32,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "tool-start",
+              "actionId": "fc4f9044-eeb0-4acd-864a-10aa7b9a32b5",
+              "action": "file_change",
+              "safeToRetry": false
+            }
+          },
+          "createdAt": "2026-10-25T15:03:40.643Z"
+        },
+        {
+          "seq": 33,
+          "kind": "draft-write-prepared",
+          "data": {
+            "id": "fc4f9044-eeb0-4acd-864a-10aa7b9a32b5",
+            "segment": "d160905a-43df-4b11-9e7b-4c5e4c9f4d53",
+            "lockIdentity": "16777233:122501148",
+            "path": "src/test/java/dev/codovyn/CalculatorTest.java",
+            "beforeHash": "2c6ae1209b342ca6bb414b2744fb89b8b332035be8360e7a09b2fa53aeec22fc",
+            "afterHash": "57690e8c8bde1e684337bfd4565e620ba6ddefea2ef04a28b3488f559226d114",
+            "bytes": 492,
+            "repositoryIdentity": "5392c07a378bbe073cd8c4774c33f22786b1eb7e99c5c02cc0afa75aa7f0a478",
+            "stageDirectory": "/private/tmp/codovyn-task-runtime-1IyfGz/publisher/write-iMMuUK",
+            "configurationDigest": "a7d557d055cf0384b83d8eae15b42282b91db011482a2e69aa21bedde37b2118"
+          },
+          "createdAt": "2026-10-25T15:03:40.643Z"
+        },
+        {
+          "seq": 34,
+          "kind": "draft-write-process",
+          "data": {
+            "id": "fc4f9044-eeb0-4acd-864a-10aa7b9a32b5",
+            "segment": "d160905a-43df-4b11-9e7b-4c5e4c9f4d53",
+            "pid": 11137,
+            "group": true
+          },
+          "createdAt": "2026-10-25T15:03:40.644Z"
+        },
+        {
+          "seq": 35,
+          "kind": "draft-write-process-stopped",
+          "data": {
+            "id": "fc4f9044-eeb0-4acd-864a-10aa7b9a32b5",
+            "segment": "d160905a-43df-4b11-9e7b-4c5e4c9f4d53",
+            "pid": 11137
+          },
+          "createdAt": "2026-10-25T15:03:40.659Z"
+        },
+        {
+          "seq": 36,
+          "kind": "file-access",
+          "data": {
+            "segment": "d160905a-43df-4b11-9e7b-4c5e4c9f4d53",
+            "provider": "opencode",
+            "operation": "read",
+            "path": "src/test/java/dev/codovyn/CalculatorTest.java",
+            "repositoryIdentity": "5392c07a378bbe073cd8c4774c33f22786b1eb7e99c5c02cc0afa75aa7f0a478",
+            "decision": "allowed",
+            "elapsedMs": 8.58141699999942
+          },
+          "createdAt": "2026-10-25T15:03:40.671Z"
+        },
+        {
+          "seq": 37,
+          "kind": "draft-write-published",
+          "data": {
+            "id": "fc4f9044-eeb0-4acd-864a-10aa7b9a32b5"
+          },
+          "createdAt": "2026-10-25T15:03:40.671Z"
+        },
+        {
+          "seq": 38,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "tool-complete",
+              "actionId": "fc4f9044-eeb0-4acd-864a-10aa7b9a32b5",
+              "action": "file_change"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:40.671Z"
+        },
+        {
+          "seq": 39,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "tool-complete",
+              "actionId": "fixture-10",
+              "action": "other"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:40.674Z"
+        },
+        {
+          "seq": 40,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "text",
+              "text": "Deterministic local ACP/MCP fixture completed; no model inference. fixture/java deep build"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:40.674Z"
+        },
+        {
+          "seq": 41,
+          "kind": "agent-event",
+          "data": {
+            "agent": "opencode",
+            "event": {
+              "type": "completed"
+            }
+          },
+          "createdAt": "2026-10-25T15:03:40.674Z"
+        },
+        {
+          "seq": 42,
+          "kind": "provider-stopped",
+          "data": {
+            "agent": "opencode"
+          },
+          "createdAt": "2026-10-25T15:03:40.677Z"
+        },
+        {
+          "seq": 43,
+          "kind": "task-completed",
+          "data": {
+            "agent": "opencode"
+          },
+          "createdAt": "2026-10-25T15:03:40.677Z"
+        }
+      ],
+      "groups": [
+        10896,
+        11019,
+        11137
+      ],
+      "cleanupVerified": true,
+      "inferenceRequests": 0
+    }
+  ],
+  "packagedBuild": {
+    "identity": {
+      "name": "CODOVYN",
+      "bundleId": "org.codovyn.desktop",
+      "applicationName": "codovyn",
+      "repository": "https://github.com/Gautam-aman/CODOVYN",
+      "version": "0.1.0-alpha.1"
+    },
+    "artifacts": {
+      "editor": {
+        "filename": "VSCodium-darwin-arm64-1.140.06880.zip",
+        "url": "https://github.com/VSCodium/vscodium/releases/download/1.140.06880/VSCodium-darwin-arm64-1.140.06880.zip",
+        "sha256": "3a0ba1a13b6d743f79ffc20bebd7a2ef8bab2b40e54bcc80fae123da9ed552e0"
+      },
+      "runtime": {
+        "filename": "node-v26.9.0-darwin-arm64.tar.gz",
+        "url": "https://nodejs.org/dist/v26.9.0/node-v26.9.0-darwin-arm64.tar.gz",
+        "sha256": "6f3de7ed853ee283b4bf24b6e426618f1d357401ce5815db1866eb85eb4b05d9"
+      }
+    },
+    "sourceCommit": "7ddd404d863d77ac7d3ebaab334cf57d5882d86b",
+    "sourceDirty": false,
+    "signing": "ad-hoc-development",
+    "platform": "darwin-arm64"
+  },
+  "passed": true
+}

@@ -1,0 +1,75 @@
+{
+  "scope": "Recorded disposable broker/provider/fixture groups; read-only final check, no signals sent",
+  "groupCount": 296,
+  "remaining": [],
+  "nativeLifecycleRecords": [
+    {
+      "file": "copied-chat-first-launch-lifecycle.json",
+      "pid": 2683,
+      "result": {
+        "code": 0,
+        "signal": null
+      },
+      "survivors": []
+    },
+    {
+      "file": "copied-chat-relaunch-lifecycle.json",
+      "pid": 3290,
+      "result": {
+        "code": 0,
+        "signal": null
+      },
+      "survivors": []
+    },
+    {
+      "file": "copied-host-lifecycle.json",
+      "pid": 6208,
+      "result": {
+        "code": 0,
+        "signal": null
+      },
+      "survivors": []
+    },
+    {
+      "file": "copied-restoration-read-lifecycle.json",
+      "pid": 8375,
+      "result": {
+        "code": 0,
+        "signal": null
+      },
+      "survivors": []
+    },
+    {
+      "file": "copied-restoration-write-lifecycle.json",
+      "pid": 8223,
+      "result": {
+        "code": 0,
+        "signal": null
+      },
+      "survivors": []
+    },
+    {
+      "file": "copied-routing-initial-failure-lifecycle.json",
+      "pid": 4548,
+      "result": {
+        "cancelled": true
+      },
+      "survivors": []
+    },
+    {
+      "file": "copied-java-host-lifecycle.json",
+      "pid": 99283,
+      "result": {
+        "code": 0,
+        "signal": null
+      },
+      "survivors": []
+    }
+  ],
+  "unrelatedProcessesTargeted": false,
+  "copiedAdapterHarness": {
+    "sha256": "f89a68cbe859d959724a1a87f58b575cd257d8c86692ce1e633b37fb7d89362f",
+    "packageRoot": "/private/tmp/codovyn-phase16-copy-_pmmhine/CODOVYN.app/Contents/Resources/app/extensions/codovyn",
+    "origin": "Existing metadata-only harness with package imports rebound to copied app; host fixture/process helpers unchanged"
+  }
+}
