@@ -93,8 +93,8 @@
     "apps/*"
   ],
   "scripts": {
-    "test": "node --test",
-    "check": "node scripts/check-syntax.js && node --test",
+    "test": "node --test --test-concurrency=1",
+    "check": "node scripts/check-syntax.js && node --test --test-concurrency=1",
     "test:extension-host": "node scripts/run-extension-host.js",
     "vscode:prepublish": "npm run check",
     "package:extension": "vsce package --no-dependencies --githubBranch main --out codovyn-dev.vsix",

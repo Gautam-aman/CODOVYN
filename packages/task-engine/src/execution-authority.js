@@ -32,6 +32,9 @@ export function createTaskExecutionAuthority({store,taskId,provider,token,worksp
  };
  if(active){timer=setTimeout(revoke,ttlMs);timer.unref();}
  const authority=Object.freeze({taskId,segment,provider,workspace,configurationDigest:policyHash,permission:policy?.permission,intent:policy?.intent,expiresAt,signal:controller.signal,
+  get hasWrites(){return store.draftWrites(taskId).some(w=>w.segment===segment);},
+  ownPrivateProcess(pid){current();if(!child||!Number.isSafeInteger(pid)||pid<1)throw new Error('Invalid private process ownership');store.append(taskId,'execution-child-owned',{segment,provider,pid,parent:child.pid,group:true});},
+  privateProcessStopped(pid){store.append(taskId,'execution-child-stopped',{segment,pid});},
   draft(){current();const draft=store.events(taskId).findLast(e=>e.kind==='draft-created')?.data;if(policy.permission!=='read-write'||policy.intent!=='agent'||!draft?.baseCommit||workspace===store.get(taskId).repositoryRoot)throw new Error('Approved isolated draft required');return {original:store.get(taskId).repositoryRoot,baseCommit:draft.baseCommit};},
   beginWrite(metadata){current();authority.verify();authority.draft();if(!repositoryId||metadata.repositoryIdentity!==repositoryId)throw new Error('Draft write repository is not bound');const result=store.prepareDraftWrite({id:randomUUID(),taskId,token,segment,...metadata,configurationDigest:policyHash});onWriteEvent(result);return result.id;},
   finishWrite(id,state){if(['published','aborted'].includes(state))current();const result=store.finishDraftWrite(taskId,id,token,segment,state);if(result.event)onWriteEvent(result);if(['uncertain','conflict'].includes(state))revoke();},
@@ -41,7 +44,7 @@ export function createTaskExecutionAuthority({store,taskId,provider,token,worksp
    current();if(binding||child||boundProcesses.has(process))throw new Error('Execution authority is single-process and non-transferable');
    if(!(process instanceof ChildProcess)||!Number.isSafeInteger(process.pid)||process.pid<1||process.exitCode!==null||process.signalCode!==null||typeof identity?.executable!=='string'||!/^([a-f0-9]{64})$/.test(identity?.sha256||''))throw new Error('A live owned process and executable identity are required');
    if(process.spawnfile!==identity.executable&&!(process.spawnfile==='/usr/bin/sandbox-exec'&&process.spawnargs[1]==='-p'&&process.spawnargs[3]===identity.executable))throw new Error('Executable identity does not match the owned launch');
-   child=process;boundProcesses.add(process);binding=Object.freeze({...identity,pid:process.pid});child.once('exit',revoke);child.once('error',revoke);
+   child=process;boundProcesses.add(process);binding=Object.freeze({...identity,pid:process.pid,launcher:process.spawnfile});child.once('exit',revoke);child.once('error',revoke);
    store.append(taskId,'execution-authority-bound',{segment,provider,pid:process.pid,configurationDigest:policyHash,permission:policy.permission});
    return binding;
   },

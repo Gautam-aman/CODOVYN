@@ -17,14 +17,17 @@ export async function buildTaskPeerReader(directory,{signal}={}){
 export async function createTaskPeerVerifier({execution,pid,reader}){
  if(!isTaskExecutionAuthority(execution)||!Number.isSafeInteger(pid)||pid<1)throw new Error('Host-issued task process identity required');
  const owner=execution.verify(),parent=pid===owner.pid?process.pid:owner.pid;let birth;
+ const startupDeadline=performance.now()+1500;let launcherObservations=0,launcherBirth;
  async function inspect(operation,local=0,remote=0){
   execution.verify();const info=lstatSync(reader.command);if(!info.isFile()||info.mode&0o022||hash(readFileSync(reader.command))!==reader.sha256){execution.revoke();throw new Error('Peer reader integrity changed');}
-  const result=await repositoryTool(reader.command,[operation,String(pid),String(parent),owner.executable,birth?.seconds||'-',birth?.micros||'-',String(local),String(remote)],{signal:execution.signal,timeoutMs:1500,maxBytes:4096});
+  const timeoutMs=operation==='identity'&&!birth?Math.min(1500,Math.floor(startupDeadline-performance.now())):1500;if(timeoutMs<1){execution.revoke();throw new Error('Owned launcher did not reach executable readiness');}
+  const result=await repositoryTool(reader.command,[operation,String(pid),String(parent),owner.executable,birth?.seconds||'-',birth?.micros||'-',String(local),String(remote)],{signal:execution.signal,timeoutMs,maxBytes:4096});
+  if(result.code===78&&operation==='identity'&&!birth&&pid===owner.pid&&owner.launcher==='/usr/bin/sandbox-exec'&&++launcherObservations<=16&&performance.now()<startupDeadline){const observed=JSON.parse(result.stdout);if(!/^\d{1,20}$/.test(observed.seconds)||!/^\d{1,6}$/.test(observed.micros)||launcherBirth&&JSON.stringify(launcherBirth)!==JSON.stringify(observed)){execution.revoke();throw new Error('Owned launcher birth identity changed');}launcherBirth=observed;await new Promise(resolve=>setTimeout(resolve,5));return inspect(operation,local,remote);}
   if(result.code===77){execution.revoke();throw new Error('Task peer identity changed');}if(result.code!==0)throw new Error('Socket does not belong to the authorized task process');
   const value=JSON.parse(result.stdout);execution.verify();return value;
  }
- birth=await inspect('identity');if(!/^\d{1,20}$/.test(birth.seconds)||!/^\d{1,6}$/.test(birth.micros))throw new Error('Invalid task peer birth identity');
- return Object.freeze({pid,parent,
+ birth=await inspect('identity');if(!/^\d{1,20}$/.test(birth.seconds)||!/^\d{1,6}$/.test(birth.micros)||launcherBirth&&JSON.stringify(launcherBirth)!==JSON.stringify(birth)){execution.revoke();throw new Error('Invalid task peer birth identity');}
+ return Object.freeze({pid,parent,launcherObservations,
   async verify(socket){
    if(!(socket instanceof Socket)||socket.destroyed||socket.remoteAddress!=='127.0.0.1'||socket.localAddress!=='127.0.0.1'||![socket.remotePort,socket.localPort].every(port=>Number.isSafeInteger(port)&&port>0&&port<=65535))throw new Error('Only a live task-owned loopback socket is accepted');
    const value=await inspect('socket',socket.remotePort,socket.localPort);if(!/^[a-f0-9]{1,16}$/.test(value.generation))throw new Error('Invalid socket generation');return value.generation;

@@ -39,3 +39,13 @@ native-source digests when available. A changed identity or implementation requi
 fresh review. Consumed/expired approvals reject before a new metadata process starts.
 Metadata-only compatibility cannot admit a coding task or consume a continuation
 execution approval. Git task execution remains disabled.
+
+OpenCode draft writes now have durable task/segment-bound write intents. A
+prepared, conflicting or uncertain intent blocks ContextFlow preparation and
+execution admission until explicit host reconciliation. The current repository
+fingerprint and descriptor/process cleanup evidence must be verified; no partial
+write is replayed automatically. Implementation binding includes the adapter,
+MCP/TLS/peer modules, native readers/publisher, task authority/recovery and journal
+code, so an approval prepared against an older boundary requires fresh review.
+The normal adapter still refuses live prompts; deterministic continuation tests
+are not authenticated cross-provider evidence.

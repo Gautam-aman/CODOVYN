@@ -12,7 +12,8 @@
 #include <errno.h>
 static int number(const char *s,unsigned long long max,unsigned long long *out){if(!*s||strlen(s)>20)return 0;for(const char *p=s;*p;p++)if(*p<'0'||*p>'9')return 0;errno=0;char *end;*out=strtoull(s,&end,10);return !errno&&!*end&&*out<=max;}
 static int identity(int pid,int parent,const char *exe,const char *seconds,const char *micros,struct proc_bsdinfo *out){
- char actual[PROC_PIDPATHINFO_MAXSIZE];if(proc_pidinfo(pid,PROC_PIDTBSDINFO,0,out,sizeof *out)!=(int)sizeof *out||out->pbi_uid!=getuid()||out->pbi_pid!=(unsigned)pid||out->pbi_ppid!=(unsigned)parent||proc_pidpath(pid,actual,sizeof actual)<=0||strcmp(actual,exe))return 0;
+ char actual[PROC_PIDPATHINFO_MAXSIZE];if(proc_pidinfo(pid,PROC_PIDTBSDINFO,0,out,sizeof *out)!=(int)sizeof *out||out->pbi_uid!=getuid()||out->pbi_pid!=(unsigned)pid||out->pbi_ppid!=(unsigned)parent||proc_pidpath(pid,actual,sizeof actual)<=0)return 0;
+ if(strcmp(actual,exe))return !strcmp(seconds,"-")&&!strcmp(micros,"-")&&!strcmp(actual,"/usr/bin/sandbox-exec")?2:0;
  if(!strcmp(seconds,"-")&&!strcmp(micros,"-"))return 1;unsigned long long s,u;if(!number(seconds,ULLONG_MAX,&s)||!number(micros,999999,&u))return 0;return out->pbi_start_tvsec==s&&out->pbi_start_tvusec==u;
 }
 static int socket_matches(struct socket_fdinfo *s,int local,int remote){
@@ -22,7 +23,7 @@ static int socket_matches(struct socket_fdinfo *s,int local,int remote){
 int main(int argc,char **argv){
  if(argc!=9||strlen(argv[4])>=PROC_PIDPATHINFO_MAXSIZE)return 76;unsigned long long pid,parent,local,remote;
  if(!number(argv[2],INT_MAX,&pid)||!pid||!number(argv[3],INT_MAX,&parent)||!parent||!number(argv[7],65535,&local)||!number(argv[8],65535,&remote))return 76;
- struct proc_bsdinfo before,after;if(!identity((int)pid,(int)parent,argv[4],argv[5],argv[6],&before))return 77;
+ struct proc_bsdinfo before,after;int state=identity((int)pid,(int)parent,argv[4],argv[5],argv[6],&before);if(state==2){printf("{\"seconds\":\"%llu\",\"micros\":\"%llu\"}\n",(unsigned long long)before.pbi_start_tvsec,(unsigned long long)before.pbi_start_tvusec);return 78;}if(!state)return 77;
  if(!strcmp(argv[1],"identity")&&!local&&!remote){printf("{\"seconds\":\"%llu\",\"micros\":\"%llu\"}\n",(unsigned long long)before.pbi_start_tvsec,(unsigned long long)before.pbi_start_tvusec);return 0;}
  if(strcmp(argv[1],"socket")||!local||!remote||!strcmp(argv[5],"-"))return 76;
  struct proc_fdinfo fds[4096];int bytes=proc_pidinfo((int)pid,PROC_PIDLISTFDS,0,fds,sizeof fds);if(bytes<=0||bytes>=(int)sizeof fds||bytes%(int)sizeof(fds[0]))return 76;

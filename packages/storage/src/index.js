@@ -193,7 +193,7 @@ export class TaskStore {
       typeof metadata.path!=='string'||metadata.path.length>4095||metadata.path.split('/').some(p=>!p||p[0]==='.'||/credential|secret|token|^auth\.json$|^id_|\.pem|\.key/i.test(p))||/[\x00-\x1f\\]/.test(metadata.path)||
       ![metadata.afterHash,metadata.configurationDigest,metadata.repositoryIdentity].every(h=>typeof h==='string'&&/^[a-f0-9]{64}$/.test(h))||
       !(metadata.beforeHash===null||typeof metadata.beforeHash==='string'&&/^[a-f0-9]{64}$/.test(metadata.beforeHash))||!Number.isSafeInteger(metadata.bytes)||metadata.bytes<0||metadata.bytes>65536||
-      typeof metadata.stageDirectory!=='string'||!metadata.stageDirectory.startsWith('/')||Object.keys(metadata).some(k=>!['path','beforeHash','afterHash','bytes','configurationDigest','repositoryIdentity','stageDirectory'].includes(k))||JSON.stringify(metadata).length>8192)throw new TypeError('Invalid bounded draft write intent');
+      typeof metadata.stageDirectory!=='string'||!metadata.stageDirectory.startsWith('/')||metadata.lockIdentity!==undefined&&!/^\d+:\d+$/.test(metadata.lockIdentity)||Object.keys(metadata).some(k=>!['path','beforeHash','afterHash','bytes','configurationDigest','repositoryIdentity','stageDirectory','lockIdentity'].includes(k))||JSON.stringify(metadata).length>8192)throw new TypeError('Invalid bounded draft write intent');
     this.#db.exec('BEGIN IMMEDIATE');try{
       const lease=this.executionLease(taskId),task=this.get(taskId);
       if(!lease||lease.releasedAt!==null||lease.token!==token||lease.owner.pid!==process.pid||lease.owner.host!==hostname()||task.status!=='running'||task.activeAgent!=='opencode')throw new Error('Draft write has no current execution owner');

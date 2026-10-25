@@ -20,7 +20,7 @@ async function fixture(fn){
 function check(name,fn){test(name,{skip:!supported,timeout:20000},fn);}
 check('authorized task process discovers and invokes the real read-only MCP tool; sensitive and write requests are denied',async()=>fixture(async({root,rpc,initialize})=>{
  await initialize();const listed=await rpc('tools/list');assert.equal(listed.body.result.tools.length,1);assert.equal(listed.body.result.tools[0].name,'read_project_text');
- const read=await rpc('tools/call',{name:'read_project_text',arguments:{path:'Calculator.java'}});assert.equal(read.body.result.content[0].text,'class Calculator {}\n');
+ const read=await rpc('tools/call',{name:'read_project_text',arguments:{path:'Calculator.java'}});assert.equal(JSON.parse(read.body.result.content[0].text).text,'class Calculator {}\n');assert.match(JSON.parse(read.body.result.content[0].text).version,/^[a-f0-9]{64}$/);
  const secret=await rpc('tools/call',{name:'read_project_text',arguments:{path:'.env'}});assert.equal(secret.body.result.isError,true);assert.ok(!JSON.stringify(secret).includes('PRIVATE_WITNESS'));
  const write=await rpc('tools/call',{name:'write_file',arguments:{path:'Calculator.java',content:'bad'}});assert.equal(write.body.error.code,-32602);assert.equal(readFileSync(join(root,'Calculator.java'),'utf8'),'class Calculator {}\n');
 }));

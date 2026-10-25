@@ -1,5 +1,7 @@
 import { hostname } from 'node:os';
 import { randomUUID, createHash } from 'node:crypto';
+import{inspectDraftWriteLocks,draftWriteLockIsQuiescent}from'./draft-write-recovery.js';
+export{inspectDraftWriteLocks}from'./draft-write-recovery.js';
 
 export function processAbsent(pid) {
   try { process.kill(pid, 0); return false; }
@@ -7,13 +9,18 @@ export function processAbsent(pid) {
 }
 
 /** No timeout, guessed PID identity or missing completion event establishes safety. */
-export function executionRecovery(store, id, { host = hostname(), absent = processAbsent, platform = process.platform } = {}) {
+export function executionRecovery(store, id, { host = hostname(), absent = processAbsent, platform = process.platform, draftLocks } = {}) {
   const lease = store.executionLease(id);
   if (!lease) return { safe: false, reason: 'legacy-process-ownership-unknown' };
   const writeHistory=store.events(id);
+  const ownershipStart=writeHistory.findLast(e=>e.kind==='execution-owned'&&e.data.token===lease.token)?.seq??0;
+  for(const child of writeHistory.filter(e=>e.seq>ownershipStart&&e.kind==='execution-child-owned')){
+    const stopped=writeHistory.some(e=>e.seq>child.seq&&e.kind==='execution-child-stopped'&&e.data.pid===child.data.pid&&e.data.segment===child.data.segment);
+    if(!stopped&&(lease.owner.host!==host||platform==='win32'||!absent(-child.data.pid)))return {safe:false,reason:'private-provider-group-alive-or-unverifiable'};
+  }
   for(const intent of store.unresolvedDraftWrites(id)){
     const launch=writeHistory.findLast(e=>e.kind==='draft-write-process'&&e.data.id===intent.id);
-    if(!launch)return {safe:false,reason:'draft-write-registration-unknown'};
+    if(!launch){if(draftWriteLockIsQuiescent(draftLocks,store,id,intent))continue;return {safe:false,reason:'draft-write-registration-unknown'};}
     const stopped=writeHistory.findLast(e=>e.kind==='draft-write-process-stopped'&&e.data.id===intent.id&&e.data.pid===launch.data.pid);
     if(!stopped&&(lease.owner.host!==host||platform==='win32'||!absent(-launch.data.pid)))return {safe:false,reason:'draft-writer-alive-or-unverifiable'};
   }
@@ -61,7 +68,7 @@ export async function reconcileDraft({ store, id, snapshot, expectedFingerprint,
   if (!confirm || !['preserve', 'abandon'].includes(decision)) throw new Error('Explicit recovery confirmation required');
   const task=store.get(id);
   if (!task || !['running','interrupted','cancelled'].includes(task.status)) throw new Error('Task is not recoverable');
-  const safety=executionRecovery(store,id,evidence);
+  const draftLocks=await inspectDraftWriteLocks(store,id);const safety=executionRecovery(store,id,{...evidence,draftLocks});
   if (!safety.safe) throw new Error(`Recovery blocked: ${safety.reason}`);
   const previous=store.executionLease(id);
   if (!previous.releasedAt) store.releaseExecution(id,previous.token);

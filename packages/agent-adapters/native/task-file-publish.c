@@ -5,6 +5,7 @@
  * stdin: START, old/new byte lengths, bounded preimage/new bytes, then COMMIT.
  * fd 3: approved draft root; fd 4: private same-filesystem staging directory. */
 #include <sys/stat.h>
+#include <sys/file.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -24,7 +25,9 @@ static int identity(int fd,char *out,size_t size){struct stat s;if(fstat(fd,&s)|
 static int equal_bytes(int fd,const unsigned char *data,size_t size){unsigned char actual[LIMIT+1];if(lseek(fd,0,SEEK_SET)<0)return 0;size_t total=0;while(total<=LIMIT){ssize_t n=read(fd,actual+total,LIMIT+1-total);if(n<0)return 0;if(!n)break;total+=(size_t)n;}return total==size&&!memcmp(actual,data,size);}
 static int length_line(unsigned long *n){char line[16],*end;if(!fgets(line,sizeof line,stdin))return 0;errno=0;*n=strtoul(line,&end,10);return !errno&&*n<=LIMIT&&end!=line&&!strcmp(end,"\n");}
 int main(int argc,char **argv){
+ if(argc==2&&!strcmp(argv[1],"--lock")){struct stat s;if(fstat(3,&s)||!S_ISREG(s.st_mode)||s.st_nlink!=1||s.st_uid!=getuid())return 76;return flock(3,LOCK_EX|LOCK_NB)?75:0;}
  if(argc!=7||!matches(argv[1],3)||!matches(argv[2],4)||strlen(argv[3])>=PATH_MAX||!component(argv[4]))return fail();
+ int lease=openat(4,"lease",O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);struct stat lock;if(lease<0||!same(lease,5)||fstat(5,&lock)||!S_ISREG(lock.st_mode)||lock.st_uid!=getuid()||lock.st_nlink!=1||flock(5,LOCK_EX|LOCK_NB))return fail();close(lease);
  int replace=!strcmp(argv[5],"replace");if(!replace&&strcmp(argv[5],"create"))return fail();
  const char *path=argv[3],*staging=argv[4];if(!*path||path[0]=='/'||path[strlen(path)-1]=='/'||strstr(path,"//"))return fail();
  /* No mutation before the host has durably recorded this process identity. */

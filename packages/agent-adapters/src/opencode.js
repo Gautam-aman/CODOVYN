@@ -4,6 +4,8 @@ import { join, delimiter, isAbsolute, resolve, relative, dirname } from 'node:pa
 import { createHash } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 import {captureOpenCodeServer} from './opencode-process.js';
+import{isTaskExecutionAuthority}from'../../task-engine/src/execution-authority.js';
+import{prepareOpenCodeTaskRuntime}from'./opencode-task-runtime.js';
 import {isTaskMcpBridge} from './task-mcp.js';
 import { AcpConnection } from './acp.js';
 import { manageAgentProcess } from './process.js';
@@ -29,7 +31,7 @@ async function ownedOutput(command,args,options) {
 export const openCodeVersion = '2.1.2';
 export function openCodeProjectReadiness(cwd) {
   let directory;try{directory=realpathSync(cwd);}catch{return {executionSupported:false,diagnostic:'OpenCode project identity could not be verified.'};}
-  for(;;){if(statExists(join(directory,'.git')))return {executionSupported:false,diagnostic:'OpenCode 2.1.2 Git-backed execution is blocked: real git subprocesses denied by CODOVYN; metadata-only broker inspection is experimental. Task-bound host reads are implemented, but provider-native file tools cannot yet use that mediation. Safe Agent writes remain blocked; authentication cannot remove these gates.'};const parent=dirname(directory);if(parent===directory)break;directory=parent;}
+  for(;;){if(statExists(join(directory,'.git')))return {executionSupported:false,diagnostic:'OpenCode 2.1.2 Git-backed execution is blocked pending separately authorized live validation. Real git subprocesses denied by CODOVYN; the repository broker mediates metadata only. Task-bound MCP reads and conflict-checked isolated draft writes are implemented. Provider-native file tools remain denied. Metadata initialization does not authorize live inference.'};const parent=dirname(directory);if(parent===directory)break;directory=parent;}
   return {executionSupported:process.platform==='darwin'&&process.arch==='arm64',diagnostic:'Non-Git metadata inspection only; this does not prove authenticated Git-backed execution.'};
 }
 /** Installation, process-policy compatibility and authentication are separate facts.
@@ -37,7 +39,7 @@ export function openCodeProjectReadiness(cwd) {
 export function openCodeProviderStatus(installation,cwd) {
   const compatible=installation?.compatible===true&&installation.version===openCodeVersion;
   const project=openCodeProjectReadiness(cwd);
-  return {executionSupported:compatible&&project.executionSupported,
+  return {executionSupported:false,
     compatibility:compatible?'version-compatible':'unsupported-version',
     readiness:!compatible?'blocked-version':!project.executionSupported?'blocked-project-boundary':'initialization-unverified',
     metadataInitialization:'not-verified',authentication:'unknown',availability:'unknown',
@@ -76,7 +78,7 @@ async function begin(connection,cwd,model,variant,write,fileBridge) {
   if(fileBridge&&(!isTaskMcpBridge(fileBridge)||fileBridge.workspace!==cwd))throw new AgentFailure('fatal','Only a matching host-issued task file bridge may configure MCP');
   const initialized=await connection.request('initialize',{protocolVersion:1,clientInfo:{name:'codovyn',version:'0.1.0'},clientCapabilities:{fs:{readTextFile:false,writeTextFile:false},terminal:false}});
   if(initialized?.protocolVersion!==1)throw new AgentFailure('fatal','Unsupported ACP protocol version');
-  let session=await connection.request('session/new',{cwd,mcpServers:fileBridge?[fileBridge.descriptor()]:[]});
+  let session=await connection.request('session/new',{cwd,mcpServers:fileBridge&&!fileBridge.configured?[fileBridge.descriptor()]:[]});
   if(typeof session?.sessionId!=='string'||!/^[a-zA-Z0-9_-]{1,128}$/.test(session.sessionId))throw new AgentFailure('fatal','Invalid ACP session identity');
   if(model){
     if(!optionValues(configOption(session,'model')).some(entry=>entry.value===model))throw new AgentFailure('fatal','Selected OpenCode model is not advertised for this session');
@@ -142,15 +144,21 @@ export function createOpenCodeAdapter({cwd,stateDirectory,command,write=false,mo
     async *run({handoff,signal,execution}){
       const installation=await runtime.inspect(command);
       if(!installation.compatible)throw new AgentFailure('fatal','OpenCode version is not verified');
-      if(runtime.boundary===openCodeBoundary)requireProjectReadiness(cwd);
-      const boundary=runtime.boundary({cwd,stateDirectory,command:installation.command,write});
+      const secured=isTaskExecutionAuthority(execution?.authority);
+      if(runtime.taskBound&&!secured)throw new AgentFailure('fatal','Task-bound fixture requires real TaskEngine authority');
+      if(runtime.taskBound&&(installation.command!==process.execPath||!Array.isArray(runtime.fixtureArgs)))throw new AgentFailure('fatal','Only the local deterministic Node fixture may use the fixture prompt transport');
+      if(runtime.boundary===openCodeBoundary&&!secured){requireProjectReadiness(cwd);throw new AgentFailure('fatal','Host task-bound execution authority required; live inference is disabled');}
+      if(!secured&&installation.command!==process.execPath)throw new AgentFailure('fatal','Unbound transport overrides are limited to the local deterministic Node fixture');
+      if(secured&&!runtime.taskBound){const {brokeredOpenCodeSha256}=await import('./opencode-metadata.js');if(installation.version!==openCodeVersion||installation.binarySha256!==brokeredOpenCodeSha256)throw new AgentFailure('fatal','Task execution requires the pinned official OpenCode artifact');}
+      const taskRuntime=secured?await prepareOpenCodeTaskRuntime({authority:execution.authority,cwd:realpathSync(cwd),stateDirectory,installation,write,signal}):null;
+      const boundary=taskRuntime?.boundary||runtime.boundary({cwd,stateDirectory,command:installation.command,write});let privateServer;
       const events=[],actions=new Set();let wake,sessionId=null,violation=false,textBytes=0;
       const enqueue=event=>{if(events.length>=256)throw new AgentFailure('fatal','OpenCode event backlog exceeded bound');events.push(event);wake?.();};
-      const connection=new AcpConnection({...boundary,args:[...boundary.prefixArgs,'acp'],execution,onRequest:(method,params)=>{
+      const connection=new AcpConnection({...boundary,args:[...boundary.prefixArgs,...(runtime.taskBound?runtime.fixtureArgs:['acp'])],execution:secured?{...execution,stopped(){}}:execution,onRequest:(method,params)=>{
         if(method!=='session/request_permission'){violation=true;enqueue({type:'permission',status:'denied',action:'unsupported-client-capability'});queueMicrotask(()=>connection.fail(new AgentFailure('fatal','OpenCode requested an unadvertised client capability')));return null;}
         const tool=params?.toolCall,kind=tool?.kind;
         const paths=[...(Array.isArray(tool?.locations)?tool.locations.map(entry=>entry.path):[]),...[tool?.rawInput?.filePath,tool?.rawInput?.path,tool?.rawInput?.file].filter(Boolean)];
-        const allowed=params.sessionId===sessionId&&!tool?._meta&&['read','search',...(write?['edit']:[])].includes(kind)&&paths.length>0&&paths.length<=50&&paths.every(path=>scopePath(boundary.cwd,path,write&&kind!=='read'&&kind!=='search'));
+        const allowed=params.sessionId===sessionId&&!tool?._meta&&(secured?taskRuntime.bridge.allows(tool?.name)&&kind==='other'&&typeof tool.rawInput?.path==='string': ['read','search',...(write?['edit']:[])].includes(kind)&&paths.length>0&&paths.length<=50&&paths.every(path=>scopePath(boundary.cwd,path,write&&kind!=='read'&&kind!=='search')));
         const choice=allowed&&Array.isArray(params.options)?params.options.find(option=>option.kind==='allow_once'):null;
         if(!choice){violation=true;queueMicrotask(()=>connection.fail(new AgentFailure('fatal','OpenCode permission request was denied; task stopped')));}
         enqueue({type:'permission',status:choice?'approved-scope':'denied',action:['read','search','edit','execute','think','fetch','other'].includes(kind)?kind:'unknown'});
@@ -164,15 +172,18 @@ export function createOpenCodeAdapter({cwd,stateDirectory,command,write=false,mo
           if(update.content.text)enqueue({type:'text',text:update.content.text});
         }else if(['tool_call','tool_call_update'].includes(update?.sessionUpdate)){
           const id=update.toolCallId;if(typeof id!=='string'||id.length>128)throw new AgentFailure('fatal','Invalid OpenCode tool identity');
-          if(update.sessionUpdate==='tool_call'){if(actions.has(id)||actions.size>=256)throw new AgentFailure('fatal','Repeated or excessive OpenCode tool action');actions.add(id);enqueue({type:'tool-start',actionId:id,action:write&&update.kind==='edit'?'file_change':update.kind||'tool'});if(!['read','search','think',...(write?['edit']:[])].includes(update.kind)){violation=true;throw new AgentFailure('fatal','OpenCode requested an unsupported tool capability');}}
+          if(update.sessionUpdate==='tool_call'){if(actions.has(id)||actions.size>=256)throw new AgentFailure('fatal','Repeated or excessive OpenCode tool action');actions.add(id);enqueue({type:'tool-start',actionId:id,action:write&&update.kind==='edit'?'file_change':update.kind||'tool'});if(secured?update._meta||!taskRuntime.bridge.allows(update.name)||update.kind!=='other':!['read','search','think',...(write?['edit']:[])].includes(update.kind)){violation=true;throw new AgentFailure('fatal','OpenCode requested an unsupported tool capability');}}
           if(['completed','failed'].includes(update.status)){if(!actions.has(id))throw new AgentFailure('fatal','OpenCode completed an unknown tool action');actions.delete(id);enqueue({type:'tool-complete',actionId:id,action:update.kind||'tool'});}
         }
       }});
       const abort=()=>{try{if(sessionId)connection.notify('session/cancel',{sessionId});}catch{}connection.fail(new AgentFailure('cancelled','OpenCode task cancelled'));};
       signal?.addEventListener('abort',abort,{once:true});if(signal?.aborted)abort();
       try{
-        const session=await begin(connection,boundary.cwd,model,reasoning,write);sessionId=session.sessionId;
+        if(secured){execution.authority.bindProcess(connection.child,{executable:installation.command,sha256:installation.binarySha256});privateServer=runtime.taskBound?null:await captureOpenCodeServer(connection.child,installation.command,signal);if(privateServer)execution.authority.ownPrivateProcess(privateServer.pid);await taskRuntime.attach(privateServer?.pid||connection.child.pid);}
+        const session=await begin(connection,boundary.cwd,model,reasoning,write,taskRuntime?.bridge);sessionId=session.sessionId;
         enqueue({type:'session',sessionId,model:configOption(session,'model')?.currentValue,reasoning:configOption(session,'effort')?.currentValue});
+        if(secured&&!runtime.taskBound){try{await taskRuntime.bridge.waitForCatalogue();}catch(error){error.cause={observations:taskRuntime.bridge.observations};throw error;}const observations=taskRuntime.bridge.observations;if(!observations.some(o=>o.route==='/mcp'&&o.method==='initialize')||!observations.some(o=>o.route==='/mcp'&&o.method==='tools/list'))throw new AgentFailure('fatal','Task MCP catalogue was not initialized');yield {type:'execution-boundary',provider:'opencode',mode:write?'agent':execution.authority.intent,metadataOnly:true,acpMethods:[...connection.methods],repositoryIdentity:taskRuntime.repository.identity.id,mcpMethods:observations.map(o=>({route:o.route,method:o.method}))};throw new AgentFailure('fatal','Live inference is disabled: secured ACP task initialization completed without session/prompt');}
+        if(secured)taskRuntime.bridge.activate();
         let result,error,settled=false;
         const prompt=connection.request('session/prompt',{sessionId,prompt:[{type:'text',text:JSON.stringify(handoff.contextFlow?validateContextFlow(handoff.contextFlow):createHandoffPacket(handoff))}]},120000).then(value=>{result=value;},failure=>{error=failure;}).finally(()=>{settled=true;wake?.();});
         while(!settled||events.length){if(events.length)yield events.shift();else await new Promise(resolve=>{wake=resolve;});}
@@ -180,7 +191,7 @@ export function createOpenCodeAdapter({cwd,stateDirectory,command,write=false,mo
         if(error)throw error;if(signal?.aborted)throw new AgentFailure('cancelled','OpenCode task cancelled');
         if(violation||actions.size)throw new AgentFailure('fatal','OpenCode permission refusal or unresolved tool action requires review');
         if(result?.stopReason!=='end_turn')throw new AgentFailure('fatal','OpenCode stopped without a verified completed turn');
-        await connection.dispose();yield {type:'completed'};
-      }finally{signal?.removeEventListener('abort',abort);await connection.dispose();}
+        if(!secured)await connection.dispose();yield {type:'completed'};
+      }finally{signal?.removeEventListener('abort',abort);if(!secured)await connection.dispose();else{let failure;for(const close of [()=>taskRuntime.close(),()=>connection.dispose(),async()=>{if(privateServer){await privateServer.verifyStopped();execution.authority.privateProcessStopped(privateServer.pid);}}])try{await close();}catch(error){failure ||= error;}if(failure)throw failure;execution.stopped();}}
     }};
 }

@@ -100,3 +100,52 @@ public certificate becomes readable in its sandbox; the private key stays in
 host-only temporary storage. This bridge is experimental, is not enabled by the
 normal coding adapter, and does not yet provide safe Agent writes. Metadata
 registration and fixture tool calls are not live model execution.
+
+## Task-bound draft file tools
+
+The protected adapter now composes the existing repository broker with a
+process-bound TLS MCP server. It uses the pinned 2.1.2 typed `mcp.servers`,
+`permissions`, and `agents` configuration. The file server sets `codemode:false`;
+Code Mode, native file tools, shells, subagents and other MCP tools stay denied.
+The provider still has no direct project-file access, including in Agent mode.
+
+`read_project_text` returns bounded UTF-8 text and an opaque file version.
+`write_project_text` requires that version to modify an existing draft file;
+`null` permits creation only. Ask/Plan expose no write tool. The host commits a
+SQLite write intent before mutation, preserves the displaced preimage in private
+staging, detects conflicts, and requires normal patch review. Ordinary permitted
+source files can still contain sensitive information; path filtering is not
+perfect secret detection. Authorize project sharing accordingly.
+
+Cancellation or a crash never causes automatic write replay or rollback over
+another edit. Incomplete operations fence the task and repository. Explicit
+`draft-inspect` / `draft-reconcile` verify repository state and native writer
+ownership, including inherited descriptor-lock quiescence, before recording a
+reviewed outcome. Retained preimages are diagnostic/review evidence, not a retry
+queue. An unverifiable lock, process or identity keeps the operation blocked.
+
+Real pinned OpenCode initialization and scoped MCP catalogue loading can be
+validated without inference:
+
+```sh
+node scripts/validate-opencode-task-execution.js
+```
+
+The deterministic Java workflow uses the **actual adapter with a fixed local
+Node ACP fixture**, real SQLite/file operations, offline Maven/JUnit, and reviewed
+accept/reject. It does not contact a model:
+
+```sh
+node scripts/validate-opencode-draft-workflow.js
+```
+
+Development validation requires the supported macOS ARM64 environment, CLT,
+Java/Maven, and cached JUnit dependencies for `mvn -o test`. The copied-app variant
+must run with the copied app's bundled Node and `CODOVYN_DESKTOP_APP`.
+
+**Live inference remains disabled in the normal adapter.** Metadata initializes
+with file execution inactive; no `session/prompt` is sent to real OpenCode. The
+local fixture is explicitly constrained to the current Node executable and cannot
+be selected through renderer messages, project configuration or environment flags.
+Real authenticated coding/ContextFlow continuation still requires separate owner
+consent and validation. Provider readiness must continue to show this distinction.

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {inspectDraftWriteLocks} from '../../../packages/task-engine/src/recovery.js';
 import { contextFlowUsage } from '../../../packages/agent-core/src/contextflow-usage.js';
 import { randomUUID } from 'node:crypto';
 import { homedir } from 'node:os';
@@ -430,7 +431,7 @@ export async function main(args = process.argv.slice(2), output = console, signa
         const packet = createHandoffPacket({ request: task.request, snapshot, history: events, step: task.step });
         const inspection = { taskId: task.id, status: task.status, repository: packet.repository,
           actions: packet.actions, automaticContinuation: false, processState: executionRecovery(store,task.id).reason,
-          recoverySafe: ['running','interrupted','cancelled'].includes(task.status)&&executionRecovery(store,task.id).safe, fingerprint: recoveryFingerprint(snapshot),
+          recoverySafe: ['running','interrupted','cancelled'].includes(task.status)&&executionRecovery(store,task.id,{draftLocks:await inspectDraftWriteLocks(store,task.id)}).safe, fingerprint: recoveryFingerprint(snapshot),
           continuationReady: task.status==='interrupted' && events.findLast(event=>event.kind==='draft-reconciled')?.data.fingerprint===recoveryFingerprint(snapshot) &&
             events.findLast(event=>event.kind==='draft-reconciled')?.data.decision==='preserve' &&
             (events.findLast(event=>event.kind==='continuation-approved')?.seq??0)<(events.findLast(event=>event.kind==='draft-reconciled')?.seq??0),

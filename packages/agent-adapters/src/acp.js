@@ -7,6 +7,7 @@ import { AgentFailure } from '../../agent-core/src/index.js';
 export class AcpConnection {
   constructor({ command, args = [], cwd, env, onUpdate = () => {}, onRequest = () => null, timeoutMs = 10000, execution, signal }) {
     this.incomingIds = new Set();
+    this.methods = [];
     this.pending = new Map(); this.nextId = 1; this.closed = false; this.timeoutMs = timeoutMs;
     execution?.starting();
     this.child = spawn(command, args, { cwd, env, shell: false, detached: process.platform !== 'win32', stdio: ['pipe','pipe','pipe'] });
@@ -51,6 +52,7 @@ export class AcpConnection {
   }
   send(message) {
     if (this.closed) throw new AgentFailure('fatal','ACP connection is closed');
+    if(typeof message.method==='string'){if(this.methods.length>=256)throw new AgentFailure('fatal','ACP method budget exceeded');this.methods.push(message.method);}
     const line = JSON.stringify({ jsonrpc:'2.0', ...message }) + '\n';
     if (Buffer.byteLength(line) > 1048576) throw new AgentFailure('fatal','ACP message exceeds the size limit');
     this.child.stdin.write(line);
