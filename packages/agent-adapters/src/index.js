@@ -48,6 +48,8 @@ export function createCodexAdapter({ cwd, command = 'codex', prefixArgs = [], wr
   if (reasoning!==undefined && (!['none','minimal','low','medium','high','xhigh','max','ultra'].includes(reasoning))) throw new TypeError('Invalid Codex reasoning selection');
   return {
     id: 'codex',
+    executionSupported: command===process.execPath&&prefixArgs.length>0,
+    diagnostic: 'Live Codex execution is blocked pending verified pre-action controls and durable campaign admission. Metadata and deterministic fixtures do not establish inference access.',
     capabilities: { shell:true, streaming: true, resume: false, tools: true, writes: write, authenticationStatus: false, usage: true },
     async availability() {
       try { await execute(command, [...prefixArgs, '--version'], { timeout: 5000, env: agentEnvironment() }); return 'available'; }
@@ -55,6 +57,10 @@ export function createCodexAdapter({ cwd, command = 'codex', prefixArgs = [], wr
     },
     async *run({ handoff, signal, execution }) {
       if (signal?.aborted) throw new AgentFailure('cancelled', 'Codex was cancelled');
+      // The legacy exec stream reports actions after they start. It cannot
+      // enforce campaign approvals. Keep only the existing host-authored Node
+      // fixture seam; application settings expose no prefixArgs capability.
+      if(command!==process.execPath||!prefixArgs.length)throw new AgentFailure('fatal','Live Codex execution is blocked: pre-action controls and campaign admission require independent validation; no inference was submitted');
       const prompt = formatHandoffPrompt(handoff) + (write
         ? '\n\nWork only inside this isolated draft workspace. Do not commit, push, deploy, or modify files outside this worktree. Run relevant local checks and report what changed.' : '');
       execution?.starting();

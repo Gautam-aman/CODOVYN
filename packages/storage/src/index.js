@@ -4,6 +4,7 @@ import { chmodSync, mkdirSync, statSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { hostname } from 'node:os';
+import * as campaign from './campaign.js';
 
 const taskIdPattern = /^[a-zA-Z0-9_-]{1,80}$/;
 const validId = (id) => {
@@ -106,7 +107,18 @@ export class TaskStore {
     if (!this.#db.prepare('PRAGMA table_info(queued_tasks)').all().some(column => column.name === 'policy_snapshot')) {
       this.#db.exec('ALTER TABLE queued_tasks ADD COLUMN policy_snapshot TEXT');
     }
+    campaign.initializeCampaignTables(this.#db);
   }
+
+  approveCampaign(options){return campaign.approveCampaign(this.#db,options);}
+  verifyCampaignConsent(id,selection){return campaign.verifyCampaignConsent(this.#db,id,selection);}
+  reserveCampaignRequest(options){return campaign.reserveCampaignRequest(this.#db,options);}
+  reserveCampaignToolCall(options){return campaign.reserveCampaignToolCall(this.#db,options);}
+  transitionCampaignRequest(options){return campaign.transitionCampaignRequest(this.#db,options);}
+  campaignRequest(id){return campaign.campaignRequest(this.#db,id);}
+  campaignAccounting(id){return campaign.campaignAccounting(this.#db,id);}
+  revokeCampaign(id){return campaign.revokeCampaign(this.#db,id);}
+  recoverCampaignRequests(){return campaign.recoverCampaignRequests(this.#db);}
 
   create({ id, request, repositoryRoot = null, primaryAgent, fallbackAgents = [] }) {
     validId(id);
@@ -516,6 +528,7 @@ export class TaskStore {
       if (task.status === 'running') throw new Error('Cannot delete a running task');
       if (this.executionLease(id)?.releasedAt === null) throw new Error('Cannot delete an owned task');
       if (this.hasOpenDraft(id)) throw new Error('Apply or discard the open edit draft before deleting its task history');
+      if(this.#db.prepare('SELECT 1 FROM campaign_consents WHERE task_id=? LIMIT 1').get(id))throw new Error('Campaign accounting history cannot be deleted or reset');
       this.#db.prepare('DELETE FROM events WHERE task_id = ?').run(id);
       this.#db.prepare('DELETE FROM execution_leases WHERE task_id = ?').run(id);
       this.#db.prepare('DELETE FROM tasks WHERE id = ?').run(id);
@@ -536,6 +549,7 @@ export class TaskStore {
     const cutoff = new Date(before).toISOString();
     return this.#db.prepare(`SELECT id FROM tasks WHERE repository_root = ? AND updated_at < ?
       AND status IN ('completed', 'failed', 'cancelled')
+      AND NOT EXISTS (SELECT 1 FROM campaign_consents WHERE task_id=tasks.id)
       AND NOT EXISTS (SELECT 1 FROM execution_leases WHERE task_id = tasks.id AND released_at IS NULL)
       AND NOT EXISTS (SELECT 1 FROM events AS draft WHERE draft.task_id = tasks.id
         AND draft.kind = 'draft-created' AND NOT EXISTS (

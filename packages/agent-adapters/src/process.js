@@ -4,6 +4,9 @@ import { promisify } from 'node:util';
 import { AgentFailure } from '../../agent-core/src/index.js';
 
 const execute = promisify(execFile);
+const managedProcesses=new WeakMap();
+export async function disposeManagedAgentProcess(value,child){const record=managedProcesses.get(value);if(!record||record.child!==child)throw new Error('Matching managed process required');await record.dispose();}
+export const isManagedAgentProcess=(value,child)=>!!child&&managedProcesses.get(value)?.child===child;
 
 function delay(milliseconds) {
   let timer;
@@ -79,7 +82,7 @@ export function manageAgentProcess(child, signal) {
   const abort = () => { stop(); };
   signal?.addEventListener('abort', abort, { once: true });
   if (signal?.aborted) abort();
-  return {
+  const managed = {
     closed,
     exited,
     error: () => processError,
@@ -88,4 +91,6 @@ export function manageAgentProcess(child, signal) {
       await stop();
     },
   };
+  managedProcesses.set(managed,{child,dispose:managed.dispose});
+  return managed;
 }

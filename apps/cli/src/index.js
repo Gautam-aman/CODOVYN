@@ -196,7 +196,8 @@ export async function main(args = process.argv.slice(2), output = console, signa
         const adapter = factory({ cwd: value });
         const detected = await adapter.availability() === 'available';
         return { id, installation: detected ? 'detected' : 'not-detected-or-unsupported', authentication: 'unknown',
-          availability: 'unknown', capabilities: adapter.capabilities };
+          availability: 'unknown', capabilities: adapter.capabilities,
+          ...(adapter.executionSupported===false?{executionSupported:false,diagnostic:adapter.diagnostic}:{}) };
       } catch (error) {
         return { id, installation: 'configuration-error', authentication: 'unknown', availability: 'unknown',
           diagnostic: error?.message === 'Configured Gemini CLI path must be an absolute executable file'

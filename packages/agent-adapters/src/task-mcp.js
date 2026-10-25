@@ -51,8 +51,10 @@ export async function createTaskMcpBridge({execution,files,pid,peerReader,tls,de
     // Reserve synchronously before awaiting any operation. Invalid or denied
     // active calls count too; catalogue traffic cannot reset this task budget.
     toolCalls++;
+    try{execution.consumeInferenceTool();}catch{error={code:-32004,message:'Campaign file tool authority or budget is exhausted'};}
     const args=message.params?.arguments;
-    if(!args||Array.isArray(args)||typeof args.path!=='string'){error={code:-32602,message:'Unsupported task file operation'};}
+    if(error){/* Durable budget denial precedes all file access. */}
+    else if(!args||Array.isArray(args)||typeof args.path!=='string'){error={code:-32602,message:'Unsupported task file operation'};}
     else if(message.params?.name==='read_project_text'&&Object.keys(args).length===1)try{const file=await files.inspect(args.path);result={content:[{type:'text',text:JSON.stringify({path:args.path,text:file.text,version:file.version})}]};}catch{result={isError:true,content:[{type:'text',text:'Project read denied by task policy'}]};}
     else if(message.params?.name==='write_project_text'&&files.writes&&Object.keys(args).sort().join(',')==='content,expectedVersion,path')try{result={content:[{type:'text',text:JSON.stringify(await files.write(args))}]};}catch{result={isError:true,content:[{type:'text',text:'Draft write denied, conflicted or interrupted; inspect task review before retrying'}]};}
     else error={code:-32602,message:'Unsupported task file operation'};
