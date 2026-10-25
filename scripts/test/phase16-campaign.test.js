@@ -9,7 +9,7 @@ test('preparation blocks observed Codex post-action accounting and unselected mo
 test('metadata and synthetic green preflight cannot grant spending or transfer consent',()=>{
  const p={compatible:true,model:'explicit/configured-model',preActionBudget:true,restrictedTools:true};const plan=prepareCampaign({codex:p,opencode:p});
  assert.equal(plan.eligibleForApproval,true);assert.throws(()=>requirePreparedCampaign(plan),/owner authorization/);assert.equal(plan.actualModelRequests,0);
- assert.deepEqual(plan.requests.filter(r=>r.logicalTask==='same-handoff-task').map(r=>r.mode),['ask','agent']);assert.ok(plan.requiredApprovals.some(x=>x.includes('one-use')));
+ assert.deepEqual(plan.requests.filter(r=>r.logicalTask==='same-handoff-task').map(r=>r.mode),['agent','agent']);assert.ok(plan.requiredApprovals.some(x=>x.includes('one-use')));
  assert.ok(plan.requests.every(r=>r.retries===0&&r.fallbacks===0&&r.parallelism===1&&r.toolActions===8&&!r.automaticPatchApplication));
 });
 test('division fixture is reproducible, isolates one known defect and preserves legacy fixtures',async()=>{

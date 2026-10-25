@@ -6,7 +6,7 @@ const tasks=[
  ['codex-agent','codex','agent','Add a division-by-zero regression test and the minimal fix. Keep all changes in the approved draft.'],
  ['opencode-ask','opencode','ask','Use the authorized MCP project-reading tool to read Calculator and explain division. Do not modify files.'],
  ['opencode-agent','opencode','agent','Use only approved project MCP tools to add a division-by-zero regression test and minimal fix in the draft.'],
- ['handoff-source','codex','ask','Inspect Calculator and prepare a bounded plan for fixing division by zero. Do not modify files.'],
+ ['handoff-source','codex','agent','Inspect Calculator and prepare a bounded plan for fixing division by zero. Do not modify files.'],
  ['handoff-destination','opencode','agent','Continue the approved original division task using the recipient-bound ContextFlow packet and approved MCP draft tools.']
 ];
 export function prepareCampaign({codex,opencode}){
