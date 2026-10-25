@@ -1,0 +1,101 @@
+{
+  "checkedAt": "2026-10-25T07:07:20.565Z",
+  "recordedGroups": [
+    1970,
+    2579,
+    3308,
+    97548,
+    97675,
+    97797,
+    99372,
+    99499,
+    99621,
+    95703,
+    95708,
+    96556,
+    96562,
+    4923,
+    4783,
+    91077,
+    91695,
+    92334,
+    85555,
+    85680,
+    85798,
+    87317,
+    87443,
+    87564,
+    83773,
+    83779,
+    84595,
+    84601,
+    93594,
+    93440
+  ],
+  "groupsChecked": 30,
+  "survivors": [],
+  "nativeLifecycles": [
+    {
+      "file": "copied-chat-first-launch-lifecycle.json",
+      "pid": 1970,
+      "exitCode": 0,
+      "survivors": []
+    },
+    {
+      "file": "copied-chat-relaunch-lifecycle.json",
+      "pid": 2579,
+      "exitCode": 0,
+      "survivors": []
+    },
+    {
+      "file": "copied-host-lifecycle.json",
+      "pid": 3308,
+      "exitCode": 0,
+      "survivors": []
+    },
+    {
+      "file": "copied-restoration-read-lifecycle.json",
+      "pid": 4923,
+      "exitCode": 0,
+      "survivors": []
+    },
+    {
+      "file": "copied-restoration-write-lifecycle.json",
+      "pid": 4783,
+      "exitCode": 0,
+      "survivors": []
+    },
+    {
+      "file": "source-chat-first-launch-lifecycle.json",
+      "pid": 91077,
+      "exitCode": 0,
+      "survivors": []
+    },
+    {
+      "file": "source-chat-relaunch-lifecycle.json",
+      "pid": 91695,
+      "exitCode": 0,
+      "survivors": []
+    },
+    {
+      "file": "source-host-lifecycle.json",
+      "pid": 92334,
+      "exitCode": 0,
+      "survivors": []
+    },
+    {
+      "file": "source-restoration-read-lifecycle.json",
+      "pid": 93594,
+      "exitCode": 0,
+      "survivors": []
+    },
+    {
+      "file": "source-restoration-write-lifecycle.json",
+      "pid": 93440,
+      "exitCode": 0,
+      "survivors": []
+    }
+  ],
+  "unrelatedProcessesSignalled": false,
+  "inferenceRequests": 0
+}

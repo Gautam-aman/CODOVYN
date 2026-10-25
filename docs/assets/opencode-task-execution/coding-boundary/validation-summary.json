@@ -1,0 +1,94 @@
+{
+  "startingCommit": "0e63581faf1b73bc82790fc9d46be4b20022a068",
+  "implementationCommit": "4cc151008cf71c17f6ab76b0e965e793c54bf79b",
+  "unitRegression": {
+    "tests": 330,
+    "passed": 330,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0,
+    "syntaxFiles": 166,
+    "concurrency": 1,
+    "durationMs": 123357.259458
+  },
+  "earlierParallelTrial": {
+    "tests": 330,
+    "passed": 329,
+    "failed": 1,
+    "failure": "Crash fixture preflight failure could leave its stand-in provider alive until deadline; fixture cleanup fixed. Heavy OS tests serialized, no deadlines raised."
+  },
+  "extensionHost": {
+    "passed": true,
+    "vscode": "1.143.1"
+  },
+  "sourceNative": {
+    "host": true,
+    "javaBaselineTests": 3,
+    "javaExitCode": 0,
+    "chatTwoLaunches": true,
+    "routingActivity": true,
+    "restorationTwoLaunches": true
+  },
+  "copiedNative": {
+    "host": true,
+    "javaBaselineTests": 3,
+    "javaExitCode": 0,
+    "chatAndRealReadinessTwoLaunches": true,
+    "routingActivity": true,
+    "restorationTwoLaunches": true
+  },
+  "sourceAndCopiedJavaDraftWorkflows": {
+    "decisions": [
+      "accept",
+      "reject"
+    ],
+    "testsPerDecision": 4,
+    "testExitCode": 0,
+    "publishedWriteIntentsPerDecision": 2,
+    "originalUnchangedBeforeApproval": true,
+    "inferenceRequests": 0
+  },
+  "realACP": {
+    "version": "2.1.2",
+    "executableSha256": "3f01e2ba8efd4242c638add9248b88696221d76588d9511e63cb2d727c278fcc",
+    "sourceTaskInitializations": 2,
+    "copiedTaskInitializations": 2,
+    "copiedUIReadinessInitializations": 2,
+    "sessionPromptSent": false,
+    "fileExecutionActivated": false,
+    "authentication": "unknown"
+  },
+  "audit": {
+    "all": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 2,
+      "critical": 0,
+      "total": 2
+    },
+    "omitDev": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    }
+  },
+  "hostedCI": {
+    "run": 40170788581,
+    "url": "https://github.com/Gautam-aman/CODOVYN/actions/runs/40170788581",
+    "jobs": 3,
+    "executedSteps": 0,
+    "conclusion": "failure",
+    "annotation": "The job was not started because recent account payments have failed or your spending limit needs to be increased."
+  },
+  "issue16": "OPEN \u2014 no root-cause claim",
+  "copiedPostTestDeepStrictSignatureExitCode": 0,
+  "staplerValidateExitCode": 65,
+  "signing": "ad-hoc",
+  "productionOpenCodeCodingExecution": "BLOCKED \u2014 live prompt guard deliberately retained",
+  "fixtureExecutionTokensRedacted": true,
+  "installedApplicationReplaced": false
+}

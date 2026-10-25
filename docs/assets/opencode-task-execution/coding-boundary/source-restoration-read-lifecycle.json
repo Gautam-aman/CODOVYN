@@ -1,0 +1,14 @@
+{
+  "phase": "read",
+  "pid": 93594,
+  "result": {
+    "code": 0,
+    "signal": null
+  },
+  "survivors": [],
+  "elapsedMs": 1862,
+  "timeoutMs": 120000,
+  "graceMs": 1500,
+  "killGraceMs": 2500,
+  "lastProgress": "{\"phase\":\"read\",\"operation\":\"native-quit\",\"state\":\"complete\",\"pid\":93631,\"at\":\"2026-10-25T06:59:42.854Z\"}"
+}

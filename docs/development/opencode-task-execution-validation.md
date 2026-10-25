@@ -1,408 +1,244 @@
-# Phase 15 — task-bound OpenCode execution boundary
+# Phase 15 — journaled, task-bound OpenCode draft execution
 
-**PRODUCTION OPENCODE CODING EXECUTION: BLOCKED**
+**PRODUCTION OPENCODE CODING EXECUTION: BLOCKED — live inference deliberately disabled.**
 
-Phase 15 is **partially implemented**, not complete. The latest clean-source implementation/installer is `a1c3e6dc12427e6f7e49d6750d0fa8ceab1073a2`. Task-bound host reads, an experimental process-bound TLS MCP read bridge, fresh repository identity, and a host-only create-only publication primitive are tested. Production adapter admission, journaled draft writes and existing-file modification remain incomplete. No live inference occurred; the production guard remains active. The final continuation results below supersede the initial installer checkpoint.
+The five requested infrastructure changes are implemented and tested: durable
+write intents, versioned existing-file edits, non-replaying recovery, integration
+into the actual OpenCode adapter, and independent Java test/review validation.
+This is new implementation after `0e63581`, not the preceding read-only checkpoint.
+Phase 15 is **not declared complete**: authenticated provider coding and live
+ContextFlow continuation have not been authorized or tested.
 
-## Repository and artifacts — initial b2a37ef checkpoint
+## Repository and implementation commits
 
-- Starting checkpoint: clean `main` at `5589a77ed11ef2b7a3daecf02b7471e56fe81ca1`, synchronized with the same `origin/main` after fetch. The commit is the recoverable checkpoint; no reset/stash/history rewrite.
-- Implementation and clean-source installer SHA: `b2a37ef45c8267e356a596080e11c58f696dff4b`, pushed and independently verified against `origin/main`.
-- `a54d248e548aa33b3f1ebd2d0491b6adafac4b67`: TaskEngine execution authority, native host reader, adversarial tests, real task/ACP validation entry point and precise blocked-state diagnostic.
-- `b2a37ef45c8267e356a596080e11c58f696dff4b`: permanent revocation on executable loss/integrity failure, including a disposable executable deletion/restoration regression.
-- This report/evidence follows in a documentation-only commit; its final remote SHA is reported in the completion message. The application retains the exact tested implementation SHA above.
-- No branch, PR, release, visibility change, credential export, generated installer commit or `/Applications/CODOVYN.app` replacement.
+Starting local/remote `main`: `0e63581faf1b73bc82790fc9d46be4b20022a068`, clean after
+fetch. No branch, stash, destructive synchronization, history rewrite, PR or release.
 
-Environment: Apple M2 / ARM64 / 8 GiB RAM, macOS 27.0.1, Node 26.9.0 and Xcode Command Line Tools. Heavy native suites/builds ran sequentially.
+- `39efe369ea62bced2ef974b1fa2aa3d56cafc6db`: FULL-sync SQLite write intents and
+  execution/repository fences before mutation.
+- `1c9d737425bae095e9b55befd4c7d39c8294c45d`: conflict-checked native publication,
+  isolated draft review, process-kill and cancellation regressions.
+- `4cc151008cf71c17f6ab76b0e965e793c54bf79b`: actual adapter/MCP composition,
+  typed provider policy, descriptor-lock recovery, deterministic Java workflow,
+  readiness diagnostics and bounded startup correction.
 
-## Evidence classifications
+Each implementation commit was pushed to `origin/main` and its exact SHA checked.
+The application/installer embeds clean source `4cc1510`. A later evidence-only
+commit contains this report; the completion message records that final remote SHA.
+No application source changed after the clean build.
 
-| Classification | Verified scope |
+[Machine-readable summary](../assets/opencode-task-execution/coding-boundary/validation-summary.json)
+and [embedded provenance](../assets/opencode-task-execution/coding-boundary/build-provenance.json).
+
+## 1. Durable SQLite write intent
+
+`TaskStore` now persists versioned `draft_write_intents` under WAL with
+`synchronous=FULL`. One transaction commits the intent and unsafe tool-start
+record **before** the caller can start a native draft mutation. Records bind the
+logical task, execution token/segment, configuration digest, repository identity,
+relative path, before/after hashes, bounded byte count and private staging/lock
+identity. Raw file contents are not stored in this table or file-access audit.
+
+Outcome transitions are fenced by token and segment and cannot be acknowledged
+twice. Completion evidence commits atomically with the published/aborted state.
+Prepared, uncertain and conflicting operations block ordinary task admission,
+conflicting repository execution and ContextFlow preparation. The ownership SQL
+contains the unresolved-write predicate inside the atomic admission statement.
+There is no second scheduler or journal.
+
+Tests verify visibility across SQLite connections, rollback on journal failure,
+wrong-token/segment rejection, reopening pending states, and rejection before any
+native writer launch when intent persistence fails.
+
+## 2. Existing draft modification and conflict handling
+
+The host-only native publisher stages bounded content outside the worktree.
+Existing-file writes require the opaque version returned by a descriptor-safe
+read; the version binds content and filesystem metadata. The native leaf checks
+identity, link count, preimage bytes and parent/root identity before publication.
+It uses `RENAME_EXCL` for creation and `RENAME_SWAP` for replacement.
+
+The displaced object stays in private staging. After exchange, its identity and
+contents are checked against the approved preimage. A concurrent replacement or
+edit is not silently reported as successful: it creates an unresolved conflict,
+revokes authority and requires review. A conflict can leave proposed content in
+the **draft**, with the displaced contents preserved; it never automatically
+rolls back over another writer. Host verification and durable completion precede
+the tool acknowledgement.
+
+The provider's OS profile remains source-blind and denies project writes, even in
+Agent mode. Only the separately scoped native host leaf can mutate the approved
+draft. Protected Git/common directories, sensitive/hidden paths, traversal,
+symlinks, multiply linked files, nested repositories and cross-device traversal
+remain denied. Original-project writes require the existing separate reviewed
+patch approval. No shell, unrestricted Git, network executable, MCP extension,
+nested-agent or automatic apply capability was added.
+
+Actual macOS witnesses cover successful modification/creation, stale versions,
+recreated files, pre-publication conflict, concurrent preimage capture, symlink
+substitution, pinned-parent relocation, sensitive/metadata/external path denial,
+and unchanged original/external witness files. These are finite controlled race
+tests, not a claim of universal resistance to hostile host filesystem activity.
+
+## 3. Crash/cancellation recovery without replay
+
+Every native mutation process is durably registered before receiving `START` or
+`COMMIT`. It inherits a task-private descriptor lock that remains held until the
+publisher exits. A fresh trusted recovery helper verifies the exact lock object
+and kernel lock quiescence. This closes the intent-to-PID-registration crash gap
+without guessing safety from a pathname, callback, expired timeout or renderer
+boolean. Recovery evidence is host-issued, non-serializable and lease-bound.
+
+Explicit `draft-inspect`/`draft-reconcile` verify process ownership, descriptor
+quiescence and the current repository fingerprint before recording reconciliation.
+They preserve current draft/preimage contents; they do not repeat or roll back an
+ambiguous action. New private OpenCode child groups also have durable ownership
+and stop records. Failed/unverified cleanup retains the relevant execution fence.
+
+Three actual `SIGKILL` campaigns stop the owner before native launch, before
+native start, and after publication but before journal completion. All preserve
+the intent and original repository; explicit reconciliation preserves the
+observed draft. Actual lock probes reject a live publisher and succeed after its
+exit. Cancellation before commit denies publication; uncertain cancellation
+remains reviewable rather than being relabelled as “nothing happened.”
+
+## 4. Actual adapter integration and provider policy
+
+The normal `createOpenCodeAdapter` composes TaskEngine authority, the existing
+repository broker, isolated worktree validation, native file services, a
+kernel-peer-verified TLS MCP endpoint, ACP and owned cleanup. Ask/Plan advertise
+only `read_project_text`; Agent also advertises `write_project_text` after approved
+draft admission. Calls are bounded, versioned, serialized for writes and audited.
+Direct provider filesystem access remains denied.
+
+Pinned OpenCode source established that the required configuration is the typed
+`mcp.servers`, `permissions` and `agents` layout. The file server explicitly sets
+`codemode:false`; wildcard denial plus exact MCP rules keep Code Mode, native
+file tools and other capabilities denied. ACP registration does not overwrite
+this setting. The briefly investigated empty-bootstrap approach was removed.
+Source: [pinned MCP configuration](https://github.com/anomalyco/opencode/blob/a517687fde98a7329ada3ae644a01a9fc6c4e99e/packages/core/src/config/plugin/mcp.ts),
+[pinned tool exposure](https://github.com/anomalyco/opencode/blob/a517687fde98a7329ada3ae644a01a9fc6c4e99e/packages/core/src/tool.ts).
+
+Catalogue loading is not file-execution authorization. The endpoint rejects file
+calls before host activation; tests exercise this over actual TLS/MCP. The normal
+adapter never activates file execution or sends `session/prompt` to real OpenCode
+in this milestone. A bounded outbound-method ledger independently records that
+absence. The deterministic prompt transport is constrained to the current local
+Node executable and has no renderer/project/environment opt-in.
+
+The startup regression now distinguishes a verified owned `sandbox-exec` launcher
+from an identity mismatch while waiting for exec. UID, parent and birth identity
+stay pinned; only the initial verified transition is polled within the existing
+1.5-second budget. Replacement after binding still revokes authority. A controlled
+FIFO-profile witness proves this transition; deadlines were not enlarged.
+
+ContextFlow binding now covers the adapter, MCP/TLS/peer code, native readers and
+publisher, task/recovery authority, journal and draft engine. Old approvals cannot
+silently survive an implementation change. Existing one-use, recipient-bound,
+same-task, queue and restoration regressions remain intact. No automatic fallback
+or live cross-provider continuation was enabled.
+
+## 5. Independent Java read → edit → test → review
+
+A reusable harness drives the **actual adapter** with a fixed local Node ACP/MCP
+fixture inside the real provider sandbox. It reads Calculator and its JUnit file,
+modifies both through host file tools, persists two published write intents,
+checks the unchanged original, runs `mvn -o test` independently, and reviews the
+actual Git patch. Acceptance applies only that patch; rejection preserves the
+original. Each decision runs **four JUnit tests, exit 0**.
+
+Both decisions passed from source and again using the **copied app's bundled
+Node and packaged modules/native sources**. The fixture additionally witnesses
+denial of direct source reads/writes, shell and real Git execution. Ask/Plan
+cannot obtain the write tool; unsupported tool requests interrupt execution.
+These are real OS/file/SQLite/Java/Git results with deterministic provider
+responses, **not** authenticated inference or provider self-reported tests.
+
+[Source Java evidence](../assets/opencode-task-execution/coding-boundary/source-opencode-draft-workflow-validation.json),
+[copied Java evidence](../assets/opencode-task-execution/coding-boundary/copied-opencode-draft-workflow-validation.json).
+Fixture execution-fence tokens are redacted in committed evidence.
+
+## Verification results
+
+Environment: Apple M2, 8 GiB, macOS 27.0.1 ARM64, Node 26.9.0, CLT installed.
+Heavy native checks ran sequentially.
+
+| Evidence class | Result |
 | --- | --- |
-| **REAL OS SECURITY VERIFIED** | macOS sandbox denies direct project reads/writes, protected Git writes, real Git, shell and execution of the new host file helper. Existing Phase 14 hardened-client/process restrictions still pass. |
-| **REAL ACP VERIFIED** | Two real task-bound sessions from source, two from packaged modules/bundled Node, and the existing seven-session broker campaign. All metadata/configuration only; no `session/prompt`. |
-| **TASK AUTHORITY VERIFIED** | Real TaskEngine SQLite leases, distinct segments, owned ChildProcess binding, accepted policy checks, revocation and cleanup in the tested validation pipeline. This is not completed production adapter admission. |
-| **FILE-ACCESS VERIFIED** | Host-invoked bounded UTF-8 reads under Ask/Plan policy and from an approved Agent draft; actual native descriptor traversal and denial/race tests. Not provider-native file-tool execution. |
-| **DETERMINISTICALLY TESTED** | Provider output/streaming, ContextFlow continuation, queue, recovery, approvals and independent host patch-review regressions. |
-| **LIVE INFERENCE UNVERIFIED** | Authentication, entitlement, actual model responses and live coding/continuation were not tested. Zero inference requests. |
-| **BLOCKED** | Provider-consumed file mediation, Agent draft writes and therefore production OpenCode coding/continuation. Hosted CI and public distribution gates also remain blocked. |
-
-## Architecture and trust model
-
-Preserve the Phase 14 metadata authority, broker and hardened client. Compose them with a separate TaskEngine-issued execution authority and a native host file-read leaf. No second scheduler, task journal or public privileged filesystem IPC was introduced.
-
-`TaskEngine` issues an in-memory authority for a single candidate execution segment, after acquiring its existing durable execution lease and obtaining the host repository snapshot. It contains a unique segment identity, task/provider/workspace, immutable accepted-policy digest and a maximum 120-second lifetime. The lease token stays private to trusted host code; a task ID or serialized object is not a capability.
-
-The authority checks the actual SQLite lease token, owner PID/hostname, release state, active task/provider and policy on use. ContextFlow selects the approved destination configuration rather than silently inheriting the source provider's policy. An accepted policy change permanently revokes authority. Legacy tasks lacking an explicit supported policy cannot claim new file access merely because they have a task ID; existing adapters that do not use this seam retain their previous behavior.
-
-One live Node ChildProcess object can bind once and cannot move into a second authority. Its recorded launch must match the declared executable directly or the existing fixed sandbox launcher envelope. The file service additionally verifies the executable's bytes against the bound digest at creation and checks device/inode/size/mtime/ctime before each read. The real OpenCode validation factory independently checks version 2.1.2 and the exact Phase 14 artifact digest. The generic TaskEngine authority alone is not a replacement for provider-specific version/provenance checks.
-
-Task completion, cancellation, process exit, expiry, lease change, policy change and observed repository/executable integrity failure deny further reads. Restoring a removed executable or repository path cannot resurrect an observed revoked authority. Revocation never releases the SQLite ownership fence. The trusted adapter remains responsible for awaiting file-reader close, provider disposal and private-server cleanup before recording `provider-stopped`; the validation adapter does so. A cleanup attempt or authority expiry is not proof that a process is absent.
-
-## File-access policy and native leaf
-
-The new `task-file-access.js` interface is host-only. It requires both branded TaskEngine execution authority and the existing branded repository authority, verifies matching canonical workspace identity, and pins a root descriptor. Each operation revalidates live task/process/policy, executable identity and fresh repository metadata before and after the native read.
-
-`native/task-file-reader.c` receives the root descriptor explicitly, traverses directory components without following symlinks, refuses nested `.git` boundaries and requires regular files with exactly one hardlink. It buffers at most 64 KiB, checks identity/timestamps/link count and reopens the complete parent chain before output. Parent death/root replacement or file substitution fails without returning content. Production builds contain no test pause hook; deterministic race barriers require a separate test-only compiler definition.
-
-The service accepts at most four concurrent reads and 128 read attempts per instance, with a three-second reader deadline, bounded hex stdout/stderr and strict UTF-8 text decoding. It does not implement directory listing, binary/PDF/image reads, ACP line-range semantics or writes. Cleanup aborts/drains owned readers before closing the root descriptor; cleanup failures are latched so a later close cannot erase them.
-
-Hidden path components and known credential/token/key/secret names are denied. This conservatively rejects some ordinary files too. Symlinks, hardlinks, traversal, protected `.git` paths and cross-project access are denied. **This is not perfect secret classification:** allowed ordinary source files can contain sensitive information. Future provider transfer must visibly disclose that risk and require appropriate consent. This phase transferred no project source into a model prompt.
-
-Allowed reads require a durable sanitized audit before content is returned. Audit fields include logical task/segment/provider, repository identity, bounded relative path, operation, decision and measured duration. No source contents, credentials or hidden reasoning are journaled. Failed audit persistence revokes authority and withholds otherwise allowed content.
-
-| Mode | Implemented access | Remaining restriction |
-| --- | --- | --- |
-| Ask | Host service reads Java, manifests and ordinary documentation | Provider-native reads remain denied; no writes/shell/Git/tools |
-| Plan | Same bounded host reads | Read-only; no provider tool bridge or side effects |
-| Agent | Host service reads the approved isolated draft | `write()` always rejects; native provider project writes remain denied |
-
-A `read-write` accepted policy does not manufacture a functioning write implementation. No patch was created by OpenCode in this phase.
-
-## Exact provider compatibility blocker
-
-Official OpenCode 2.1.2 source at `a517687fde98a7329ada3ae644a01a9fc6c4e99e` was inspected through its pinned Git tree/blob API. Nine files were content-hash checked against the Git blob IDs: [source inventory](../assets/opencode-task-execution/pinned-provider-source.json).
-
-- `packages/cli/src/acp/capabilities.ts` parses child updates, elicitation and compaction, not a client filesystem bridge.
-- `packages/cli/src/acp/connection.ts` exposes session updates, permission requests, extension notifications, elicitation and response settlement; no filesystem forwarding methods.
-- `packages/cli/src/acp/turn.ts` forwards prompt execution to OpenCode's private server.
-- `packages/core/src/tool/plugin/read.ts` and `tool/read-filesystem.ts` use OpenCode filesystem/environment services.
-- `packages/core/src/tool/plugin/write.ts` and `edit.ts` perform provider-side filesystem mutation through its permission/environment services.
-
-[Official ACP documentation](https://docs.opencode.ai/docs/acp/) describes stdio ACP and native tools. It does not establish a client file-service integration for this pinned binary. CODOVYN still advertises `fs.readTextFile:false`, `fs.writeTextFile:false` and no terminal capability. No unsupported ACP field or fabricated tool result was added.
-
-**OpenCode's built-in tools cannot currently consume this host service.** The real initialization probe invokes the service from the trusted test host, not from the model/provider. Broad direct project read/write grants would bypass the new descriptor boundary, so they were not enabled.
-
-A separately validated integration interface—potentially a tightly controlled tool integration—or an explicitly maintained provider compatibility patch is still required. Such alternatives have not been implemented or verified here; lack of the client-FS seam is not a claim that every possible future integration is impossible. Safe descriptor-relative draft mutation/conflict handling must also be implemented and tested. No provider binary was modified, replaced or distributed.
-
-## Real task/ACP validation
-
-```bash
-node scripts/validate-opencode-task-boundary.js
-```
-
-The script accepts no owner-project arguments. It builds a disposable Java/JUnit repository and runs validation objectives through real TaskEngine tasks and SQLite leases. Ask uses the ordinary repository; Agent uses the existing Git-engine-created isolated draft after trusted draft validation and explicit test-scope authorization. It checks the pinned official binary, starts actual ACP, verifies initialization/session/model/mode configuration, invokes two host reads, checks denial of secrets/Git metadata/writes, and verifies original repository identity/state remains unchanged.
-
-The OpenCode artifact remains the Phase 14 supported macOS ARM64 2.1.2 binary, SHA-256 `3f01e2ba8efd4242c638add9248b88696221d76588d9511e63cb2d727c278fcc`.
-
-[Source task probe](../assets/opencode-task-execution/source-task-probe.json): two sessions passed from clean implementation `b2a37ef`, real leases held, distinct segment IDs, Java/pom hashes recorded, cleanup verified, authority revoked after each validation task. The validation task completes its **metadata/host-read objective**, not an AI coding request. `providerFileToolInvocations:0`, `inferenceRequests:0`.
-
-[Packaged task probe](../assets/opencode-task-execution/packaged-task-probe.json): the same two scenarios passed using the copied app's bundled Node and packaged TaskEngine/storage/adapter/native-reader sources. The external test driver reused the existing script with 15 relative imports resolved to packaged modules or unchanged test utilities. It did not alter the signed app. [Driver provenance](../assets/opencode-task-execution/packaged-probe-driver.json).
-
-The [seven-session Phase 14 campaign](../assets/opencode-task-execution/broker-contextflow-regression.json) also passed from this implementation. It retains branch freshness, linked/nested repositories, path replacement, actual owner-death cleanup and real ACP metadata followed by explicitly labelled deterministic ContextFlow output. It is not live continuation.
-
-## Adversarial and failure results
-
-Twelve new tests add to the 280-test baseline:
-
-- Actual TaskEngine/SQLite ownership plus native Ask/Plan Java, Maven and README reads; sanitized durable audit assertions.
-- Forged/serialized authority rejection, duplicate child binding rejection, wrong task/token rejection and conflicting repository lease rejection.
-- Policy-change, task cancellation and short explicit lifetime expiry; revocation does not release the SQLite fence.
-- Unsupported mode/permission combinations and unrelated executable launch identity rejection.
-- Real symlink and hardlink witnesses, sensitive/traversal paths, nested Git repositories and protected metadata denial.
-- Root pathname replacement and restoration rejection.
-- Disposable executable removal/restoration permanently revokes access; no installed executable was changed.
-- Failed audit persistence prevents content return.
-- Real sandbox witness denies direct Java reads, source writes, `.git` writes, real Git, shell and host file-helper execution. Source witness remains unchanged.
-- Controlled native barriers reject file replacement after opening and root relocation before use, with no file bytes returned.
-
-The corresponding tests are `packages/task-engine/test/execution-authority.test.js` and `packages/agent-adapters/test/task-file-access.test.js`. They propagate callback assertion failures and require completed validation status; an interrupted fixture is not treated as a passing positive read.
-
-These are demonstrated race cases, not complete proof against every filesystem interleaving or a compromised unconfined owner account/kernel. There are no Agent writes to test for crash-atomic mutation yet. Cross-process filesystem IPC authentication and complete ACP filesystem semantics are not implemented by this host-only API.
-
-## ContextFlow, queue and recovery
-
-Existing same-task transfer, recipient binding, packet integrity, one-use/expired approval, fresh fingerprints, draft reconciliation and queue ownership regressions pass. TaskEngine makes the effective continuation policy available to its per-segment authority after the existing ContextFlow lease claim. Changing accepted task policy or lease prevents file access.
-
-The production CLI continues rejecting metadata-only OpenCode admission/continuation. A successful ACP initialization cannot bypass that guard. Existing queue admission/reorder/pause/cancel/restart tests and failed-cleanup/reconciliation tests remain intact; restart cannot recover a serialized in-memory authority or automatically replay an ambiguous write.
-
-This is **regression compatibility**, not completed integration of provider file tools with ContextFlow/queue execution. The seven-session hybrid continuation uses deterministic provider output. New live adapter file-service consumption, write recovery and end-to-end authenticated queue/continuation remain blocked. Generic adapters must still obey the trusted cleanup contract; the new authority does not turn a callback into independent kernel proof of process absence.
-
-## Native application and regression results
-
-| Check | Clean source/development app | Disposable copied DMG app |
-| --- | --- | --- |
-| `npm ci --ignore-scripts` | Passed; two existing high development advisories reported | Not applicable |
-| `npm run check` | **292 passed, 0 failed, 0 skipped** | Shared source suite |
-| `npm run test:extension-host` | Passed, VS Code 1.143.1 | Not applicable |
-| `npm run build:desktop` | Passed, embedded clean source `b2a37ef` | Same copied bundle |
-| Task-bound ACP probe | Two configurations passed | Two configurations passed using bundled modules/Node |
-| Existing broker/ContextFlow probe | Seven real metadata sessions passed | Native metadata checks below |
-| `npm run test:desktop-host` | Passed editor/search/Git/terminal/bundled Node | Passed plus Java editor and **3 Maven/JUnit tests, exit 0** |
-| `npm run test:desktop-chat` | Two launches passed, real metadata-only readiness | Two launches passed, real metadata-only readiness |
-| `npm run test:desktop-routing-ui` | Passed routing save/discard/validation, activity/filters | Passed same assertions |
-| `npm run test:desktop-restoration` | Two launches passed | Two launches passed |
-| `npm run package:desktop` | Passed, image independently verified | Read-only mount/copy/detach and launch checks passed |
-
-[Copied Java host result](../assets/opencode-task-execution/copied-java-host.json), [Java lifecycle](../assets/opencode-task-execution/copied-java-lifecycle.json), [copied Chat](../assets/opencode-task-execution/copied-chat.json), [source native lifecycles](../assets/opencode-task-execution/source-native-lifecycles.json), [copied native lifecycles](../assets/opencode-task-execution/copied-native-lifecycles.json), [copied restoration](../assets/opencode-task-execution/copied-restoration.json).
-
-Native Chat preserves model/effort selection, mode controls, keyboard/scroll behavior, queue and history persistence, text-safe fixture streaming and ContextFlow review/rejection. The provider settings diagnostic now explains that host reads exist but provider-native mediation and Agent writes are blocked. Model entries/continuation remain disabled. No new composer controls or whole-IDE redesign.
-
-[Actual copied-app screenshot](../assets/opencode-task-execution/copied-provider-readiness.png) shows the current blocked-state explanation and real metadata-only observation. It is not a screenshot of live AI output. Routing harness still reports DOM focus observability unavailable; do not infer a complete accessibility certification from event assertions.
-
-Source host search took 112.2 ms; copied Java host search took 267.4 ms with the explicit readiness gate. The original `**/desktop-smoke.txt` operation/assertion remained intact. [Issue #16](https://github.com/Gautam-aman/CODOVYN/issues/16) stays open: successful bounded runs do not explain the historical intermittent stall. No timeout was raised to hide a failure. No comparative CPU/memory/token saving claim is made.
-
-## Process ownership and cleanup
-
-The task probe links ACP cancellation to the execution authority signal. It closes/drains file readers, disposes ACP, verifies the separate pinned private-server group, closes/revokes the metadata broker and checks owned groups before recording `provider-stopped`. The original repository remains unchanged, and the final TaskEngine authority is revoked. Cleanup failure throws instead of reporting a stopped provider.
-
-Existing real abrupt-owner-death and hardened-client injection controls remain in the Phase 14 campaign/security suite. [Final group check](../assets/opencode-task-execution/provider-cleanup.json): **284 recorded broker/task campaign groups, zero live survivors**. Source/copied native lifecycle reports also have empty survivor arrays. Only recorded owned groups were checked/signalled; unrelated owner processes were untouched.
-
-## Dependency, CI and distribution status
-
-`npm audit` again reports two high development findings; `npm audit --omit=dev` reports zero for this repository graph. The Phase 14 `@vscode/vsce → @azure/identity → @azure/msal-node` advisory findings remain documented. No unsupported major override, lockfile churn or suppression was introduced. This is not a fresh audit of every upstream editor component.
-
-Hosted [implementation run 40095828908](https://github.com/Gautam-aman/CODOVYN/actions/runs/40095828908) failed before steps executed (macOS/Linux/Windows jobs had empty step lists). Its annotation reports failed recent payments/spending limit and ARM64 runner capacity warnings. Owner action remains GitHub Billing & plans resolution followed by workflow rerun. No billing or workflow settings were changed. Later documentation pushes may create separate runs; no hosted pass is claimed.
-
-## Development DMG — initial b2a37ef checkpoint
-
-- `dist/desktop/CODOVYN-darwin-arm64-development.dmg`.
-- Embedded source: `b2a37ef45c8267e356a596080e11c58f696dff4b`; `sourceDirty:false`. [Build provenance](../assets/opencode-task-execution/build-provenance.json).
-- SHA-256: `ad9e088433fb50bf7a9303fe3bb389a43463d18bc8b994c3516195e3282e8856`.
-- `hdiutil verify` passed during packaging and independently before mounting. The image was mounted read-only, copied to `/private/tmp/codovyn-phase15-copied-6XBGt8/CODOVYN.app` and detached.
-- `codesign --verify --deep --strict` passed on staged/copy bundles and again after copied native tests.
-- Ad-hoc signature, no CODOVYN team identity. `stapler validate` exited 65: no valid CODOVYN notarization established; inherited upstream ticket metadata does not notarize the modified bundle.
-- No Gatekeeper/Keychain change, installed-app overwrite or release publication. Intel macOS/Windows/Linux native support remains unverified.
-
-## Live-test proposal and remaining gates
-
-No authorization for inference was requested or inferred. No provider credentials, authentication files, passwords or raw account configuration were read/exported. Metadata presence does not establish authentication, quota or billing access. Codex live behavior was not retested; its existing deterministic compatibility tests passed.
-
-Only **after** the missing execution boundary is implemented and independently verified, a separately approved campaign could use at most six turns: Codex Ask; Codex one JUnit draft edit; OpenCode Ask; OpenCode one draft edit; Codex task start; OpenCode reviewed ContextFlow continuation. Proposed models are Provider Default after fresh metadata/capability confirmation (High only where advertised). Codex would use the owner's explicitly authorized official CLI context; OpenCode must use CODOVYN's separate owner-only context. Access/authentication and exact costs remain unknown.
-
-Proposed limits: one request per scenario, no automatic paid retry, 120 seconds and eight tool actions per request, isolated Java repository, no shell/Git/network tools/deployment, normal Agent and one-use ContextFlow approvals, independent file hashes/tests and bounded owned cleanup. The future live harness must prove these limits enforceable before asking for consent. None of those turns was run.
-
-Remaining production gates:
-
-1. Implement and validate a provider-consumed, narrow file-tool integration; keep direct source permissions denied until it exists.
-2. Implement safe isolated-draft writes, conflict handling, revocation/crash semantics and adversarial OS witnesses. Host patch-review tests passing is not evidence that OpenCode can edit safely.
-3. Connect that validated boundary to real task admission, queued execution and ContextFlow while rechecking complete lease/approval/model/executable scope and cleanup ownership.
-4. Verify genuine authenticated inference only under separate owner consent; no live coding, cost/token or continuation success claim yet.
-5. Retain issue #16, hosted CI, development dependency, broader platform and distribution-signing gates.
-
-The delivered result is a tested task-bound **host read foundation**, real task/ACP initialization evidence and a verified development artifact. It does not satisfy Phase 15's complete coding-execution definition of done. **Production execution remains blocked.**
-
-## Post-checkpoint continuation — experimental task read MCP bridge
-
-After the `b2a37ef` installer/evidence checkpoint above, continuation implemented a
-narrow supported MCP read path. The checkpoint DMG predates these new modules and
-is **not** evidence for this continuation; fresh native/artifact verification is
-still required after the remaining work.
-
-The pinned OpenCode ACP `session/new` supports a remote HTTP MCP descriptor. A
-new host-only TLS endpoint exposes exactly `read_project_text`, backed by the
-existing task/file authorities and native reader. It implements no writes,
-shell, general filesystem, resources or sampling service. Protocol bodies,
-connections, method IDs, response sizes and operations are bounded; repeated IDs,
-unknown tools, extra arguments, foreign origins and sensitive paths are rejected.
-
-The endpoint independently verifies the TCP socket belongs to the designated
-bound task process/private server using macOS `proc_pidinfo`/`proc_pidfdinfo`:
-executable path, UID, parent, process birth identity, loopback tuple and socket
-generation. It rechecks ownership before returning data. Caller-supplied PIDs or
-bearer strings do not authorize access. Unknown/replaced processes revoke the
-scope; unrelated local sockets fail without exposing source.
-
-A temporary task-specific TLS certificate authenticates the endpoint to the
-provider, preventing an unrelated server from impersonating a reused port. Only
-the public certificate is readable inside the provider sandbox. The host key
-stays outside approved provider scopes. Scoped `SSL_CERT_FILE` / `NODE_EXTRA_CA_CERTS`
-trust is used; system trust stores and certificate-verification settings are not
-weakened. Actual OpenCode 2.1.2 metadata sessions successfully initialize and list
-the tool over TLS. MCP tool invocations in deterministic OS fixtures read real
-fixture files; **real OpenCode inference/tool invocation remains untested**.
-
-Eight additional tests cover kernel peer identity, a foreign caller possessing
-the public certificate, forged services, malformed/replayed operations,
-revocation, a certificate-rejected impostor endpoint and OS denial of key reads
-and public-certificate writes. The complete local suite reached **300 passing,
-zero failed/skipped** at this development checkpoint. Production coding remains
-blocked: the normal adapter/workflow has not yet adopted this experimental bridge
-and safe Agent writes are still missing.
-
-Two early combined runs saw helper startup/read denials. They failed closed;
-sanitized lifecycle causes were added without changing existing error messages.
-An explicit native identity readiness check precedes endpoint exposure; the
-per-request inspection deadline remains 1.5 seconds. Later combined tests and
-five fresh helper builds passed. The initial intermittent cause is **not proven**;
-these observations are not a claim that every startup stall is resolved.
-
-References: [OpenCode MCP](https://docs.opencode.ai/docs/mcp-servers/),
-[MCP Streamable HTTP](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports),
-[Bun scoped CA environment](https://bun.sh/docs/runtime/environment-variables).
-
-## Continued hardening — accepted repository identity and draft publication
-
-**TASK AUTHORITY VERIFIED / DETERMINISTICALLY TESTED:** `00511ef` adds the
-root device/inode identity to host repository snapshots and recovery/ContextFlow
-fingerprints. TaskEngine pins that accepted root for each execution segment.
-File-service initialization must bind the repository broker identity to the
-accepted root; a newly issued broker for another repository at the same pathname
-cannot adopt the task. Observed replacement permanently revokes authority, even
-if the original directory is restored. Legacy saved approvals lacking this new
-identity cannot match a freshly inspected repository and require fresh review.
-This does not claim complete race resistance across all host filesystem activity.
-
-**FILE-ACCESS VERIFIED:** separate non-hidden Git/common directories are excluded
-from ordinary source reads. The native source reader also rejects nested bare
-Git stores (HEAD/objects layouts), cross-device traversal inside the authorized
-root, symlinks and multiply linked files. Root replacement and detected nested
-Git boundaries revoke the grant. Tests cover initial separate-store exclusion,
-changed broker identity rejection, copied content at a replaced pathname,
-revocation and continued ordinary Java/manifest reads. The checkpoint full suite
-passed **305 tests, zero failed/skipped**; the focused identity/read/MCP/recovery
-run passed **26 tests**.
-
-**REAL OS SECURITY VERIFIED — experimental create-only primitive:**
-`native/task-file-create.c` stages at most 64 KiB in a private same-filesystem
-host directory. It publishes only a new file using macOS `RENAME_EXCL` after an
-explicit commit signal. Existing targets, including symlinks and hardlinks, are
-never overwritten. There is no shell, Git, network, directory-creation or
-existing-file edit interface. The helper has no provider entry point and is not
-wired into the normal adapter, MCP tools or TaskEngine write journal.
-
-Five actual macOS tests compile/sign the helper and verify successful sandboxed
-creation, unchanged original/Git witness files, sensitive/traversal/nested-store
-rejection, abandoned staging without publication, and a concurrently inserted
-target remaining unchanged. A deterministic barrier moves the pinned target
-root outside the sandbox scope immediately before atomic rename. Sandboxed
-publication is denied; the identical unsandboxed control publishes into the
-moved directory and exits with an ambiguous-identity error. This validates the
-specific kernel rename boundary; it is not a proof of every possible write race.
-
-**BLOCKED:** task-journal write intent/completion, task-bound draft admission,
-revocation during publication, crash reconciliation, existing-file modification,
-concurrent nested-repository creation at the commit boundary, and complete
-provider-tool policy integration still require independent validation. The
-experimental create primitive must not be exposed as a safe general write tool.
-The existing production coding guard remains enforced. No live inference was
-performed or authorized by these tests.
-
-With the five publication tests included, `npm run check` passed **310 tests,
-zero failed, cancelled or skipped**, after syntax checking 155 JavaScript files.
-
-
-## Final continuation verification — a1c3e6d
-
-This continuation resumed at `24cdb6a72fec0b9853539e82b83dfc9a24a47f14` after
-preserving the existing implementation and fetching `origin/main`. Both initially
-matched; the in-progress identity/write research was preserved and completed into
-tested milestones. New implementation commits are:
-
-- `00511ef3785d94305d31adf2bc0027c9bf42d759` — accepted filesystem identity,
-  permanently bound repository authority, protected Git-store exclusion,
-  nested-bare/cross-device read checks, and identity-aware recovery fingerprints.
-- `a1c3e6dc12427e6f7e49d6750d0fa8ceab1073a2` — actual macOS create-only
-  publication/denial/control witnesses and explicit remaining write gates.
-
-Both commits were pushed directly to `main` and their exact remote SHAs checked.
-The fresh installer embeds `a1c3e6d` with `sourceDirty:false`. This final evidence
-update is a later documentation-only commit; the completion message records its
-remote HEAD. No application source changed after the clean-source build.
-
-[Machine-readable validation summary](../assets/opencode-task-execution/read-mcp-checkpoint/validation-summary.json)
-and [build provenance](../assets/opencode-task-execution/read-mcp-checkpoint/build-provenance.json).
-
-| Classification | Latest evidence |
-| --- | --- |
-| **TASK AUTHORITY VERIFIED** | Real SQLite/TaskEngine admission and unique process/segment scopes in ordinary and approved draft roots; root substitution and changed authority rejected; cancellation/expiry do not release ownership merely because a callback ran. |
-| **FILE-ACCESS VERIFIED** | Native bounded reads, protected separate stores and bare repositories denied; kernel peer-verified MCP reads in deterministic local client fixtures; source cannot be returned to an unrelated local client. |
-| **REAL OS SECURITY VERIFIED** | Existing real Git/shell/network-executable denial, protected metadata/tamper denial and hardened/unhardened injection controls still pass. Five new create-only sandbox/control tests pass. This is not a completed write service. |
-| **REAL ACP VERIFIED** | Seven repeated broker sessions, two source task-bound TLS/MCP sessions, two copied-runtime task-bound TLS/MCP sessions, and two additional copied native UI metadata refreshes. No `session/prompt`; no real OpenCode file-tool invocation. |
-| **DETERMINISTICALLY TESTED** | Full suite: **310 passed, zero failed/cancelled/skipped**; syntax checked 155 JavaScript files. Existing ContextFlow, one-use approval, queue, crash/recovery, argument-forwarding and patch-review tests preserved. |
-| **LIVE INFERENCE UNVERIFIED** | Zero inference requests. Authentication, entitlement, model responses, coding success, live continuation, token/cost savings remain unverified. |
-| **BLOCKED** | Normal OpenCode coding adapter adoption, durable task-bound draft writes, existing-file edits, complete write cancellation/crash semantics and full execution-policy/ContextFlow binding remain incomplete. |
-
-`npm ci --ignore-scripts`, `npm run check`, `npm run test:extension-host`,
-`npm run build:desktop`, `npm run test:desktop-host`, `npm run test:desktop-chat`,
-`npm run test:desktop-routing-ui`, `npm run test:desktop-restoration`, and
-`npm run package:desktop` all executed successfully. Major native suites ran
-sequentially. Extension host passed on VS Code **1.143.1**. No tests were weakened,
-removed, skipped to hide a failure, or given a larger timeout.
-
-### Real protocol and native results
-
-[Source task-bound ACP evidence](../assets/opencode-task-execution/read-mcp-checkpoint/source-opencode-task-boundary-validation.json)
-and [copied-runtime evidence](../assets/opencode-task-execution/read-mcp-checkpoint/copied-opencode-task-boundary-validation.json)
-prove actual OpenCode 2.1.2 HTTPS MCP initialization/tool listing plus host-invoked
-source reads. The copied probe runs the packaged modules with bundled Node; its
-outer harness records a documentation-dirty checkout separately from the embedded
-clean app provenance. It is not evidence of provider inference or editing.
-
-[Repeated broker campaign](../assets/opencode-task-execution/read-mcp-checkpoint/source-opencode-broker-validation.json)
-passed seven sessions/six transitions, including branch freshness, explicit model
-selection, linked-worktree scope, nested project rejection, path substitution,
-broker shutdown and startup cancellation. Observed inspection durations were
-**2058–3202 ms** across these seven samples (including native helper preparation
-and metadata inspection as recorded by the harness). No before/after performance,
-provider-token or billing improvement is claimed; memory was not profiled.
-
-Both source and copied native host/Chat/routing/restoration suites passed.
-The copied Java host independently ran **three JUnit tests, exit 0**, and opened
-the Java source in the actual editor. Search samples in the saved native evidence
-are **99.10 ms source** and **138.02 ms copied**. These are observations from
-separate fixture runs, not a speed comparison or a causal resolution of issue #16.
-
-The copied app's additional two-launch provider-settings campaign used the actual
-pinned executable and actual broker metadata, independently of fixture Chat.
-Installation/version detection, readiness reset during refresh, actual ACP model
-metadata, authentication unknown, inference unverified, coding blocked and
-non-selectable execution models all passed. Ten catalogue entries were observed;
-this does not establish access or account entitlement.
-
-[Actual copied provider settings](../assets/opencode-task-execution/read-mcp-checkpoint/copied-real-provider-readiness.png)
-shows the real metadata-only observation. [Copied ContextFlow review](../assets/opencode-task-execution/read-mcp-checkpoint/copied-contextflow-fixture.png)
-shows a deterministic task/journal fixture, not live Codex/OpenCode output.
-[Readiness assertions across restart](../assets/opencode-task-execution/read-mcp-checkpoint/copied-real-readiness-chat-host-result.json)
-keep these categories distinct. Existing narrow-layout/focus, model/variant,
-queue, history and one-use handoff UI assertions passed. The routing harness
-still reports native DOM focus observability unavailable; no broader focus or
-accessibility certification is claimed.
-
-### Fresh development installer and cleanup
-
-- DMG: `dist/desktop/CODOVYN-darwin-arm64-development.dmg`.
-- Embedded source: `a1c3e6dc12427e6f7e49d6750d0fa8ceab1073a2`, clean.
-- SHA-256: `1951081ee28c92e09cf143578c7d26045efecae7fd7c35f35e5cd2a1b95a49eb`.
-- Independent `hdiutil verify` passed; mounted read-only, bundle checked,
-  copied to `/private/tmp/codovyn-phase15-final-copy-kaykunth/CODOVYN.app`, detached.
-- Deep/strict signature checks passed on mounted and copied bundles, and again
-  after all copied native tests. Signature remains ad-hoc; `stapler validate`
-  exited **65**, so no valid CODOVYN notarization or public distribution is claimed.
-- Copied native host, Chat, routing/activity, two-launch restoration, real
-  metadata readiness and packaged task-bound ACP probes all passed.
-- [Final cleanup](../assets/opencode-task-execution/read-mcp-checkpoint/cleanup-verification.json)
-  checked **292 recorded owned process groups: zero survivors**. Twelve saved
-  source/copied/readiness lifecycle reports also record exit 0 and empty survivor
-  arrays. These are recorded groups, not a claim that unrelated owner processes
-  were absent. No unrelated process was signalled.
-- [Image verification](../assets/opencode-task-execution/read-mcp-checkpoint/image-verification.json)
-  records the exact checksum, copy location and embedded provenance.
-
-No installed application, user data, Keychain, Gatekeeper, provider credentials,
-Git protections or billing settings were changed. No generated app/DMG is
-committed or publicly published. ARM64 macOS remains the only native validated
-platform.
-
-### External and unfinished gates
-
-The fresh audit still reports two high-severity development findings and zero
-production graph findings. No unsupported override or unrelated dependency churn
-was applied. Hosted [run 40109388454](https://github.com/Gautam-aman/CODOVYN/actions/runs/40109388454)
-failed all three jobs with **zero steps executed**; the annotation explicitly
-cites failed recent payments/spending limit. The owner must resolve GitHub
-Billing & plans and rerun the workflow. Hosted CI is not green.
-
-Phase 15 remains incomplete. The experimental native create operation is **not**
-TaskEngine-authorized production editing: a durable intent must precede its
-publication; ambiguous completion, cancellation, nested-repository changes at
-commit time and crash recovery must be reconciled, then existing-file edits and
-reviewed patch application tested end to end. The experimental read MCP bridge
-also requires normal adapter/tool-policy and complete implementation-digest
-binding before any coding execution guard can be removed. Compilation currently
-uses the development Mac's CLT; public runtime helper provisioning is not verified.
-
-**PRODUCTION OPENCODE CODING EXECUTION: BLOCKED.** No live inference consent was
-requested because the execution-security prerequisites are not yet complete.
-The bounded future six-turn proposal above remains pending those prerequisites
-and separate explicit owner authorization.
+| **REAL OS SECURITY VERIFIED** | Native read/write/lock/denial/race witnesses; existing Git/shell/helper/injection restrictions preserved. |
+| **TASK AUTHORITY VERIFIED** | Actual SQLite leases/segments, task-bound file service, revocation, crash fencing and explicit recovery. |
+| **REAL ACP VERIFIED** | Real official OpenCode 2.1.2 Ask/Agent initialization from source and copied runtime; scoped MCP catalogue loaded, prompt blocked, original unchanged, cleanup verified. |
+| **DETERMINISTICALLY TESTED** | **330 passed, zero failed/cancelled/skipped**, syntax checked 166 JS files; Java accept/reject and Ask/Plan/tool-denial workflows. |
+| **LIVE INFERENCE UNVERIFIED** | Zero real prompts; authentication, entitlement, coding responses, live handoff, token/cost savings unverified. |
+
+Real executable SHA-256:
+`3f01e2ba8efd4242c638add9248b88696221d76588d9511e63cb2d727c278fcc`.
+[Source actual-adapter trace](../assets/opencode-task-execution/coding-boundary/source-opencode-task-execution-validation.json)
+and [copied trace](../assets/opencode-task-execution/coding-boundary/copied-opencode-task-execution-validation.json)
+contain only `initialize`, `session/new` and `session/set_config_option` outbound
+methods. Validation tasks intentionally end interrupted by the live-prompt guard,
+not as successful coding tasks. Copied traces separately record documentation-dirty
+outer harness state and clean embedded build provenance.
+
+An earlier parallel full-suite trial had one crash-fixture deadline failure.
+The fixture lacked complete cleanup if preflight failed before its forced-kill
+point; that path now cleans all owned resources and preserves error diagnostics.
+The original preflight failure itself was not conclusively reproduced and is not
+attributed to the unrelated workspace-search issue.
+OS-heavy tests are serialized for this Mac. The final 330-test run passed in
+123.36 seconds; no timeout, assertion or security test was weakened or skipped.
+
+Commands executed successfully: `npm ci --ignore-scripts`, `npm run check`,
+`npm run test:extension-host` (VS Code 1.143.1), `npm run build:desktop`, all four
+native host/Chat/routing/restoration scripts, and `npm run package:desktop`.
+All four native suites passed again against the copied DMG. Native host Java
+validation separately passed three baseline tests. Chat verified queue,
+ContextFlow review, persisted model/effort state and actual metadata-only provider
+readiness over two launches. Routing still reports DOM focus observability
+unavailable; no broader accessibility certification is claimed.
+
+[Actual copied provider-settings screenshot](../assets/opencode-task-execution/coding-boundary/copied-provider-readiness.png)
+shows the implemented draft boundary and explicit inference block. It is not live
+Chat evidence. Issue [#16](https://github.com/Gautam-aman/CODOVYN/issues/16) remains
+open; successful search regressions do not establish its root cause.
+
+## Fresh installer and cleanup
+
+- Image: `dist/desktop/CODOVYN-darwin-arm64-development.dmg`.
+- Embedded source: `4cc151008cf71c17f6ab76b0e965e793c54bf79b`; `sourceDirty:false`.
+- SHA-256: `3353b9ab650589f5e17c831989e913fa168415b0a19846070ad62de43c8d048c`.
+- Independent integrity verification, read-only mount, mounted-bundle deep/strict
+  signature check, disposable copy, detach and copied signature check passed.
+- Copy: `/private/tmp/codovyn-coding-copy-n9fey0gz/CODOVYN.app`.
+- Copied adapter/Java workflows and native suites passed; deep/strict verification
+  passed again after testing. Ad-hoc signed; `stapler validate` exited 65.
+- [Cleanup evidence](../assets/opencode-task-execution/coding-boundary/cleanup-verification.json):
+  **30 recorded process groups checked, zero survivors**; ten saved native
+  lifecycles exited 0 with empty survivor arrays. No unrelated process was signalled.
+- [Image/provenance evidence](../assets/opencode-task-execution/coding-boundary/image-verification.json).
+
+`/Applications/CODOVYN.app`, owner settings/projects, Keychain and Gatekeeper were
+not modified. No generated installer or credential was committed; no feature branch, PR or
+public release was created.
+
+## Remaining gates and limitations
+
+The new execution boundary is verified for the tested deterministic and metadata
+scenarios. **Production live coding remains blocked**, as explicitly requested.
+Authenticated OpenCode/Codex coding and live ContextFlow require separate owner
+consent and independent correctness checks; Phase 15 is not declared complete.
+
+The file interface is bounded UTF-8 in existing directories, not a general
+filesystem/shell service. It rejects unsupported filesystem cases rather than
+expanding permissions. Same-filesystem staging and CLT helper provisioning are
+currently required; Java validation requires Java/Maven and cached pinned offline
+dependencies. Staged preimages remain private review evidence; this milestone does
+not add general storage-retention policy or prove every hostile-host race or
+physical power-loss outcome. Other platforms and public distribution are unverified.
+
+The fresh dependency audit still has two high development findings and zero
+production-graph findings; no suppression/unsupported override was applied.
+Hosted [run 40170788581](https://github.com/Gautam-aman/CODOVYN/actions/runs/40170788581)
+failed all three jobs with **zero steps executed**. Its annotation cites failed
+recent payments/spending limits. Resolve GitHub Billing & plans and rerun; local
+passes are not hosted CI verification. Workflows and billing were unchanged.

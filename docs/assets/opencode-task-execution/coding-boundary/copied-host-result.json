@@ -1,0 +1,16 @@
+{
+  "app": "CODOVYN Desktop",
+  "version": "1.140.0",
+  "edit": true,
+  "fileSearch": true,
+  "fileSearchDurationMs": 57.247458,
+  "fileSearchPattern": "**/desktop-smoke.txt",
+  "git": true,
+  "terminal": true,
+  "bundledNode": true,
+  "javaValidation": {
+    "exitCode": 0,
+    "tests": 3,
+    "javaEditor": true
+  }
+}

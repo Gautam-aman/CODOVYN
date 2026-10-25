@@ -1,0 +1,108 @@
+{
+  "sourceCommit": "4cc151008cf71c17f6ab76b0e965e793c54bf79b",
+  "sourceDirty": true,
+  "provider": "2.1.2",
+  "inferenceRequests": 0,
+  "phases": [
+    {
+      "mode": "ask",
+      "initialized": true,
+      "promptBlocked": true,
+      "originalUnchanged": true,
+      "cleanupVerified": true,
+      "groups": [
+        95703,
+        95708
+      ],
+      "evidence": {
+        "type": "execution-boundary",
+        "provider": "opencode",
+        "mode": "ask",
+        "metadataOnly": true,
+        "acpMethods": [
+          "initialize",
+          "session/new",
+          "session/set_config_option"
+        ],
+        "repositoryIdentity": "29d75c71673bcca0e2614d19ba42e01fcf91bd98e2fed478f07da72dfadd62df",
+        "mcpMethods": [
+          {
+            "route": "/mcp",
+            "method": "initialize"
+          },
+          {
+            "route": "/mcp",
+            "method": "notifications/initialized"
+          },
+          {
+            "route": "/mcp",
+            "method": "tools/list"
+          }
+        ]
+      }
+    },
+    {
+      "mode": "agent",
+      "initialized": true,
+      "promptBlocked": true,
+      "originalUnchanged": true,
+      "cleanupVerified": true,
+      "groups": [
+        96556,
+        96562
+      ],
+      "evidence": {
+        "type": "execution-boundary",
+        "provider": "opencode",
+        "mode": "agent",
+        "metadataOnly": true,
+        "acpMethods": [
+          "initialize",
+          "session/new",
+          "session/set_config_option"
+        ],
+        "repositoryIdentity": "a3658fee2a5450fd3ece7fdaa8f8cc558c26c4a3e40c3ac49e4c3407e41c904f",
+        "mcpMethods": [
+          {
+            "route": "/mcp",
+            "method": "initialize"
+          },
+          {
+            "route": "/mcp",
+            "method": "notifications/initialized"
+          },
+          {
+            "route": "/mcp",
+            "method": "tools/list"
+          }
+        ]
+      }
+    }
+  ],
+  "packagedBuild": {
+    "identity": {
+      "name": "CODOVYN",
+      "bundleId": "org.codovyn.desktop",
+      "applicationName": "codovyn",
+      "repository": "https://github.com/Gautam-aman/CODOVYN",
+      "version": "0.1.0-alpha.1"
+    },
+    "artifacts": {
+      "editor": {
+        "filename": "VSCodium-darwin-arm64-1.140.06880.zip",
+        "url": "https://github.com/VSCodium/vscodium/releases/download/1.140.06880/VSCodium-darwin-arm64-1.140.06880.zip",
+        "sha256": "3a0ba1a13b6d743f79ffc20bebd7a2ef8bab2b40e54bcc80fae123da9ed552e0"
+      },
+      "runtime": {
+        "filename": "node-v26.9.0-darwin-arm64.tar.gz",
+        "url": "https://nodejs.org/dist/v26.9.0/node-v26.9.0-darwin-arm64.tar.gz",
+        "sha256": "6f3de7ed853ee283b4bf24b6e426618f1d357401ce5815db1866eb85eb4b05d9"
+      }
+    },
+    "sourceCommit": "4cc151008cf71c17f6ab76b0e965e793c54bf79b",
+    "sourceDirty": false,
+    "signing": "ad-hoc-development",
+    "platform": "darwin-arm64"
+  },
+  "passed": true
+}
