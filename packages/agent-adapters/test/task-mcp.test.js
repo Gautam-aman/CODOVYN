@@ -46,3 +46,12 @@ check('provider sandbox reads only the public task certificate, refuses private 
  const r=await probeProcess(b.command,[...b.prefixArgs,'-e',code],{cwd:root,env:b.env});assert.equal(r.code,0);assert.deepEqual(JSON.parse(r.stdout),{denied:2,certificate:true});assert.equal(authority.verifyAdmission(),true);
  }finally{chmodSync(tls.certificatePath,0o400);}
 }));
+
+check('host MCP budget prevents a ninth file action before access and cannot be reset by catalogue refresh',async()=>fixture(async({bridge,rpc,initialize,store})=>{
+ await initialize();
+ for(let i=0;i<8;i++){const result=await rpc('tools/call',{name:'read_project_text',arguments:{path:i===0?'.env':'Calculator.java'}});assert.equal(result.status,200);assert.equal(bridge.toolBudget.consumed,i+1);}
+ const before=store.events('mcp-task').filter(e=>e.kind==='file-access').length;
+ assert.equal((await rpc('tools/list')).status,200);
+ for(let i=0;i<2;i++){const denied=await rpc('tools/call',{name:'read_project_text',arguments:{path:'Calculator.java'}});assert.equal(denied.body.error.code,-32004);assert.ok(!JSON.stringify(denied).includes('class Calculator'));}
+ assert.deepEqual(bridge.toolBudget,{limit:8,consumed:8,remaining:0});assert.equal(store.events('mcp-task').filter(e=>e.kind==='file-access').length,before);
+}));

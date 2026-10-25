@@ -33,12 +33,18 @@ class CalculatorTest {
 }
 `
 };
-export async function createJavaValidationProject() {
+export async function createJavaValidationProject({scenario="legacy"}={}) {
+ if(!["legacy","division"].includes(scenario))throw new TypeError("Unknown Java validation scenario");
+ const files={...javaValidationFiles};
+ if(scenario==="division"){
+  files["src/main/java/dev/codovyn/Calculator.java"]=files["src/main/java/dev/codovyn/Calculator.java"].replace("return a + b; } // Deliberate validation-fixture bug.","return a - b; }").replace("return a / b;","return b == 0 ? 0 : a / b;");
+  files["README.md"]="# Disposable division validation project\nJava release 17 / JUnit 5. Division by zero must throw ArithmeticException; the current implementation incorrectly returns zero. Add a regression test and the minimal fix. Run mvn -o test independently. No external services.\n";
+ }
  const directory=await mkdtemp(join(tmpdir(),'codovyn-live-validation-'));const project=join(directory,'project');const evidence=join(directory,'evidence');await mkdir(project);await mkdir(evidence,{mode:0o700});
  const gitEnv={PATH:process.env.PATH,LANG:'en_US.UTF-8',HOME:directory,...(process.platform==='win32'?{SystemRoot:process.env.SystemRoot}:{}),GIT_AUTHOR_NAME:'CODOVYN Validation',GIT_AUTHOR_EMAIL:'test@example.invalid',GIT_COMMITTER_NAME:'CODOVYN Validation',GIT_COMMITTER_EMAIL:'test@example.invalid',GIT_AUTHOR_DATE:'2026-10-01T00:00:00Z',GIT_COMMITTER_DATE:'2026-10-01T00:00:00Z',GIT_CONFIG_NOSYSTEM:'1',GIT_CONFIG_GLOBAL:process.platform==='win32'?'NUL':'/dev/null',GIT_TERMINAL_PROMPT:'0'};
  const git=async(...args)=>(await execute(process.platform==='win32'?'git':'/usr/bin/git',['-c','core.fsmonitor=false','-c','core.hooksPath=/dev/null','-c','core.attributesFile=/dev/null','-C',project,...args],{timeout:10000,env:gitEnv})).stdout.trim();
- for(const[path,content]of Object.entries(javaValidationFiles)){await mkdir(join(project,path,'..'),{recursive:true});await writeFile(join(project,path),content);}
+ for(const[path,content]of Object.entries(files)){await mkdir(join(project,path,'..'),{recursive:true});await writeFile(join(project,path),content);}
  await git('init','-q','--initial-branch=main');await git('config','core.autocrlf','false');await git('add','.');await git('-c','user.name=CODOVYN Validation','-c','user.email=test@example.invalid','-c','commit.gpgsign=false','commit','-qm','Deterministic Java validation baseline');
- const snapshot=await repositorySnapshot(project,{env:gitEnv});const hashes=Object.fromEntries(await Promise.all(Object.keys(javaValidationFiles).map(async path=>[path,createHash('sha256').update(await readFile(join(project,path))).digest('hex')])));
+ const snapshot=await repositorySnapshot(project,{env:gitEnv});const hashes=Object.fromEntries(await Promise.all(Object.keys(files).map(async path=>[path,createHash('sha256').update(await readFile(join(project,path))).digest('hex')])));
  const manifest={version:1,project,evidence,baselineCommit:snapshot.commit,fingerprint:recoveryFingerprint(snapshot),fileHashes:hashes,initialTasks:[],inferenceTurns:0,liveAuthorization:'not-granted'};await writeFile(join(evidence,'baseline.json'),JSON.stringify(manifest,null,2)+'\n');return manifest;
 }
