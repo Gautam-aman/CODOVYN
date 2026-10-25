@@ -258,6 +258,10 @@ try {
   // late host messages using the pre-registered test-only gate and marked fixtures.
   // Persistence above still used the actual host transport and workspace settings.
   await evaluate("window.__codovynNativeFixtureOnly=true");
+  // Reset state as well as transport: earlier real diagnostics can correctly
+  // mark OpenCode execution blocked. The following selection assertions use
+  // a fixed provider fixture, while native Chat independently checks that block.
+  await evaluate("window.dispatchEvent(new MessageEvent('message', { data: { type: 'agent-diagnostics', agents: [{ id: 'codex', installation: 'detected', authentication: 'unknown', availability: 'unknown' }, { id: 'opencode', installation: 'detected', authentication: 'unknown', availability: 'unknown', executionSupported: true, diagnostic: 'DOM fixture only; no provider inference or execution' }] } }))");
   await evaluate("window.dispatchEvent(new MessageEvent('message', { data: { type: 'running' } }))");
   const runningBeforeSwitch = await evaluate("({ status: document.querySelector('#status').textContent, cancelDisabled: document.querySelector('#cancel').disabled })");
   await selectTab('history');
