@@ -81,6 +81,10 @@ Hosted CI at [004896d](https://github.com/Gautam-aman/CODOVYN/actions/runs/40287
 
 Development artifact: `dist/desktop/CODOVYN-darwin-arm64-development.dmg`. SHA-256: `958c2c71c4be9742f0ed3d041fe48be1d50916b01998c93802507b3e34ff1160`. Signature: **ad-hoc hardened development**, not Developer ID/notarized. The read-only public verifier correctly rejected it for lacking the intended Developer ID/Hardened Runtime nested signature. Public installer/download fields remain null/disabled. No signing credentials, Gatekeeper settings, release, website, account billing or repository visibility were changed. No app/DMG is committed.
 
+## Desktop session follow-up — no inference
+
+The [lifecycle investigation](../development/desktop-session-lifecycle-validation.md) fixes verified cleanup/ownership defects, adds private sanitized PID/group lifecycle evidence, and provides a Launch Services owner launcher without test-runner shutdown hooks or keyboard automation. The historical owner-app exit cause remains **unproven** and is not relabelled a crash. Full regression: **382 passed, 0 failed/skipped**. Two repeated copied-app cycles, four actual metadata-only worker sessions, cancellation, intentional shutdown and recorded process-group cleanup passed. Native host/Java, Chat, routing, restoration and provider/security checks passed sequentially. A fresh copied app is left open for manual owner authentication. Zero authentication starts or inference submissions were initiated by this task. After sign-in, require fresh exact owner approval and native one-use consent; do not reactivate prior approval automatically. The earlier DMG/provenance/checksum above remains historical and was not republished.
+
 ## Exact first Ask proposal — pending explicit approval
 
 Provider: official pinned Codex CLI **0.164.0**, native SHA `d8990e3ee7acfbc26f91265b12a1a83f0fee40d0e0f8f1f40a37d4ec21f499cf`. Model: **gpt-6.1-sol**, effort **Low**, subject to a fresh advertised capability check. Account: owner-initiated separate memory-only Codex context; no global credentials imported; authentication unverified until the owner signs in.

@@ -1,0 +1,472 @@
+{
+  "version": 1,
+  "sourceCommit": "101a4d4949bf65f38d409dafc2bb25fe2f46ac4a",
+  "packagedBuild": {
+    "identity": {
+      "name": "CODOVYN",
+      "bundleId": "org.codovyn.desktop",
+      "applicationName": "codovyn",
+      "repository": "https://github.com/Gautam-aman/CODOVYN",
+      "version": "0.1.0-alpha"
+    },
+    "artifacts": {
+      "editor": {
+        "filename": "VSCodium-darwin-arm64-1.140.06880.zip",
+        "url": "https://github.com/VSCodium/vscodium/releases/download/1.140.06880/VSCodium-darwin-arm64-1.140.06880.zip",
+        "sha256": "3a0ba1a13b6d743f79ffc20bebd7a2ef8bab2b40e54bcc80fae123da9ed552e0"
+      },
+      "runtime": {
+        "filename": "node-v26.12.1-darwin-arm64.tar.gz",
+        "url": "https://nodejs.org/dist/v26.12.1/node-v26.12.1-darwin-arm64.tar.gz",
+        "sha256": "1901d539912c02afa10d1cc126943a8855a7eedebe830119463470db5e6c59e8"
+      }
+    },
+    "sourceCommit": "74876458b89e12ec99b1fc036e3ccd4971318c67",
+    "sourceDirty": false,
+    "signing": "ad-hoc-development",
+    "platform": "darwin-arm64"
+  },
+  "inferenceSubmissions": 0,
+  "loginRequests": 0,
+  "cycles": [
+    {
+      "cycle": 1,
+      "setupPid": 47018,
+      "setupExited": true,
+      "mainPid": 47020,
+      "extensionHostPid": 47059,
+      "window": [
+        {
+          "height": 900,
+          "id": 11922,
+          "onScreen": false,
+          "width": 1440
+        }
+      ],
+      "workerSessions": [
+        {
+          "workerPid": 47384,
+          "providerGroup": 47385,
+          "metadata": true,
+          "loginStarted": false
+        },
+        {
+          "workerPid": 47390,
+          "providerGroup": 47391,
+          "metadata": true,
+          "loginStarted": false
+        }
+      ],
+      "cancelKeepsApplicationOpen": true,
+      "quitActivatedForeground": true,
+      "shutdownCleanupVerified": true,
+      "journalCounts": {
+        "tasks": 0,
+        "campaign_consents": 0,
+        "campaign_requests": 0,
+        "execution_leases": 0
+      },
+      "events": [
+        {
+          "at": "2026-10-26T09:07:24.497Z",
+          "event": "extension-ready",
+          "extensionHostPid": 47059,
+          "mainPid": 47020,
+          "signInCommandPresent": true
+        },
+        {
+          "at": "2026-10-26T09:07:25.530Z",
+          "event": "heartbeat",
+          "extensionHostPid": 47059,
+          "mainPid": 47020,
+          "workerAlive": false
+        },
+        {
+          "at": "2026-10-26T09:07:26.540Z",
+          "event": "heartbeat",
+          "extensionHostPid": 47059,
+          "mainPid": 47020,
+          "workerAlive": false
+        },
+        {
+          "at": "2026-10-26T09:07:26.546Z",
+          "event": "worker-started",
+          "extensionHostPid": 47059,
+          "mainPid": 47020,
+          "workerPid": 47384
+        },
+        {
+          "at": "2026-10-26T09:07:27.124Z",
+          "event": "metadata-ready",
+          "extensionHostPid": 47059,
+          "mainPid": 47020,
+          "workerPid": 47384,
+          "providerGroup": 47385,
+          "authenticated": false,
+          "modelCount": 8
+        },
+        {
+          "at": "2026-10-26T09:07:27.551Z",
+          "event": "heartbeat",
+          "extensionHostPid": 47059,
+          "mainPid": 47020,
+          "workerAlive": true
+        },
+        {
+          "at": "2026-10-26T09:07:28.566Z",
+          "event": "heartbeat",
+          "extensionHostPid": 47059,
+          "mainPid": 47020,
+          "workerAlive": true
+        },
+        {
+          "at": "2026-10-26T09:07:29.582Z",
+          "event": "heartbeat",
+          "extensionHostPid": 47059,
+          "mainPid": 47020,
+          "workerAlive": true
+        },
+        {
+          "at": "2026-10-26T09:07:29.734Z",
+          "event": "provider-cleanup",
+          "extensionHostPid": 47059,
+          "mainPid": 47020,
+          "workerPid": 47384,
+          "providerGroup": 47385,
+          "cleanupVerified": true,
+          "reason": "owner-cancel"
+        },
+        {
+          "at": "2026-10-26T09:07:29.758Z",
+          "event": "worker-exit",
+          "extensionHostPid": 47059,
+          "mainPid": 47020,
+          "workerPid": 47384,
+          "code": 0,
+          "signal": null,
+          "cleanupVerified": true
+        },
+        {
+          "at": "2026-10-26T09:07:29.758Z",
+          "event": "worker-cleaned",
+          "extensionHostPid": 47059,
+          "mainPid": 47020,
+          "workerPid": 47384,
+          "providerGroup": 47385
+        },
+        {
+          "at": "2026-10-26T09:07:29.890Z",
+          "event": "worker-started",
+          "extensionHostPid": 47059,
+          "mainPid": 47020,
+          "workerPid": 47390
+        },
+        {
+          "at": "2026-10-26T09:07:30.596Z",
+          "event": "heartbeat",
+          "extensionHostPid": 47059,
+          "mainPid": 47020,
+          "workerAlive": true
+        },
+        {
+          "at": "2026-10-26T09:07:30.636Z",
+          "event": "metadata-ready",
+          "extensionHostPid": 47059,
+          "mainPid": 47020,
+          "workerPid": 47390,
+          "providerGroup": 47391,
+          "authenticated": false,
+          "modelCount": 8
+        },
+        {
+          "at": "2026-10-26T09:07:31.610Z",
+          "event": "heartbeat",
+          "extensionHostPid": 47059,
+          "mainPid": 47020,
+          "workerAlive": true
+        },
+        {
+          "at": "2026-10-26T09:07:32.626Z",
+          "event": "heartbeat",
+          "extensionHostPid": 47059,
+          "mainPid": 47020,
+          "workerAlive": true
+        },
+        {
+          "at": "2026-10-26T09:07:33.646Z",
+          "event": "heartbeat",
+          "extensionHostPid": 47059,
+          "mainPid": 47020,
+          "workerAlive": true
+        },
+        {
+          "at": "2026-10-26T09:07:34.154Z",
+          "event": "owner-quit-requested",
+          "extensionHostPid": 47059,
+          "mainPid": 47020
+        },
+        {
+          "at": "2026-10-26T09:07:34.275Z",
+          "event": "deactivation-start",
+          "extensionHostPid": 47059,
+          "mainPid": 47020
+        },
+        {
+          "at": "2026-10-26T09:07:34.399Z",
+          "event": "provider-cleanup",
+          "extensionHostPid": 47059,
+          "mainPid": 47020,
+          "workerPid": 47390,
+          "providerGroup": 47391,
+          "cleanupVerified": true,
+          "reason": "owner-cancel"
+        },
+        {
+          "at": "2026-10-26T09:07:34.442Z",
+          "event": "worker-exit",
+          "extensionHostPid": 47059,
+          "mainPid": 47020,
+          "workerPid": 47390,
+          "code": 0,
+          "signal": null,
+          "cleanupVerified": true
+        },
+        {
+          "at": "2026-10-26T09:07:34.442Z",
+          "event": "worker-cleaned",
+          "extensionHostPid": 47059,
+          "mainPid": 47020,
+          "workerPid": 47390,
+          "providerGroup": 47391
+        },
+        {
+          "at": "2026-10-26T09:07:34.442Z",
+          "event": "deactivation-cleaned",
+          "extensionHostPid": 47059,
+          "mainPid": 47020
+        }
+      ]
+    },
+    {
+      "cycle": 2,
+      "setupPid": 47399,
+      "setupExited": true,
+      "mainPid": 47401,
+      "extensionHostPid": 47445,
+      "window": [
+        {
+          "height": 900,
+          "id": 11928,
+          "onScreen": false,
+          "width": 1440
+        }
+      ],
+      "workerSessions": [
+        {
+          "workerPid": 47771,
+          "providerGroup": 47772,
+          "metadata": true,
+          "loginStarted": false
+        },
+        {
+          "workerPid": 47822,
+          "providerGroup": 47843,
+          "metadata": true,
+          "loginStarted": false
+        }
+      ],
+      "cancelKeepsApplicationOpen": true,
+      "quitActivatedForeground": true,
+      "shutdownCleanupVerified": true,
+      "journalCounts": {
+        "tasks": 0,
+        "campaign_consents": 0,
+        "campaign_requests": 0,
+        "execution_leases": 0
+      },
+      "events": [
+        {
+          "at": "2026-10-26T09:07:38.119Z",
+          "event": "extension-ready",
+          "extensionHostPid": 47445,
+          "mainPid": 47401,
+          "signInCommandPresent": true
+        },
+        {
+          "at": "2026-10-26T09:07:39.133Z",
+          "event": "heartbeat",
+          "extensionHostPid": 47445,
+          "mainPid": 47401,
+          "workerAlive": false
+        },
+        {
+          "at": "2026-10-26T09:07:40.157Z",
+          "event": "heartbeat",
+          "extensionHostPid": 47445,
+          "mainPid": 47401,
+          "workerAlive": false
+        },
+        {
+          "at": "2026-10-26T09:07:40.163Z",
+          "event": "worker-started",
+          "extensionHostPid": 47445,
+          "mainPid": 47401,
+          "workerPid": 47771
+        },
+        {
+          "at": "2026-10-26T09:07:40.905Z",
+          "event": "metadata-ready",
+          "extensionHostPid": 47445,
+          "mainPid": 47401,
+          "workerPid": 47771,
+          "providerGroup": 47772,
+          "authenticated": false,
+          "modelCount": 8
+        },
+        {
+          "at": "2026-10-26T09:07:41.171Z",
+          "event": "heartbeat",
+          "extensionHostPid": 47445,
+          "mainPid": 47401,
+          "workerAlive": true
+        },
+        {
+          "at": "2026-10-26T09:07:42.189Z",
+          "event": "heartbeat",
+          "extensionHostPid": 47445,
+          "mainPid": 47401,
+          "workerAlive": true
+        },
+        {
+          "at": "2026-10-26T09:07:43.204Z",
+          "event": "heartbeat",
+          "extensionHostPid": 47445,
+          "mainPid": 47401,
+          "workerAlive": true
+        },
+        {
+          "at": "2026-10-26T09:07:43.633Z",
+          "event": "provider-cleanup",
+          "extensionHostPid": 47445,
+          "mainPid": 47401,
+          "workerPid": 47771,
+          "providerGroup": 47772,
+          "cleanupVerified": true,
+          "reason": "owner-cancel"
+        },
+        {
+          "at": "2026-10-26T09:07:43.639Z",
+          "event": "worker-exit",
+          "extensionHostPid": 47445,
+          "mainPid": 47401,
+          "workerPid": 47771,
+          "code": 0,
+          "signal": null,
+          "cleanupVerified": true
+        },
+        {
+          "at": "2026-10-26T09:07:43.640Z",
+          "event": "worker-cleaned",
+          "extensionHostPid": 47445,
+          "mainPid": 47401,
+          "workerPid": 47771,
+          "providerGroup": 47772
+        },
+        {
+          "at": "2026-10-26T09:07:43.711Z",
+          "event": "worker-started",
+          "extensionHostPid": 47445,
+          "mainPid": 47401,
+          "workerPid": 47822
+        },
+        {
+          "at": "2026-10-26T09:07:44.173Z",
+          "event": "metadata-ready",
+          "extensionHostPid": 47445,
+          "mainPid": 47401,
+          "workerPid": 47822,
+          "providerGroup": 47843,
+          "authenticated": false,
+          "modelCount": 8
+        },
+        {
+          "at": "2026-10-26T09:07:44.216Z",
+          "event": "heartbeat",
+          "extensionHostPid": 47445,
+          "mainPid": 47401,
+          "workerAlive": true
+        },
+        {
+          "at": "2026-10-26T09:07:45.229Z",
+          "event": "heartbeat",
+          "extensionHostPid": 47445,
+          "mainPid": 47401,
+          "workerAlive": true
+        },
+        {
+          "at": "2026-10-26T09:07:46.241Z",
+          "event": "heartbeat",
+          "extensionHostPid": 47445,
+          "mainPid": 47401,
+          "workerAlive": true
+        },
+        {
+          "at": "2026-10-26T09:07:47.253Z",
+          "event": "heartbeat",
+          "extensionHostPid": 47445,
+          "mainPid": 47401,
+          "workerAlive": true
+        },
+        {
+          "at": "2026-10-26T09:07:47.658Z",
+          "event": "owner-quit-requested",
+          "extensionHostPid": 47445,
+          "mainPid": 47401
+        },
+        {
+          "at": "2026-10-26T09:07:47.706Z",
+          "event": "deactivation-start",
+          "extensionHostPid": 47445,
+          "mainPid": 47401
+        },
+        {
+          "at": "2026-10-26T09:07:47.742Z",
+          "event": "provider-cleanup",
+          "extensionHostPid": 47445,
+          "mainPid": 47401,
+          "workerPid": 47822,
+          "providerGroup": 47843,
+          "cleanupVerified": true,
+          "reason": "owner-cancel"
+        },
+        {
+          "at": "2026-10-26T09:07:47.746Z",
+          "event": "worker-exit",
+          "extensionHostPid": 47445,
+          "mainPid": 47401,
+          "workerPid": 47822,
+          "code": 0,
+          "signal": null,
+          "cleanupVerified": true
+        },
+        {
+          "at": "2026-10-26T09:07:47.746Z",
+          "event": "worker-cleaned",
+          "extensionHostPid": 47445,
+          "mainPid": 47401,
+          "workerPid": 47822,
+          "providerGroup": 47843
+        },
+        {
+          "at": "2026-10-26T09:07:47.746Z",
+          "event": "deactivation-cleaned",
+          "extensionHostPid": 47445,
+          "mainPid": 47401
+        }
+      ]
+    }
+  ],
+  "diagnostics": "/private/tmp/codovyn-session-lifecycle-bmDrWg",
+  "originalProjectUnchanged": true,
+  "passed": true
+}

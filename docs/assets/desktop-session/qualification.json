@@ -1,0 +1,139 @@
+{
+  "classification": "REAL OS / COPIED DESKTOP / METADATA ONLY",
+  "historicalExitCause": "UNPROVEN: original info logs show extension-host exit code 0, without a causal shutdown trace. No crash report found.",
+  "verifiedDefects": [
+    "Native controller dropped its session handle before cleanup was established.",
+    "Extension had no awaited deactivate handler for the isolated session.",
+    "Prior owner launcher omitted separate shared-data-dir.",
+    "Blind UI keystroke orchestration had no native readiness/ownership record."
+  ],
+  "fixes": [
+    "Await one idempotent worker cleanup promise; emit proof only after managed provider disposal.",
+    "Retain native session ownership and fence replacement on unverified cleanup.",
+    "Await extension deactivation; bounded PID/PGID lifecycle audit with no account contents.",
+    "Launch owner GUI through short-lived Launch Services helper, isolated profile/shared storage; no test runner, timers, UI keyboard automation or inference."
+  ],
+  "historicalCauseNotAttributedToTheseFixes": true,
+  "fullRegression": {
+    "tests": 382,
+    "pass": 382,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "node": "26.12.1",
+    "durationMs": 122571.052875
+  },
+  "nativeSteps": [
+    {
+      "name": "lifecycle",
+      "exitCode": 0,
+      "seconds": 29.404
+    },
+    {
+      "name": "worker",
+      "exitCode": 0,
+      "seconds": 0.75
+    },
+    {
+      "name": "codex-control",
+      "exitCode": 0,
+      "seconds": 1.146
+    },
+    {
+      "name": "codex-task",
+      "exitCode": 0,
+      "seconds": 4.677
+    },
+    {
+      "name": "opencode-broker",
+      "exitCode": 0,
+      "seconds": 27.455
+    },
+    {
+      "name": "host",
+      "exitCode": 0,
+      "seconds": 10.196
+    },
+    {
+      "name": "chat",
+      "exitCode": 0,
+      "seconds": 26.362
+    },
+    {
+      "name": "routing",
+      "exitCode": 0,
+      "seconds": 29.693
+    },
+    {
+      "name": "restoration",
+      "exitCode": 0,
+      "seconds": 8.456
+    }
+  ],
+  "ownerLaunch": {
+    "at": "2026-10-26T09:11:54.435Z",
+    "app": "/private/tmp/codovyn-session-copy-3717yxhh/CODOVYN.app",
+    "project": "/private/var/folders/m6/yq18_j7n0l70y1zllfgm50s80000gn/T/codovyn-live-validation-52ABtM/project",
+    "directory": "/private/tmp/codovyn-owner-session-q5Qsm3",
+    "build": {
+      "identity": {
+        "name": "CODOVYN",
+        "bundleId": "org.codovyn.desktop",
+        "applicationName": "codovyn",
+        "repository": "https://github.com/Gautam-aman/CODOVYN",
+        "version": "0.1.0-alpha"
+      },
+      "artifacts": {
+        "editor": {
+          "filename": "VSCodium-darwin-arm64-1.140.06880.zip",
+          "url": "https://github.com/VSCodium/vscodium/releases/download/1.140.06880/VSCodium-darwin-arm64-1.140.06880.zip",
+          "sha256": "3a0ba1a13b6d743f79ffc20bebd7a2ef8bab2b40e54bcc80fae123da9ed552e0"
+        },
+        "runtime": {
+          "filename": "node-v26.12.1-darwin-arm64.tar.gz",
+          "url": "https://nodejs.org/dist/v26.12.1/node-v26.12.1-darwin-arm64.tar.gz",
+          "sha256": "1901d539912c02afa10d1cc126943a8855a7eedebe830119463470db5e6c59e8"
+        }
+      },
+      "sourceCommit": "74876458b89e12ec99b1fc036e3ccd4971318c67",
+      "sourceDirty": false,
+      "signing": "ad-hoc-development",
+      "platform": "darwin-arm64"
+    },
+    "setupPid": 58586,
+    "launchMechanism": "Launch Services; no extensionTestsPath, GUI automation or setup-lifetime cleanup",
+    "inferenceSubmissions": 0,
+    "authenticationInitiated": false
+  },
+  "ownerSetupExited": true,
+  "ownerExtensionHostPids": [
+    58703
+  ],
+  "originalFileHashes": {
+    ".gitignore": "b53ee26e6ff1da219b0563333a76d2c9ec19eec713d6ee54e11a1edacb0e9f3d",
+    "pom.xml": "038f8987ce54d1460794e05f81a4ac79401f5c7b8fed5928c5e849a7596ef6ae",
+    "README.md": "9f8d7c85cd6756f60eb1fac483e2358eff2be5b59f31d81b05d82c9cee177155",
+    "src/main/java/dev/codovyn/Calculator.java": "dee76c8f9584ba9286e2bd67948499030760f3978bb6a3e4074cbcf731088c26",
+    "src/main/java/dev/codovyn/TaskService.java": "4dc81d3a1e69235b0455bb6f5835ed4bf2056e1d65edad7abc80c2fdc930eaf8",
+    "src/test/java/dev/codovyn/CalculatorTest.java": "2c6ae1209b342ca6bb414b2744fb89b8b332035be8360e7a09b2fa53aeec22fc"
+  },
+  "originalJournalCounts": {
+    "tasks": 0,
+    "events": 0,
+    "campaign_consents": 0,
+    "campaign_requests": 0,
+    "execution_leases": 0
+  },
+  "originalJournalPreserved": true,
+  "originalGitUnchanged": true,
+  "actualInferenceSubmissions": 0,
+  "automatedAuthenticationStarts": 0,
+  "authorization": "No campaign approval created/recreated. After owner authentication, require fresh explicit inference approval and native one-use consent.",
+  "initialNativeTestFailure": "Backgrounded renderer did not deliver native quit before existing 15-second deadline. Failure retained; only recorded owned groups were cleaned. Bringing the window forward fixed this test without changing deadlines; historical owner-exit cause remains unproven.",
+  "ownerGate": "Application is left open for manual sign-in only.",
+  "ownerMainPid": 58661,
+  "ownerWindowActivationObserved": true,
+  "ownerOnScreenWindowsObserved": 1,
+  "ownerAppStillAliveAfterSetupAndReporting": true,
+  "ownerAuthenticationWorkerCountAtGate": 0
+}
