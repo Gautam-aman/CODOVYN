@@ -49,6 +49,7 @@ try {
   for (const name of ['LICENSE', 'NOTICE', 'README.md']) await cp(join(root, name), join(integration, name));
   await cp(join(root, 'apps/desktop/integration'), join(editorRoot, 'extensions/codovyn-desktop'), { recursive: true });
   const desktopExtension = join(editorRoot, 'extensions/codovyn-desktop');
+  for(const name of ['LICENSE','NOTICE'])await cp(join(root,name),join(desktopExtension,name));
   const desktopManifest = JSON.parse(await readFile(join(desktopExtension, 'package.json')));
   await mkdir(join(desktopExtension, 'themes'));
   desktopManifest.contributes.themes = [];
