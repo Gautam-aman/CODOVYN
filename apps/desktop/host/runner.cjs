@@ -90,12 +90,13 @@ exports.run = async () => {
   assert.equal(await step('save-document', () => document.save()), true);
   assert.match(fs.readFileSync(file.fsPath, 'utf8'), /Edited by CODOVYN Desktop/);
   const saved=document.getText(),editor=vscode.window.activeTextEditor;
+  const editorCommand=async(command,expected)=>{await vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup');await new Promise((resolve,reject)=>{let settled=false;const finish=error=>{if(settled)return;settled=true;clearTimeout(timer);listener.dispose();error?reject(error):resolve();};const listener=vscode.workspace.onDidChangeTextDocument(event=>{if(event.document===document&&document.getText()===expected)finish();});const timer=setTimeout(()=>finish(new Error(command+' did not produce the expected document state')),5000);vscode.commands.executeCommand(command).then(()=>{if(document.getText()===expected)finish();},finish);});};
   assert.equal(editor.document,document);
   await step('editor-unsaved-edit',()=>editor.edit(builder=>builder.insert(document.positionAt(saved.length),'Unsaved undo witness\n')));
   assert.equal(document.isDirty,true);assert.equal(fs.readFileSync(file.fsPath,'utf8'),saved,'Unsaved text must not mutate disk');
-  await step('editor-undo',()=>vscode.commands.executeCommand('undo'));assert.equal(document.getText(),saved);
-  await step('editor-redo',()=>vscode.commands.executeCommand('redo'));assert.match(document.getText(),/Unsaved undo witness/);
-  await vscode.commands.executeCommand('undo');assert.equal(document.getText(),saved);await document.save();
+  await step('editor-undo',()=>editorCommand('undo',saved));assert.equal(document.getText(),saved);
+  await step('editor-redo',()=>editorCommand('redo',saved+'Unsaved undo witness\n'));assert.match(document.getText(),/Unsaved undo witness/);
+  await editorCommand('undo',saved);assert.equal(document.getText(),saved);await document.save();
   const second=vscode.Uri.file(path.join(folder,'nested folder','second file.txt'));await vscode.workspace.fs.createDirectory(vscode.Uri.file(path.dirname(second.fsPath)));await vscode.workspace.fs.writeFile(second,Buffer.from('Second native tab\n'));
   await vscode.window.showTextDocument(document,{preview:false});await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(second),{preview:false});
   const tabs=vscode.window.tabGroups.all.flatMap(group=>group.tabs).map(tab=>tab.input?.uri?.fsPath);assert.ok(tabs.includes(file.fsPath)&&tabs.includes(second.fsPath),'Both real editor tabs remain open');
