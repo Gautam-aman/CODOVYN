@@ -12,7 +12,7 @@ CODOVYN is an independent Code-OSS/VSCodium-based desktop IDE with a bundled Nod
 
 The standalone Apple Silicon application has automated native coverage for editor/save, file search, Git, terminal, Java, Chat, queue/history and restoration. These are application/fixture checks, not human usability testing or proof of live AI coding.
 
-The supported preparation path is **isolated Codex device sign-in followed by one separately reviewed read-only Calculator validation request**. Credentials remain in memory; no global credentials are imported. Model metadata is not authenticated inference access. General coding, Agent editing, automatic failover, live OpenCode and cross-provider ContextFlow remain gated. Their implementations and deterministic tests are preserved for development.
+The supported preparation path is **isolated Codex device sign-in with strict macOS Keychain storage**. A stable profile identity survives worker cleanup; no global CLI credentials are imported. Real account restart verification remains owner-operated. The credential bridge to the restricted coding runtime is not implemented, so Ask, Agent editing, automatic failover, live OpenCode and cross-provider ContextFlow remain gated. Their implementations and deterministic tests are preserved for development.
 
 ## Build locally
 
@@ -31,7 +31,7 @@ The build downloads checksum-pinned VSCodium and Node artifacts. It replaces onl
 
 Open Chat → Settings → **Sign in to isolated Codex**, or use the equivalent Command Palette command. Only the pinned official Codex 0.164.0 ARM64 executable is admitted; configure its absolute native path when detection does not match your installation. No login or inference occurs on IDE startup.
 
-Sign-in uses the official device flow in the browser. It does not authorize inference. **Review one Codex Ask validation** presents the exact provider/model/effort, disposable workspace, prompt and quota warning in a native modal. The current validation entry refuses other projects, multiple requests, file tools and writes. Do not send a request until the owner has explicitly approved its campaign. See [Codex setup](docs/release/CODEX.md).
+Sign-in uses the official device flow in the browser. **Refresh sign-in status** restores stored account metadata in a new worker; **Sign out** removes only CODOVYN's isolated identity. Authentication never authorizes inference. Ask validation stays disabled until a safe credential bridge and fresh one-use consent are verified. See [Codex setup](docs/release/CODEX.md).
 
 ## Contribute
 

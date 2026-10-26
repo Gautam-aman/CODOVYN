@@ -1,0 +1,13 @@
+{
+  "phase": "read",
+  "workspace": true,
+  "editor": true,
+  "theme": "CODOVYN Warm Paper",
+  "localState": true,
+  "savedContent": true,
+  "routingPreferences": true,
+  "upgrade": {
+    "from": "34002abf3dac9ca4a4689b7997108ce98e6aae73",
+    "to": "2018d71493793993d76a6c009396b01d78205e83"
+  }
+}

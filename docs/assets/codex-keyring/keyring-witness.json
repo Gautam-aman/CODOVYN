@@ -1,0 +1,81 @@
+{
+  "classification": "REAL OS KEYCHAIN / PUBLIC INVALID WITNESS; NOT REAL ACCOUNT AUTHENTICATION",
+  "sourceCommit": "2018d71493793993d76a6c009396b01d78205e83",
+  "inferenceSubmissions": 0,
+  "browserLogins": 0,
+  "store": "keyring",
+  "steps": [
+    {
+      "operation": "official-store",
+      "namespace": 0,
+      "plaintextFile": false
+    },
+    {
+      "operation": "official-store",
+      "namespace": 1,
+      "plaintextFile": false
+    },
+    {
+      "operation": "initial-read",
+      "accountType": "apiKey",
+      "plaintextFile": false,
+      "logout": false
+    },
+    {
+      "operation": "new-process-restart-read",
+      "accountType": "apiKey",
+      "plaintextFile": false,
+      "logout": false
+    },
+    {
+      "operation": "scoped-logout",
+      "accountType": "apiKey",
+      "plaintextFile": false,
+      "logout": true
+    },
+    {
+      "operation": "other-test-namespace-preserved",
+      "accountType": "apiKey",
+      "plaintextFile": false,
+      "logout": false
+    },
+    {
+      "operation": "second-scoped-logout",
+      "accountType": "apiKey",
+      "plaintextFile": false,
+      "logout": true
+    }
+  ],
+  "groups": [
+    17807,
+    17809,
+    17811,
+    17813,
+    17815,
+    17817,
+    17819,
+    17821,
+    17823,
+    17825,
+    17826,
+    17828,
+    17829,
+    17831,
+    17832,
+    17833,
+    17835,
+    17836,
+    17838,
+    17839,
+    17840,
+    17842,
+    17844
+  ],
+  "realAccountRestart": "PENDING OWNER ACTION",
+  "plaintextFallbackDenied": true,
+  "unauthorizedExecutablesDenied": true,
+  "passed": true,
+  "cleanupVerified": true,
+  "stateFilesScanned": 178,
+  "noPlaintextWitnessInStateOrLogs": true
+}

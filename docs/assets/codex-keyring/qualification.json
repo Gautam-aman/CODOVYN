@@ -1,0 +1,289 @@
+{
+  "classification": "REAL OS KEYCHAIN WITH SYNTHETIC WITNESSES / REAL COPIED APP; NO REAL ACCOUNT LOGIN OR INFERENCE",
+  "startingSha": "b7d3c28182d4e0c74f5da8847afeed97dfaeedf4",
+  "implementationSha": "2018d71493793993d76a6c009396b01d78205e83",
+  "providerVersion": "Codex 0.164.0",
+  "providerSha256": "d8990e3ee7acfbc26f91265b12a1a83f0fee40d0e0f8f1f40a37d4ec21f499cf",
+  "officialSourceCommit": "6aaac694803004a63c6f393d153c96d22521a6b9",
+  "credentialStorage": "keyring; no auto/file fallback",
+  "codingSandboxFactorySha256Unchanged": "dfb8100baaea3874eaf38b06520ad426c563a7f6994da47e5ae3e80a560d9c18",
+  "fullRegression": {
+    "node": "26.12.1",
+    "tests": 393,
+    "pass": 393,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "durationMs": 117269.671958,
+    "logSha256": "45f59372c707771f28dc4fa4f9de85fa88e736c8b76d45ad2ddec3efb8545d57"
+  },
+  "sourceSteps": [
+    {
+      "name": "dependencies",
+      "exitCode": 0,
+      "seconds": 11.467
+    },
+    {
+      "name": "check",
+      "exitCode": 0,
+      "seconds": 122.872
+    },
+    {
+      "name": "keyring",
+      "exitCode": 0,
+      "seconds": 4.166
+    },
+    {
+      "name": "auth-worker",
+      "exitCode": 0,
+      "seconds": 1.892
+    },
+    {
+      "name": "extension",
+      "exitCode": 0,
+      "seconds": 5.487
+    },
+    {
+      "name": "build",
+      "exitCode": 0,
+      "seconds": 22.017
+    },
+    {
+      "name": "licenses",
+      "exitCode": 0,
+      "seconds": 0.235
+    },
+    {
+      "name": "package",
+      "exitCode": 0,
+      "seconds": 25.179
+    }
+  ],
+  "installer": {
+    "image": "/Users/rigelsmacbook/Java Projects/Codovyn/dist/desktop/CODOVYN-darwin-arm64-development.dmg",
+    "sha256": "4dddb268129a065285c93594041ed201754ac67e584ee6edea823e7e6a56fbf9",
+    "copiedApplication": "/private/tmp/codovyn-persistent-auth-copy-xy4pbrj2/CODOVYN.app",
+    "readOnlyMount": true,
+    "steps": [
+      {
+        "name": "image-integrity",
+        "exitCode": 0,
+        "seconds": 2.678
+      },
+      {
+        "name": "signature",
+        "exitCode": 0,
+        "seconds": 0.854
+      },
+      {
+        "name": "host",
+        "exitCode": 0,
+        "seconds": 23.307
+      },
+      {
+        "name": "chat",
+        "exitCode": 0,
+        "seconds": 24.075
+      },
+      {
+        "name": "routing",
+        "exitCode": 0,
+        "seconds": 35.588
+      },
+      {
+        "name": "restoration",
+        "exitCode": 0,
+        "seconds": 6.949
+      },
+      {
+        "name": "codex-auth",
+        "exitCode": 0,
+        "seconds": 0.591
+      },
+      {
+        "name": "codex-control",
+        "exitCode": 0,
+        "seconds": 0.486
+      },
+      {
+        "name": "codex-task",
+        "exitCode": 0,
+        "seconds": 1.865
+      },
+      {
+        "name": "opencode-task",
+        "exitCode": 0,
+        "seconds": 5.747
+      },
+      {
+        "name": "keyring",
+        "exitCode": 0,
+        "seconds": 3.825
+      },
+      {
+        "name": "codex-worker",
+        "exitCode": 0,
+        "seconds": 0.331
+      },
+      {
+        "name": "persistent-auth-worker",
+        "exitCode": 0,
+        "seconds": 1.93
+      },
+      {
+        "name": "licenses",
+        "exitCode": 0,
+        "seconds": 0.097
+      },
+      {
+        "name": "java-workflow",
+        "exitCode": 0,
+        "seconds": 8.126
+      },
+      {
+        "name": "post-test-signature",
+        "exitCode": 0,
+        "seconds": 1.418
+      }
+    ],
+    "mountedSignatureVerified": true,
+    "detached": true,
+    "source": {
+      "identity": {
+        "name": "CODOVYN",
+        "bundleId": "org.codovyn.desktop",
+        "applicationName": "codovyn",
+        "repository": "https://github.com/Gautam-aman/CODOVYN",
+        "version": "0.1.0-alpha"
+      },
+      "artifacts": {
+        "editor": {
+          "filename": "VSCodium-darwin-arm64-1.140.06880.zip",
+          "url": "https://github.com/VSCodium/vscodium/releases/download/1.140.06880/VSCodium-darwin-arm64-1.140.06880.zip",
+          "sha256": "3a0ba1a13b6d743f79ffc20bebd7a2ef8bab2b40e54bcc80fae123da9ed552e0"
+        },
+        "runtime": {
+          "filename": "node-v26.12.1-darwin-arm64.tar.gz",
+          "url": "https://nodejs.org/dist/v26.12.1/node-v26.12.1-darwin-arm64.tar.gz",
+          "sha256": "1901d539912c02afa10d1cc126943a8855a7eedebe830119463470db5e6c59e8"
+        }
+      },
+      "sourceCommit": "2018d71493793993d76a6c009396b01d78205e83",
+      "sourceDirty": false,
+      "signing": "ad-hoc-development",
+      "platform": "darwin-arm64"
+    },
+    "copiedHarnesses": [
+      {
+        "name": "codex-auth",
+        "sourceScript": "validate-codex-auth.js",
+        "sha256": "7448cc7b1db8e4ca2737c586b6acb40a112a9eacab18187641ca6614c3b27b6e",
+        "packageRoot": "/private/tmp/codovyn-persistent-auth-copy-xy4pbrj2/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
+      },
+      {
+        "name": "codex-control",
+        "sourceScript": "validate-codex-control.js",
+        "sha256": "e0aae92beedacb069129d1d23bf419b64f7a8b2f551cadee831e5e02dd42a734",
+        "packageRoot": "/private/tmp/codovyn-persistent-auth-copy-xy4pbrj2/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
+      },
+      {
+        "name": "codex-task",
+        "sourceScript": "validate-codex-task-control.js",
+        "sha256": "6350daa2faa7b5c331c4084161f5bb7c402664b792b2ad8be690e511de33dc79",
+        "packageRoot": "/private/tmp/codovyn-persistent-auth-copy-xy4pbrj2/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
+      },
+      {
+        "name": "opencode-task",
+        "sourceScript": "validate-opencode-task-execution.js",
+        "sha256": "70ec6b30e8aa0d40061fa24ed77285ac5a31e45db3d9198463d0c4158f593947",
+        "packageRoot": "/private/tmp/codovyn-persistent-auth-copy-xy4pbrj2/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
+      },
+      {
+        "name": "keyring",
+        "sourceScript": "validate-codex-keyring.js",
+        "sha256": "335beeb4919cec0b765e6c26c88bc7741e890504003fa98c3f367e5d88292c53",
+        "packageRoot": "/private/tmp/codovyn-persistent-auth-copy-xy4pbrj2/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
+      }
+    ],
+    "runtimeEntitlements": {
+      "com.apple.security.cs.allow-jit": true
+    },
+    "minimumMacOS": "13.5",
+    "bundleVersion": "2",
+    "passed": true
+  },
+  "nativeAuthUI": "Five fixture-rendered states and four enabled management controls verified; Ask remains disabled even after a fixture Signed in event. No sign-in button was invoked by native automation.",
+  "publicWitness": "Official CLI stores deliberately invalid public API-key strings; not genuine account authentication. Two namespaces and fresh-process restore/logout checked. All fixture items removed.",
+  "ownerAccountRestart": "PENDING OWNER-INITIATED CHATGPT LOGIN AND REFRESH",
+  "originalFileHashes": {
+    ".gitignore": "b53ee26e6ff1da219b0563333a76d2c9ec19eec713d6ee54e11a1edacb0e9f3d",
+    "pom.xml": "038f8987ce54d1460794e05f81a4ac79401f5c7b8fed5928c5e849a7596ef6ae",
+    "README.md": "9f8d7c85cd6756f60eb1fac483e2358eff2be5b59f31d81b05d82c9cee177155",
+    "src/main/java/dev/codovyn/Calculator.java": "dee76c8f9584ba9286e2bd67948499030760f3978bb6a3e4074cbcf731088c26",
+    "src/main/java/dev/codovyn/TaskService.java": "4dc81d3a1e69235b0455bb6f5835ed4bf2056e1d65edad7abc80c2fdc930eaf8",
+    "src/test/java/dev/codovyn/CalculatorTest.java": "2c6ae1209b342ca6bb414b2744fb89b8b332035be8360e7a09b2fa53aeec22fc"
+  },
+  "originalGitUnchanged": true,
+  "originalJournalCounts": {
+    "tasks": 1,
+    "events": 6,
+    "campaign_consents": 0,
+    "campaign_requests": 0,
+    "activeLeases": 0
+  },
+  "actualInferenceSubmissions": 0,
+  "automaticRealAccountLogins": 0,
+  "consentCreated": false,
+  "codingExecution": "BLOCKED \u2014 persistent-to-coding credential bridge is NOT IMPLEMENTED",
+  "ownerLaunch": {
+    "at": "2026-10-26T14:04:43.412Z",
+    "app": "/private/tmp/codovyn-persistent-auth-copy-xy4pbrj2/CODOVYN.app",
+    "project": "/private/var/folders/m6/yq18_j7n0l70y1zllfgm50s80000gn/T/codovyn-live-validation-52ABtM/project",
+    "directory": "/Users/rigelsmacbook/Library/Application Support/CODOVYN Owner Validation",
+    "build": {
+      "identity": {
+        "name": "CODOVYN",
+        "bundleId": "org.codovyn.desktop",
+        "applicationName": "codovyn",
+        "repository": "https://github.com/Gautam-aman/CODOVYN",
+        "version": "0.1.0-alpha"
+      },
+      "artifacts": {
+        "editor": {
+          "filename": "VSCodium-darwin-arm64-1.140.06880.zip",
+          "url": "https://github.com/VSCodium/vscodium/releases/download/1.140.06880/VSCodium-darwin-arm64-1.140.06880.zip",
+          "sha256": "3a0ba1a13b6d743f79ffc20bebd7a2ef8bab2b40e54bcc80fae123da9ed552e0"
+        },
+        "runtime": {
+          "filename": "node-v26.12.1-darwin-arm64.tar.gz",
+          "url": "https://nodejs.org/dist/v26.12.1/node-v26.12.1-darwin-arm64.tar.gz",
+          "sha256": "1901d539912c02afa10d1cc126943a8855a7eedebe830119463470db5e6c59e8"
+        }
+      },
+      "sourceCommit": "2018d71493793993d76a6c009396b01d78205e83",
+      "sourceDirty": false,
+      "signing": "ad-hoc-development",
+      "platform": "darwin-arm64"
+    },
+    "setupPid": 21936,
+    "authenticationStorageVersion": 1,
+    "stableProfile": true,
+    "launchMechanism": "Launch Services; no extensionTestsPath, GUI automation or setup-lifetime cleanup",
+    "inferenceSubmissions": 0,
+    "authenticationInitiated": false
+  },
+  "ownerSetupExited": true,
+  "ownerExtensionHostPids": [
+    22068
+  ],
+  "ownerWindowOnScreenObserved": true,
+  "ownerAuthenticationInitiatedByAgent": false,
+  "keychainSecurityScope": "Only the trusted authentication component can use the Keychain directory. Its protocol has no model/thread/tool/execution methods. OS enforcement is not per-item; the pinned official SDK and immutable canonical CODEX_HOME bind the logical namespace. The coding sandbox has no added Keychain grant.",
+  "limitations": [
+    "Actual ChatGPT account login, refresh/restart and sign-out remain owner-gated.",
+    "Synthetic Keychain persistence does not prove authenticated model access.",
+    "Authentication-only OS profile trusts the pinned native SDK and allows platform Keychain I/O; this is separate from untrusted coding execution.",
+    "No verified credential relay to the restricted coding sandbox; inference remains disabled.",
+    "Development app is ad-hoc signed and unnotarized; no public release readiness."
+  ]
+}

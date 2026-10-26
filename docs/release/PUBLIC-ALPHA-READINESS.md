@@ -85,7 +85,15 @@ Development artifact: `dist/desktop/CODOVYN-darwin-arm64-development.dmg`. SHA-2
 
 The [lifecycle investigation](../development/desktop-session-lifecycle-validation.md) fixes verified cleanup/ownership defects, adds private sanitized PID/group lifecycle evidence, and provides a Launch Services owner launcher without test-runner shutdown hooks or keyboard automation. The historical owner-app exit cause remains **unproven** and is not relabelled a crash. Full regression: **382 passed, 0 failed/skipped**. Two repeated copied-app cycles, four actual metadata-only worker sessions, cancellation, intentional shutdown and recorded process-group cleanup passed. Native host/Java, Chat, routing, restoration and provider/security checks passed sequentially. A fresh copied app is left open for manual owner authentication. Zero authentication starts or inference submissions were initiated by this task. After sign-in, require fresh exact owner approval and native one-use consent; do not reactivate prior approval automatically. The earlier DMG/provenance/checksum above remains historical and was not republished.
 
-## Exact first Ask proposal — pending explicit approval
+## Keychain authentication follow-up — current implementation
+
+See [persistent authentication qualification](../development/codex-persistent-authentication-validation.md). The stable profile identity now uses strict OS **keyring**, separate from temporary runtime state and from the unchanged coding sandbox. Official-CLI public invalid witnesses passed native Keychain storage, fresh-process restore, scoped logout and plaintext rejection. Three actual empty-identity worker lifetimes/two restarts and all **16 copied-DMG checks** passed. Full regression: **393 passed, 0 failed/skipped**. These are not genuine ChatGPT-account authentication or inference results; owner login/refresh confirmation is pending.
+
+**New explicit coding gate:** the Keychain authentication component cannot start threads/turns or bind execution, and a credential bridge to the restricted coding process is **not implemented**. Ask is disabled. Earlier memory-only transport/proposal descriptions are historical preparation, not a currently executable path for the persistent identity. Do not request or consume spending consent until this boundary and real account restoration are verified. No earlier approval was recreated/consumed. This task sent **zero model requests** and started **zero real browser logins**.
+
+Current clean development artifact embeds `2018d71493793993d76a6c009396b01d78205e83`; DMG SHA-256 `4dddb268129a065285c93594041ed201754ac67e584ee6edea823e7e6a56fbf9`. It remains ad-hoc signed/unnotarized and was not published. The earlier checksum sections remain historical evidence of their own builds. The new copied app is left open using the stable **CODOVYN Owner Validation** profile for manual sign-in.
+
+## Historical first Ask proposal — blocked by current credential bridge
 
 Provider: official pinned Codex CLI **0.164.0**, native SHA `d8990e3ee7acfbc26f91265b12a1a83f0fee40d0e0f8f1f40a37d4ec21f499cf`. Model: **gpt-6.1-sol**, effort **Low**, subject to a fresh advertised capability check. Account: owner-initiated separate memory-only Codex context; no global credentials imported; authentication unverified until the owner signs in.
 
