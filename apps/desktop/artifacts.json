@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "editorVersion": "1.140.06880",
-  "nodeVersion": "26.9.0",
+  "nodeVersion": "26.12.1",
   "source": "https://github.com/VSCodium/vscodium/tree/1.140.06880",
   "targets": {
     "darwin-arm64": {
@@ -11,9 +11,9 @@
         "sha256": "3a0ba1a13b6d743f79ffc20bebd7a2ef8bab2b40e54bcc80fae123da9ed552e0"
       },
       "runtime": {
-        "filename": "node-v26.9.0-darwin-arm64.tar.gz",
-        "url": "https://nodejs.org/dist/v26.9.0/node-v26.9.0-darwin-arm64.tar.gz",
-        "sha256": "6f3de7ed853ee283b4bf24b6e426618f1d357401ce5815db1866eb85eb4b05d9"
+        "filename": "node-v26.12.1-darwin-arm64.tar.gz",
+        "url": "https://nodejs.org/dist/v26.12.1/node-v26.12.1-darwin-arm64.tar.gz",
+        "sha256": "1901d539912c02afa10d1cc126943a8855a7eedebe830119463470db5e6c59e8"
       }
     }
   }

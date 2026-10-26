@@ -1,6 +1,6 @@
 # Development setup
 
-Install Node 26.9.0/npm, Git and Xcode Command Line Tools on Apple Silicon. Java/Maven are needed only for Java workflow qualification; prepare the pinned dependencies before offline tests. Do not install or authenticate a provider merely to run unit tests.
+Install Node 26.12.1/npm, Git and Xcode Command Line Tools on Apple Silicon. Java/Maven are needed only for Java workflow qualification; prepare the pinned dependencies before offline tests. Do not install or authenticate a provider merely to run unit tests.
 
 ```sh
 npm ci --ignore-scripts

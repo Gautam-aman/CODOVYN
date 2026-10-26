@@ -16,7 +16,7 @@ The supported preparation path is **isolated Codex device sign-in followed by on
 
 ## Build locally
 
-Development requires Node 26 (qualification pins 26.9.0), npm, Git and Xcode Command Line Tools on macOS ARM64:
+Development requires Node 26 (qualification pins 26.12.1), npm, Git and Xcode Command Line Tools on macOS ARM64:
 
 ```sh
 npm ci --ignore-scripts
