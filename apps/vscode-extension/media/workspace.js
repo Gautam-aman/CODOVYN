@@ -867,7 +867,7 @@ chatLog.setAttribute('aria-relevant', 'additions');
 chatLog.tabIndex = 0;
 const chatEmpty = document.createElement('p');
 chatEmpty.className = 'chat-empty';
-chatEmpty.textContent = 'Ask about this project, or choose Agent to propose edits.';
+chatEmpty.textContent = 'Alpha preparation: open Settings to set up isolated Codex and review the one-request Ask validation. Live Agent editing and provider switching remain disabled.';
 chatLog.append(chatEmpty);
 const jumpToLatestChat = document.createElement('button');
 jumpToLatestChat.type = 'button';
