@@ -1,0 +1,58 @@
+{
+  "sourceCommit": "34002abf3dac9ca4a4689b7997108ce98e6aae73",
+  "sourceDirty": false,
+  "inferenceRequests": 0,
+  "authentication": "unknown; isolated empty provider context",
+  "executable": {
+    "executable": "/opt/homebrew/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/bin/codex",
+    "sha256": "d8990e3ee7acfbc26f91265b12a1a83f0fee40d0e0f8f1f40a37d4ec21f499cf"
+  },
+  "productionExecution": "blocked",
+  "providerGroup": 33403,
+  "model": "gpt-6.1-sol",
+  "hostSourceRead": {
+    "path": "src/main/java/dev/codovyn/Calculator.java",
+    "bytes": 229,
+    "sha256": "dee76c8f9584ba9286e2bd67948499030760f3978bb6a3e4074cbcf731088c26",
+    "deliveredToModel": false
+  },
+  "methods": [
+    "initialize",
+    "model/list",
+    "config/read",
+    "thread/start"
+  ],
+  "authority": {
+    "taskId": "codex-task-security",
+    "segment": "58179017-d7b6-4b63-8418-f6b354e665ca",
+    "configurationDigest": "bbd6fd41295337abbfa030bf50478c08e71f02869bda8539f2589054c334f090"
+  },
+  "metadataInitialized": true,
+  "failure": {
+    "message": "Expected stop after secured metadata and host-only source validation; no inference submitted"
+  },
+  "cleanupVerified": true,
+  "originalUnchanged": true,
+  "taskStatus": "interrupted",
+  "fileAudit": [
+    {
+      "segment": "58179017-d7b6-4b63-8418-f6b354e665ca",
+      "provider": "codex",
+      "operation": "read",
+      "path": "src/main/java/dev/codovyn/Calculator.java",
+      "repositoryIdentity": "b6337c8bc8fe72a057f7313c444ab2d227a8c2212070f76bcbae7c5c76101bf9",
+      "decision": "allowed",
+      "elapsedMs": 431.37354099999993
+    },
+    {
+      "segment": "58179017-d7b6-4b63-8418-f6b354e665ca",
+      "provider": "codex",
+      "operation": "read",
+      "path": "[rejected path]",
+      "repositoryIdentity": "b6337c8bc8fe72a057f7313c444ab2d227a8c2212070f76bcbae7c5c76101bf9",
+      "decision": "denied",
+      "elapsedMs": 0.038291999999955806
+    }
+  ],
+  "passed": true
+}

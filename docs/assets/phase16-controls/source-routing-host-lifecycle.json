@@ -1,0 +1,14 @@
+{
+  "phase": "host-fresh-profile",
+  "pid": 26151,
+  "result": {
+    "code": 0,
+    "signal": null
+  },
+  "survivors": [],
+  "elapsedMs": 34544,
+  "timeoutMs": 120000,
+  "graceMs": 1500,
+  "killGraceMs": 2500,
+  "lastProgress": "{\"phase\":\"terminal\",\"state\":\"complete\",\"pid\":26250,\"elapsedMs\":32136.960416,\"at\":\"2026-10-26T04:30:48.300Z\"}"
+}

@@ -1,0 +1,111 @@
+{
+  "image": "/Users/rigelsmacbook/Java Projects/Codovyn/dist/desktop/CODOVYN-darwin-arm64-development.dmg",
+  "sha256": "dba86d3700e0360a4175f7ba895f13945df3839159b6f6d3710f137e11a54f52",
+  "copiedApplication": "/private/tmp/codovyn-phase16-final-copy-umrjq_41/CODOVYN.app",
+  "readOnlyMount": true,
+  "steps": [
+    {
+      "name": "image-integrity",
+      "exitCode": 0,
+      "seconds": 2.925
+    },
+    {
+      "name": "signature",
+      "exitCode": 0,
+      "seconds": 0.762
+    },
+    {
+      "name": "host",
+      "exitCode": 0,
+      "seconds": 15.961
+    },
+    {
+      "name": "chat",
+      "exitCode": 0,
+      "seconds": 21.988
+    },
+    {
+      "name": "routing",
+      "exitCode": 0,
+      "seconds": 35.191
+    },
+    {
+      "name": "restoration",
+      "exitCode": 0,
+      "seconds": 5.651
+    },
+    {
+      "name": "codex-control",
+      "exitCode": 0,
+      "seconds": 1.207
+    },
+    {
+      "name": "codex-task",
+      "exitCode": 0,
+      "seconds": 1.74
+    },
+    {
+      "name": "opencode-task",
+      "exitCode": 0,
+      "seconds": 7.098
+    },
+    {
+      "name": "java-workflow",
+      "exitCode": 0,
+      "seconds": 10.345
+    },
+    {
+      "name": "post-test-signature",
+      "exitCode": 0,
+      "seconds": 1.484
+    }
+  ],
+  "mountedSignatureVerified": true,
+  "detached": true,
+  "source": {
+    "identity": {
+      "name": "CODOVYN",
+      "bundleId": "org.codovyn.desktop",
+      "applicationName": "codovyn",
+      "repository": "https://github.com/Gautam-aman/CODOVYN",
+      "version": "0.1.0-alpha.1"
+    },
+    "artifacts": {
+      "editor": {
+        "filename": "VSCodium-darwin-arm64-1.140.06880.zip",
+        "url": "https://github.com/VSCodium/vscodium/releases/download/1.140.06880/VSCodium-darwin-arm64-1.140.06880.zip",
+        "sha256": "3a0ba1a13b6d743f79ffc20bebd7a2ef8bab2b40e54bcc80fae123da9ed552e0"
+      },
+      "runtime": {
+        "filename": "node-v26.9.0-darwin-arm64.tar.gz",
+        "url": "https://nodejs.org/dist/v26.9.0/node-v26.9.0-darwin-arm64.tar.gz",
+        "sha256": "6f3de7ed853ee283b4bf24b6e426618f1d357401ce5815db1866eb85eb4b05d9"
+      }
+    },
+    "sourceCommit": "34002abf3dac9ca4a4689b7997108ce98e6aae73",
+    "sourceDirty": false,
+    "signing": "ad-hoc-development",
+    "platform": "darwin-arm64"
+  },
+  "copiedHarnesses": [
+    {
+      "name": "codex-control",
+      "sourceScript": "validate-codex-control.js",
+      "sha256": "97fb72f220cf3df2290c8fafd0163427b95aac27cd2448f5873c17d7180d6f7c",
+      "packageRoot": "/private/tmp/codovyn-phase16-final-copy-umrjq_41/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
+    },
+    {
+      "name": "codex-task",
+      "sourceScript": "validate-codex-task-control.js",
+      "sha256": "9e55a5bca4be00e78f55ae088a89ba012fce885112372a46c525eeec7ae6c32a",
+      "packageRoot": "/private/tmp/codovyn-phase16-final-copy-umrjq_41/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
+    },
+    {
+      "name": "opencode-task",
+      "sourceScript": "validate-opencode-task-execution.js",
+      "sha256": "0ea68e3f1a4d476f0089723d366b75d94310d95f0ead16c69ca74697e9e05917",
+      "packageRoot": "/private/tmp/codovyn-phase16-final-copy-umrjq_41/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
+    }
+  ],
+  "passed": true
+}

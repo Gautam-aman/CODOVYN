@@ -1,0 +1,68 @@
+[
+  {
+    "name": "check",
+    "exitCode": 0,
+    "seconds": 363.802
+  },
+  {
+    "name": "codex-control",
+    "exitCode": 0,
+    "seconds": 1.449
+  },
+  {
+    "name": "codex-task",
+    "exitCode": 0,
+    "seconds": 4.771
+  },
+  {
+    "name": "opencode-broker",
+    "exitCode": 0,
+    "seconds": 47.336
+  },
+  {
+    "name": "opencode-task",
+    "exitCode": 0,
+    "seconds": 17.762
+  },
+  {
+    "name": "java-workflow",
+    "exitCode": 0,
+    "seconds": 29.694
+  },
+  {
+    "name": "extension",
+    "exitCode": 0,
+    "seconds": 22.129
+  },
+  {
+    "name": "build",
+    "exitCode": 0,
+    "seconds": null,
+    "note": "Resumed standalone build after orchestration SIGTERM; clean embedded 34002ab verified."
+  },
+  {
+    "name": "host",
+    "exitCode": 0,
+    "seconds": null
+  },
+  {
+    "name": "chat",
+    "exitCode": 0,
+    "seconds": 22.196
+  },
+  {
+    "name": "routing",
+    "exitCode": 0,
+    "seconds": 35.137
+  },
+  {
+    "name": "restoration",
+    "exitCode": 0,
+    "seconds": 5.954
+  },
+  {
+    "name": "package",
+    "exitCode": 0,
+    "seconds": 25.699
+  }
+]

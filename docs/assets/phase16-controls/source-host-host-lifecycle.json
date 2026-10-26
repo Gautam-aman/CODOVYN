@@ -1,0 +1,14 @@
+{
+  "phase": "host-fresh-profile",
+  "pid": 23527,
+  "result": {
+    "code": 0,
+    "signal": null
+  },
+  "survivors": [],
+  "elapsedMs": 18116,
+  "timeoutMs": 120000,
+  "graceMs": 1500,
+  "killGraceMs": 2500,
+  "lastProgress": "{\"phase\":\"java-terminal-tests\",\"state\":\"complete\",\"pid\":23581,\"elapsedMs\":5435.699875,\"at\":\"2026-10-26T04:29:31.781Z\"}"
+}

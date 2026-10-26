@@ -1,0 +1,8 @@
+{
+  "stage": "build:desktop",
+  "orchestratorExitCode": 143,
+  "signal": "SIGTERM",
+  "cause": "not established",
+  "buildCompleted": false,
+  "resumedFrom": "build only; completed check/metadata/extension stages not repeated"
+}

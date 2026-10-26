@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "status": "PROPOSED \u2014 NOT AUTHORIZED OR EXECUTED",
+  "provider": "codex",
+  "model": "gpt-6.1-sol",
+  "reasoning": "low",
+  "mode": "ask",
+  "accountContext": "New isolated owner-controlled Codex authentication context. No global credentials imported; authentication must pass before submission.",
+  "authentication": "unverified",
+  "root": "/private/var/folders/m6/yq18_j7n0l70y1zllfgm50s80000gn/T/codovyn-live-validation-bJstik/project",
+  "baselineCommit": "ac00214528f004350bbd7b53349861726e270323",
+  "repositoryFingerprint": "29f254cfe0ec83004ad0404b4a0372a75ae48ea909b213bb0be8d57eb62566eb",
+  "source": {
+    "path": "src/main/java/dev/codovyn/Calculator.java",
+    "bytes": 229,
+    "sha256": "dee76c8f9584ba9286e2bd67948499030760f3978bb6a3e4074cbcf731088c26"
+  },
+  "prompt": "Explain the division-by-zero behavior in the following approved Java excerpt and recommend the smallest safe correction. Do not call tools or modify files.\n\nFile: src/main/java/dev/codovyn/Calculator.java\npackage dev.codovyn;\npublic final class Calculator {\n    public int add(int a, int b) { return a + b; }\n    public int subtract(int a, int b) { return a - b; }\n    public int divide(int a, int b) { return b == 0 ? 0 : a / b; }\n}\n",
+  "promptSha256": "dfe2704168df0eb12655b1a5401b9b41aff59331519b03e4b0189c307f33cc96",
+  "maxOuterSubmissions": 1,
+  "maxMcpToolCalls": 0,
+  "clientToolApprovals": 0,
+  "maxRequestMs": 120000,
+  "hostRetries": 0,
+  "hostFallbacks": 0,
+  "parallelism": 1,
+  "internalInferenceTurns": "unknown",
+  "providerInternalRetries": "unknown",
+  "tokenUsage": "unknown",
+  "cost": "unknown; may consume quota or paid access",
+  "remainingGate": "Explicit owner approval; isolated authentication verification; narrowly controlled test-path arming. General production coding remains disabled.",
+  "actualModelRequests": 0
+}

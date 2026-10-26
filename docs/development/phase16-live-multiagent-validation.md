@@ -1,144 +1,134 @@
-# Phase 16 — live campaign preparation and security gates
+# Phase 16 — pre-action controls and durable request accounting
 
-**PREPARED — NOT EXECUTED. Actual model requests: 0.**
+**PREPARED — NOT EXECUTED. Actual live model requests: 0.**
 
-**The preparation stage remains incomplete, and production OpenCode inference stays blocked.** This work does not claim live Codex coding, live OpenCode coding or live ContextFlow continuation. No spending consent was received or inferred. No `session/prompt` was sent to the installed OpenCode executable; the Codex probe sent only `initialize` and `model/list` plus the initialization notification.
+Production Codex and OpenCode prompting remains **BLOCKED**. The new accounting and pre-action research boundary are implemented; authenticated inference, live coding and live ContextFlow are not verified. No spending approval was received, no credential contents were read or imported, and no provider prompt was sent. A generic “continue” does not authorize inference.
 
-## Repository
+## Repository and implementation
 
-Started from clean local/remote `main` at `c023383b3d58d610f995122c06c9b7538fdcee59`, after fetch and fast-forward verification. Recoverable history was preserved without resets, new branches or stashes.
+This continuation started from `05bb0a72b1d93864718d673f47e691ba4f0d5024`, verified on `main` against `origin/main`. Existing history and work were preserved. Earlier Phase 16 preparation is recorded in that revision of this report.
 
-- `510faa6647dcf366056368217be4ebcad2ab4bd7` — bounded preparation policy, reproducible division fixture, offline correctness oracle, real Codex metadata probe and host-enforced eight-call MCP budget.
-- `7ddd404d863d77ac7d3ebaab334cf57d5882d86b` — keep the same Agent permission scope across both proposed handoff segments. An Ask → Agent transition would improperly increase permissions.
+- `66a81c6cadd1d88c24dc246154607e8451e7b137` — host-only campaign review capabilities, SQLite reservations/outcomes, task-bound dispatcher, private process lifecycle identity, Codex pre-action controls, real metadata/task preflight harnesses and regression tests.
+- `e6339e1c6880b52ab7f270db2606e702652bd73a` — require live consent before real-provider MCP activation; protect credential renaming and configuration writes.
+- `3c3073447166f9a10f7bf562d80641f12bda7ec5` — bounded native source-read failure diagnostics; no timeout or permission changes.
 
-- `abb6529bb7355d7ecdebfdd5d78f2c4e6f21783f` — reset provider readiness state when the native routing harness enters its existing fixture-only transport. This fixes a demonstrated capture-mode failure without altering production readiness.
+- `96bc451e86f72b52bacaacee75c6c52cdf2802e6` — crash-fixture cleanup verifies actual group disappearance after transient Darwin signal denial.
 
-All implementation/test commits were tested, pushed directly to `main`, and checked against `ls-remote`. Final tested source checkpoint is `abb6529`. The installer embeds clean source `7ddd404`; only the routing test script changed afterward, outside the application bundle. The subsequent evidence-only commit contains this report. Resolve its full SHA with `git log -1 --format=%H -- docs/development/phase16-live-multiagent-validation.md`; the final response records the verified remote SHA. No PR, release, installer upload or change to `/Applications/CODOVYN.app` occurred.
+- `34002abf3dac9ca4a4689b7997108ce98e6aae73` — race-barrier loops terminate on a signalled witness; deadlines and race assertions are unchanged.
 
-## Implemented preparation
+The final implementation/build SHA is `34002abf3dac9ca4a4689b7997108ce98e6aae73`. A subsequent evidence-only commit contains this report and screenshots; resolve its full SHA with `git log -1 --format=%H -- docs/development/phase16-live-multiagent-validation.md`. The final response records the verified remote SHA. No branch, PR, release, generated app/DMG commit, or `/Applications/CODOVYN.app` replacement was made.
 
-`node scripts/inspect-codex-metadata.js` starts the installed app-server for bounded metadata only. It allows two request methods, a 15-second deadline, 256-KiB JSONL messages and 64 received messages. It discards stderr and unsolicited payloads, persists selected model fields only, terminates its owned process group and checks for survivors. It does not replace CODOVYN's execution adapter or grant inference consent.
+## Codex pre-action boundary
 
-`node scripts/prepare-phase16.js` creates disposable projects, runs Maven offline, proves the regression oracle, and writes `dist/desktop/phase16-preparation.json`. There is no execute/approve flag. `scripts/lib/phase16-campaign.js` records six proposed submissions, explicit approval boundaries and blocking observations. Even a synthetic green preflight cannot authorize execution. It is **not** a durable live campaign runner or an inference-request ledger.
+**DETERMINISTICALLY TESTED / REAL OS SECURITY VERIFIED:** command and file-change approval requests receive cancellation; permissions requests receive no grants; dynamic tools fail; unknown methods receive an error. Approval events alone cannot prevent every provider action. The independent macOS process/filesystem policy is therefore enforced before the provider executes.
 
-The actual task-bound MCP bridge now reserves a call **before** any file operation, with a fixed ceiling of eight per execution authority. Invalid and denied active calls count. Calls after the ceiling return `-32004` before source access or mutation. Catalogue refresh, repeated initialization, a copied authority object or another endpoint cannot replenish the allowance. Existing kernel peer authentication, task lease checks, write intents, conflict detection, revocation and sandbox restrictions remain active. The OS-backed test verifies eight calls, a denied secret read, and subsequent rejections without additional file-access records or returned source.
+The pinned official native Codex `0.164.0` executable SHA-256 is `d8990e3ee7acfbc26f91265b12a1a83f0fee40d0e0f8f1f40a37d4ec21f499cf`. Its fresh private home is outside the project; no global credentials/configuration are imported. The process receives only a fixed environment. Shell, unified execution, nested agents, apps, plugins, computer use, shell snapshots, sleep tools and web search are disabled in its protected configuration. The official app-server also receives read-only, user-reviewed, on-request thread policy. Actual model/configuration/thread replies are checked, rather than assuming requested settings took effect.
 
-This bounds MCP file actions, **not provider-internal model calls**, output tokens, price, every kind of provider tool event or the lifetime of every external service request. It does not activate live prompting.
+The sandbox denies process forks and executable launches except initial launch of the exact native executable; project source, external private data, credential files, Git metadata writes, configuration modification and hardlink escapes remain denied. Only its disposable non-secret state is writable. Known secret-path protection is not perfect content classification. Public runtime/library reads remain necessary; this is not a general-purpose secure Agent editing adapter.
 
-## Provider observations
+A narrow macOS dyld exception permits reading the root directory object `(literal "/")`, not recursively reading its contents. Without it, the secured runtime aborted during dyld bootstrap. Real sandboxed Node and independently compiled native witnesses demonstrate denied private/project reads, credential renaming, shell/Git/curl/other executable launches and configuration writes while the runtime can start. This does not establish immunity from every OS/runtime vulnerability.
 
-| Provider | Observation | Evidence category |
-| --- | --- | --- |
-| Codex | Installed CLI `0.164.0`; local app-server returned seven catalogue entries. Default `gpt-6.1-sol`, default effort Low; High appears among supported efforts. | METADATA only; no inference |
-| Codex login | Official CLI reports ChatGPT login. Account identifiers, credential contents, entitlement and billing were not inspected. | Readiness observation, not authenticated inference proof |
-| OpenCode | Official pinned macOS ARM64 `2.1.2`; SHA-256 `3f01e2ba8efd4242c638add9248b88696221d76588d9511e63cb2d727c278fcc`. | REAL ACP / metadata only |
-| OpenCode catalogue | Ten entries in this campaign; ACP selected `opencode/big-pickle`. Presence/default selection does not establish auth, entitlement or free usage. | METADATA only |
-| OpenCode authentication | Unknown; separate CODOVYN owner-only context. Global provider credentials/plugins/configuration were not imported. | BLOCKED for live verification |
+The CLI configuration parser rejects `untrusted` despite its appearance in protocol types; the verified configuration uses `on-request` with independent OS denial. It also rejects overriding its built-in `openai` provider. Internal provider retries therefore remain **unknown**, not guaranteed zero. Official protocol reference: [Codex app-server](https://learn.chatgpt.com/docs/app-server); installed CLI schemas and actual replies determine this pinned integration's supported fields.
 
-The Codex launcher hash in the saved probe is for the npm entry script. Its resolved native ARM64 executable additionally hashed to `d8990e3ee7acfbc26f91265b12a1a83f0fee40d0e0f8f1f40a37d4ec21f499cf`; local signature inspection reports hardened runtime. This is provenance observation, not a complete supply-chain audit or inference authorization.
+**METADATA VERIFIED:** the new connection privately owns its child, stdin, request map and lifecycle. It admits only `initialize`, `model/list`, `config/read` and `thread/start`, once each. `turn/start` is rejected. Limits are 15 seconds, 256-KiB lines, 2-MiB total stdout, 256 messages and bounded sanitized diagnostics. Cancellation reaps only owned groups. Public lifecycle wrapper mutation cannot replace the privately captured cleanup function; actual ChildProcess identity is required.
 
-## Disposable Java fixture and independent oracle
+**BLOCKED:** the legacy real `exec --json` adapter now refuses before spawning or registering inference. Fixed host-only Node fixtures remain supported. No live app-server turn transport/stream decoder is armed. The isolated context has no verified authentication. File-based credential access is intentionally denied; granting it or importing global credentials is not an accepted workaround. Codex Agent writes and paid requests are not enabled.
 
-The new `division` scenario fixes the unrelated legacy subtraction defect and deliberately returns zero for division by zero. Its documented contract requires `ArithmeticException`. Existing legacy fixtures and their baseline are unchanged. Git author/time/configuration and source bytes are deterministic; the two independently created division repositories have identical baseline commits and file hashes.
+## Durable consent and submission accounting
 
-Java compilation targets release 17, with pinned JUnit `5.11.4`, compiler plugin `3.13.0` and Surefire `3.5.2`. This machine runs JDK **21.0.7**, not a verified Java 17 runtime, and Maven `3.9.11`. Cached dependencies support `mvn -o test`; the campaign does not need test-time network access. It does not claim an empty Maven cache works offline.
+**DETERMINISTICALLY TESTED:** the existing private TaskStore SQLite database now holds versioned campaign consents and request rows. There is no second journal. WAL/FULL-sync transactions atomically persist request reservations and task events before transport invocation.
 
-- Original disposable project: three tests, zero failures/errors/skips.
-- Separate oracle repository: host adds the proposed zero-divisor regression; Maven exits nonzero with one expected failure.
-- Host applies the reference fix in that separate repository: four tests, zero failures/errors/skips.
-- No provider performed this repair. The prepared baseline remains unchanged. Source hashes, baseline SHA, paths and test exits are in the preparation JSON.
+Consent binds the logical task, provider, exact model/effort, mode, repository root/fingerprint, accepted configuration digest, executable SHA, account-context digest, source-scope digest, exact prompt SHA, limits and expiry. The host-only review and approval are opaque one-use capabilities; JSON, booleans, expired reviews and replayed approval objects are rejected. Tests supply fixture callbacks. A production renderer command/native campaign confirmation UI is not wired, and no actual owner consent has been issued.
 
-**DETERMINISTICALLY TESTED:** existing protected-adapter Java read/edit/test/review workflows pass accept and reject paths. Their fixed Node protocol actor is not an AI model. Each workflow produces two durable published write intents and four passing independent JUnit tests; original files remain unchanged before review. Rejection preserves the original, and acceptance applies the reviewed patch only.
+A current execution lease, actual bound provider process and accepted task policy are required. Reservation uses `BEGIN IMMEDIATE`, immutable IDs, unique task/segment and consent/ordinal constraints. A pending or uncertain request fences further submissions across the journal. Completed, failed and pre-wire cancelled reservations remain spent. Spending history cannot be pruned through normal task deletion. This conservative retention/fencing currently requires explicit future reconciliation rather than automatic reset.
 
-## Exact proposed campaign — not approved
+States are `reserved → submitting → confirmed → completed/failed`, with conservative `uncertain` outcomes for disconnect, deadline, cancellation after submission intent, or dead-owner recovery. Cancellation before submission is recorded separately. A durable submitting intent is not proof that bytes reached a provider; an explicit acknowledgement is tracked independently. Late/duplicate acknowledgement is refused. No uncertain operation is replayed or refunded after restart. Foreign hosts, PID reuse or unverifiable process death retain the fence and execution ownership.
 
-| Submission | Provider | Mode | Work |
-| --- | --- | --- | --- |
-| A | Codex | Ask | Explain division and recommend a minimal fix, no writes |
-| B | Codex | Agent | Regression test plus minimal isolated fix |
-| C | OpenCode | Ask | Invoke approved MCP source read and explain actual source |
-| D | OpenCode | Agent | Use approved MCP read/write tools for the isolated fix |
-| E1 | Codex | Agent | Inspect and plan under the same approved draft policy; no requested edits |
-| E2 | OpenCode | Agent | Continue the same logical E task from its actual approved packet |
+The task-bound dispatcher verifies the approved prompt and repository before reserving, then rechecks before the single transport invocation. It bounds local execution, polls revocation, stops the privately registered lifecycle, and does not release TaskEngine ownership itself. Cleanup failure retains the fence. A local watchdog cannot guarantee remote computation or billing stops immediately.
 
-Candidates observed in metadata are Codex `gpt-6.1-sol` and OpenCode `opencode/big-pickle`; **neither is approved for spending**, and no claim is made that either is cheapest or entitled. Exact model/effort and account context must be confirmed with the owner. Costs, tokens, internal inference turn counts and subscription/quota impact are unknown. A real request may consume subscription quota or API credits. No price or savings estimate is fabricated.
+Real-provider MCP tool activation and each file call independently require live consent and a submitting/confirmed durable request. Existing fixed Node fixtures are a host-only testing seam, not a renderer preference. Durable MCP reservations precede file access and supplement the existing eight-call ceiling. Denied attempts within the budget count; metadata catalogue operations cannot replenish it.
 
-Proposed outer limits are six sequential submissions, 120 seconds per request, eight tool actions, no retries, no fallback and no automatic patch application. **These are not all enforceable in the present combined pipeline:**
+Accounting distinguishes reservation count, submission intent, acknowledged submissions, outcome, and host-reserved MCP attempts. **Internal inference turns, tokens and billing remain unknown.** One approved submission is not a guarantee of one internal model call or one billing unit. No usage or savings claims are made.
 
-1. Codex's current execution adapter uses `exec --json`, not the probed app-server. Its command/file events are observations after actions start. It advertises shell capability, and a read-only filesystem sandbox does not itself disable shell execution or prove the required secret-read boundary. Eight-action pre-execution denial is not implemented for this path.
-2. Codex's adapter does not currently supply the proposed per-request watchdog or the MCP pre-mutation write-intent interface. Existing cancellation/process-tree tests pass; they do not establish those missing campaign controls.
-3. The MCP eight-call cap is now host-enforced for OpenCode, but agent `steps: 8` is not proof of exactly eight billable inference turns. Six submitted tasks can involve more than six internal model calls. A durable campaign-wide submission/consent ledger is **not implemented**.
-4. OpenCode's inference guard remains enabled. Its live authentication/model entitlement has not been established, and a fresh explicit model choice is still required.
-5. Agent execution and ContextFlow still need their normal native approvals. Campaign consent cannot authorize an unseen recipient-bound packet, expand its source scope or increase permissions.
+Tests cover exhaustion, two database connections, duplicate dispatch, cancellation before/after acknowledgement, deadline, changed model/provider/prompt/executable/scope, expiry/revocation, SIGKILL before/after submission intent, database reopen, retained ownership, privately captured cleanup, MCP denial before source access and TaskEngine lifecycle integration.
 
-**BLOCKED:** an execution authorization request is premature while these security prerequisites fail. The script deliberately reports `eligibleForApproval: false`. No model request may be launched from this preparation. Resolve these gates and present a revised exact campaign before asking for spending consent. No consent is implied by a future generic “continue”.
+## Java, providers and ContextFlow
 
-## Security, ACP and ContextFlow evidence
+The deterministic Java division fixture is reproducible, secret-free and uses Maven offline with cached pinned dependencies. Compilation targets Java 17; this machine runs JDK 21.0.7. Three baseline tests pass; the independently added zero-divisor oracle fails before the host reference fix and four tests pass afterward. Providers did not produce that reference fix.
 
-The repeated broker campaign completes seven real metadata-only ACP sessions and six repository transitions, including ordinary/linked/nested repositories, branch refresh, path substitution, revocation, process death and owned cleanup. It verifies same-task/recipient-bound packet properties with **deterministic continuation responses** after real ACP startup. That is not a live handoff.
+Real secured Codex metadata identifies default `gpt-6.1-sol`; Low and High are advertised effort choices. Model catalogue presence does not establish entitlement or billing. The TaskEngine metadata harness binds the actual Codex process and original repository, performs an authorized **host-only** 229-byte Calculator read, denies `.env`, refuses `turn/start`, and releases its lease only after cleanup. Source bytes are not delivered to a model.
 
-The task-bound boundary harness completes two real ACP initializations with host-invoked file checks. The actual-adapter harness completes two secured Ask/Agent initializations, registers the MCP catalogue, then deliberately stops before file-tool activation or `session/prompt`. Both verify unchanged original repositories, released leases after verified cleanup and no write intents during metadata-only execution.
+OpenCode remains pinned to official macOS ARM64 `2.1.2`, SHA-256 `3f01e2ba8efd4242c638add9248b88696221d76588d9511e63cb2d727c278fcc`. Real ACP initialization/model discovery uses its separate private context; authentication and inference entitlement remain unknown. Catalogue/default selection is not a successful paid request.
 
-Full regression coverage retains actual OS denials for Git/shell/network executables, protected Git writes, external/private files, symlink/hardlink/path replacement, executable tampering, library injection, stale authority, broker failures, cancellation, SQLite intents and descriptor-lock crash recovery. No sandbox capability was broadened. Retained staged preimages and uncertain-write fences are not replayed automatically. A fixture success does not prove a provider can use the restricted tools.
+Existing repository descriptor authority, branch freshness, linked worktrees, nested repository rejection, path substitution, controlled races, library injection denial/control, process ownership and cancellation are retained. ContextFlow fixture assertions follow real ACP startup but remain **DETERMINISTICALLY TESTED**, not live handoff. Same-task segments, immutable recipient-bound packets, one-use approval, repository fingerprints, queue ownership and restart safeguards remain enforced. No automatic provider switching is enabled.
 
-Native screenshots below show actual application UI with **deterministic test content**, not real model responses. DOM focus remains unobservable in the existing isolated routing harness; keyboard assertions are distinct from native focus proof.
+The Java read/edit/test/review actor is a fixed Node protocol fixture. It exercises actual task authority, native file mediation, SQLite write intents, conflict checks, isolated drafts, independent Maven tests and accept/reject review. It does not prove an AI provider can choose or use these tools successfully.
 
-## Validation and installer
+## Validation results
 
-| Check | Result |
+| Check | Final result at clean `34002ab` |
 | --- | --- |
-| `npm ci --ignore-scripts` | Passed; two high development audit findings retained |
-| Final `npm run check` at `abb6529` | 170 syntax files; **334 passed, 0 failed/cancelled/skipped**, 121.681 seconds |
-| `npm run test:extension-host` | Passed, VS Code 1.143.1 extension-host process |
-| `npm run build:desktop` | Passed; final embedded `7ddd404`, `sourceDirty: false` |
-| Native host | Source and copied app passed original editor/search/Git/terminal/Node assertions |
-| Native Chat | Source and copied app passed two launches; copied real OpenCode readiness stayed blocked/unverified |
-| Native routing | Source passed; first copied capture run failed, corrected fixture-isolation repeat passed |
-| Native restoration | Source and copied app passed both launches, saved content/theme/routing/local state |
-| Copied Java editor/terminal | Java document language ID verified; independent offline Maven exits 0, three baseline tests pass |
-| Broker campaign | Seven real metadata ACP sessions, six repository transitions; no prompts |
-| Task boundary / actual adapter | Two real ACP sessions in each source harness; two additional copied-module actual-adapter sessions, no prompts |
-| Protected draft workflow | Source and copied modules each pass accept/reject workflows; four JUnit tests per workflow; provider responses are fixtures |
-| `npm run package:desktop` | Passed; fresh development DMG, image checksum verification passed |
-| Mounted and copied signatures | Deep/strict verification passed before and after copied-app tests |
+| `npm ci --ignore-scripts` | Passed; package and lock files unchanged throughout these commits; two high development findings retained |
+| `npm run check` | **179 syntax files; 357 passed, 0 failed/cancelled/skipped**; test duration 296.871 seconds |
+| `npm run test:extension-host` | Passed, VS Code 1.143.1; teardown emitted a nonfatal blocked-webview diagnostic |
+| Secured Codex metadata / TaskEngine preflight | Both passed; only four metadata methods, no turn, original unchanged, cleanup verified |
+| OpenCode broker | Seven real metadata ACP sessions and six transitions passed |
+| OpenCode actual adapter | Ask/Agent initialization passed in source and copied packages; prompt blocked in all four sessions |
+| Deterministic Java/MCP workflow | Source and copied packages passed accept/reject; two published intents and four independent passing JUnit tests per workflow |
+| `npm run build:desktop` | Resumed build passed, embedded clean `34002ab` |
+| `npm run test:desktop-host` | Source and copied app passed editor/search/Git/terminal/Node; Java editor and offline Maven: three baseline tests, exit 0 |
+| `npm run test:desktop-chat` | Source and copied app passed both launches, model/effort/mode/composer/history/queue/ContextFlow assertions and blocked real OpenCode readiness |
+| `npm run test:desktop-routing-ui` | Source and copied app passed routing, Activity follow and local history filters; DOM focus observability remains unavailable in the isolated harness |
+| `npm run test:desktop-restoration` | Source and copied app passed both launches |
+| `npm run package:desktop` | Passed; fresh development image integrity verified |
+| Copied packaged Codex controls | Both harnesses passed using copied package imports and bundled Node; metadata and host-only source read, no inference |
+| Signatures / owned cleanup | Mounted, copied and post-test deep/strict signatures passed; 12 native lifecycle records have no survivors; 308 recorded groups absent in final read-only verification |
 
-The copied routing failure was `provider: codex / reasoning: high` instead of the expected OpenCode fixture selection. Earlier real diagnostics correctly disabled OpenCode; switching transport to fixtures did not reset that provider state. The fix injects an explicit provider-state fixture **after** the existing fixture-only gate. The original assertion and the separate real `providerReadinessBlocked` assertions remain intact. The failed run's cancelled lifecycle has zero survivors. See [failure and correction](../assets/phase16-preflight/routing-isolation-regression.json).
+[Regression summary](../assets/phase16-controls/regression-summary.json), [source stage outcomes](../assets/phase16-controls/source-stage-results.json), [source broker](../assets/phase16-controls/source-opencode-broker-validation.json), [source Codex task proof](../assets/phase16-controls/source-codex-task-control-validation.json), [copied Codex task proof](../assets/phase16-controls/copied-codex-task-control-validation.json), [copied OpenCode adapter](../assets/phase16-controls/copied-opencode-task-execution-validation.json), [copied Java fixture workflow](../assets/phase16-controls/copied-opencode-draft-workflow-validation.json), [cleanup verification](../assets/phase16-controls/cleanup-verification.json).
 
-The real host search completed in these bounded runs (including **171.090 ms** in the copied Java run). This does not explain or resolve historical issue #16, which was independently checked and remains **OPEN**. No timeout was increased.
+The copied harness manifest records the exact import-rebound harness hashes and copied package root. It reuses existing test infrastructure; it is not a second provider runtime. Native application screenshots below come from the copied standalone binary under its native test host and contain deterministic test state. They do **not** show live provider execution:
 
-The final read-only process check found **296 recorded provider/broker/fixture groups absent**, with zero survivors. Seven saved current native lifecycle records also have empty survivor lists, including the failed routing capture and the Java editor/terminal run. No unrelated process was signalled by this final check. [Cleanup evidence](../assets/phase16-preflight/cleanup-verification.json).
+![Copied app: fixture composer](../assets/phase16-controls/copied-fixture-composer-dark.png)
 
-Installer:
+[Fixture model picker](../assets/phase16-controls/copied-fixture-model-picker.png), [fixture effort menu](../assets/phase16-controls/copied-fixture-reasoning-effort-menu.png), [fixture queue](../assets/phase16-controls/copied-fixture-task-queue.png).
 
-- Local file: `dist/desktop/CODOVYN-darwin-arm64-development.dmg`.
-- SHA-256: `d8d354ed61f94d2c6915d1d833aecc523a7c23d0eff919523a2a342add21055a`.
-- Embedded source: `7ddd404d863d77ac7d3ebaab334cf57d5882d86b`, clean build. The subsequent test-only fix is not part of the packaged application.
-- Read-only image mount, mounted app signature, disposable copy, detach and copied post-test signature all passed. `hdiutil` emitted deprecation notices for attach/detach, without a failure.
-- Disposable copy: `/private/tmp/codovyn-phase16-copy-_pmmhine/CODOVYN.app`.
-- Ad-hoc signed, unnotarized development image. No public release, security bypass, Keychain change or `/Applications` overwrite.
-- [Installer proof](../assets/phase16-preflight/installer-verification.json), [build provenance](../assets/phase16-preflight/build-provenance.json).
+Earlier unsuccessful validation remains material: one full run failed the deterministic Java MCP workflow with a generic disconnect; a later run failed crash/write checks and a native compiler deadline with 187 seconds elapsed. Host suspension was suspected but not established. An unchanged subsequent suite, run under a temporary process-scoped idle-sleep assertion, passed all 357 tests. No test deadline was raised, failed assertion removed, or persistent macOS setting changed.
 
-Screenshots are from the real copied standalone app:
+The first clean `e6339e1` standalone Codex TaskEngine probe also failed a source read before returning bytes. It sent zero prompts and made no project mutation. The new diagnostic records only helper status/signal/deadline/byte counts; its subsequent focused probe and all 12 file-access tests passed. This does not prove the intermittent failure's root cause or justify a reliability claim. The failed observation is documented here; that generic error did not record the native helper outcome. A subsequent full run at `3c30734` had 356 passes and one crash-fixture cleanup error (`kill EPERM`). Its fixed cleanup now independently checks actual recorded group membership after signalling; a permission error alone never establishes cleanup. All three focused hard-crash cases passed after this change. The next full attempt was cancelled after a race-barrier loop hung: it checked `exitCode` but not `signalCode` after the existing deadline killed its helper. The bounded-state fix passed all 12 focused identity tests. This fixes the harness hang, not the reason for slow helper startup.
 
-- [Actual OpenCode readiness, inference blocked](../assets/phase16-preflight/copied-provider-readiness.png).
-- [Composer — deterministic UI fixture](../assets/phase16-preflight/copied-fixture-composer-dark.png).
-- [Model picker — deterministic UI fixture](../assets/phase16-preflight/copied-fixture-model-picker.png).
-- [Effort menu — deterministic UI fixture](../assets/phase16-preflight/copied-fixture-reasoning-effort-menu.png).
+The initial orchestration process exited 143 (SIGTERM) during assembly after its completed tests; the termination source is unknown. That incomplete build was not validated or labelled successful. Work resumed at the build stage, without rerunning completed checks.
 
-[Prepared Java baseline/oracle and campaign](../assets/phase16-preflight/phase16-preparation.json), [Codex metadata-only probe](../assets/phase16-preflight/phase16-codex-metadata.json), [real broker campaign plus fixture ContextFlow](../assets/phase16-preflight/source-opencode-broker-validation.json), [copied draft workflow](../assets/phase16-preflight/copied-opencode-draft-workflow-validation.json), and [copied actual-adapter no-prompt evidence](../assets/phase16-preflight/copied-opencode-task-execution-validation.json) retain the distinctions above. Execution capability tokens are redacted in committed evidence; no credential or generated app/DMG is committed.
+Installer and copied application:
 
-Latest inspected hosted [run 40205114146](https://github.com/Gautam-aman/CODOVYN/actions/runs/40205114146), for `abb6529`, failed all three jobs with **zero steps executed**. Its annotation says recent account payments failed or the spending limit needs increasing. The owner must resolve GitHub **Billing & plans** and rerun. Workflows and billing were untouched. **Local checks passed; hosted CI remains blocked by account configuration.**
+- DMG: `dist/desktop/CODOVYN-darwin-arm64-development.dmg`.
+- SHA-256: `dba86d3700e0360a4175f7ba895f13945df3839159b6f6d3710f137e11a54f52`.
+- Embedded source: `34002abf3dac9ca4a4689b7997108ce98e6aae73`, `sourceDirty: false`.
+- Disposable copy: `/private/tmp/codovyn-phase16-final-copy-umrjq_41/CODOVYN.app`.
+- Read-only image mount, mounted bundle verification, copy, detach, copied launch tests and post-test signature all passed. `hdiutil` emitted deprecation notices; integrity checks succeeded.
+- Ad-hoc signed, unnotarized, local development artifact. No installer publication, Gatekeeper/Keychain setting change, or installed-app replacement.
+- The original `**/desktop-smoke.txt` search assertion remains intact. Source search completed in 119.330 ms and copied search in 110.068 ms; neither observation proves the intermittent issue cannot recur.
 
-Audit: installed development chain `@vscode/vsce@4.0.0 → @azure/identity@4.14.0 → @azure/msal-node@6.0.1`; two high findings, zero production-graph findings. Current audit reports `fixAvailable: true`; remediation compatibility has not been evaluated in this stabilization change. No unsupported override, suppression or dependency churn was applied. Other desktop platforms, Java 17 runtime behavior, authenticated inference and public distribution remain unverified.
+[Installer verification and copied-test outcomes](../assets/phase16-controls/installer-verification.json), [clean build provenance](../assets/phase16-controls/build-provenance.json), [copied host result](../assets/phase16-controls/copied-host-result.json).
 
+## First single-request proposal — not authorization
 
-## Status and remaining work
+[Exact proposed prompt and local limits](../assets/phase16-controls/single-request-proposal.json). This data file is not an approval or dispatch capability.
 
-- **PREPARED — NOT EXECUTED:** six-submission plan, offline division project and failure oracle.
-- **DETERMINISTICALLY TESTED:** campaign fail-closed policy, draft mutation/review, queue, recovery and ContextFlow regressions.
-- **REAL PROVIDER EXECUTED:** only non-inference Codex metadata and OpenCode ACP startup; no model prompt.
-- **LIVE CODING VERIFIED:** no.
-- **LIVE CONTEXTFLOW VERIFIED:** no.
-- **BLOCKED:** combined campaign admission, Codex pre-action restrictions/watchdog, durable campaign-wide consent/request accounting, exact model approval and live authentication/inference.
+**PREPARED — NOT EXECUTED / BLOCKED pending prerequisites.** Only one initial Codex Ask submission is proposed, not the earlier six-submission campaign:
 
-The new MCP limit is a security improvement. The proposed budget must not be presented as a billing guarantee. Phase 16 preparation and the live milestone are not declared complete.
+- Provider: pinned Codex CLI `0.164.0`; model `gpt-6.1-sol`; reasoning Low, subject to fresh catalogue validation.
+- Account: a separately owner-authorized, isolated official Codex context. Authentication is currently unverified; existing global credentials will not be imported.
+- Input: the approved disposable Calculator excerpt only, 229 bytes, SHA-256 `dee76c8f9584ba9286e2bd67948499030760f3978bb6a3e4074cbcf731088c26`.
+- Request: “Explain the division-by-zero behavior in the following approved Java excerpt and recommend the smallest safe correction. Do not call tools or modify files.” Followed by the named source excerpt. Exact prompt SHA-256: `dfe2704168df0eb12655b1a5401b9b41aff59331519b03e4b0189c307f33cc96`.
+- Local limits: one durable outer submission, 120-second watchdog, zero MCP calls, zero tool approvals, no host retry, fallback, parallel request, edits, commit or push. Cancellation must preserve uncertain accounting and reap owned processes.
+- Unknown limits: internal provider calls/retries, token usage, exact cost and quota impact. It may consume subscription quota or API credits; no price or guaranteed token/billing cap is claimed.
+
+Before submitting, verify isolated authentication without exporting credentials, implement and independently validate the narrowly guarded live turn transport, obtain explicit approval of this exact scope, create fresh task/lease/expiry/repository bindings, and durably reserve the request. Current metadata-only code cannot submit it. Approval cannot silently expand this into an Agent task, different model/account, OpenCode request or ContextFlow transfer. No additional turn/retry is authorized by a failure.
+
+**Do not treat this report as a request already sent or consent already granted.** A separate owner response is required before any model request. If the authentication and guarded transport prerequisites remain unresolved, keep the request blocked even if the owner approves spending.
+
+## Remaining limitations
+
+**BLOCKED:** authenticated live Codex/OpenCode, actual provider file-tool use, live editing and real Codex→OpenCode continuation; narrow live-turn wiring and isolated authentication; intermittent native helper failure classification. General production coding remains disabled. Supported scope is macOS ARM64 only; no public production readiness or notarization is claimed.
+
+Hosted CI is separate from local tests. The [latest inspected source run](https://github.com/Gautam-aman/CODOVYN/actions/runs/40268107152) at `34002ab` had zero executed steps; GitHub reports failed recent account payments or an insufficient spending limit. The owner must resolve Billing & plans/payment/spending configuration to let jobs start. No workflow was disabled and no billing settings changed. Issue #16 remains OPEN; passing bounded workspace-search runs do not establish its root cause or resolution. The two documented high development dependency findings (`@azure/identity`, `@azure/msal-node`) remain disclosed in the [current audit summary](../assets/phase16-controls/dependency-audit-summary.json); no unsupported overrides or unrelated dependency churn were introduced.

@@ -1,0 +1,21 @@
+{
+  "groupsChecked": 308,
+  "liveMembers": [],
+  "nativeLifecycleRecords": [
+    "copied-chat-chat-relaunch-lifecycle.json",
+    "source-chat-chat-first-launch-lifecycle.json",
+    "source-chat-chat-relaunch-lifecycle.json",
+    "source-routing-host-lifecycle.json",
+    "source-host-host-lifecycle.json",
+    "copied-host-host-lifecycle.json",
+    "copied-restoration-restoration-read-lifecycle.json",
+    "copied-chat-chat-first-launch-lifecycle.json",
+    "copied-restoration-restoration-write-lifecycle.json",
+    "source-restoration-restoration-write-lifecycle.json",
+    "copied-routing-host-lifecycle.json",
+    "source-restoration-restoration-read-lifecycle.json"
+  ],
+  "nativeSurvivors": [],
+  "method": "Read-only ps snapshot plus per-harness owned-group checks. No process signalled by this final verification.",
+  "scope": "Recorded test-owned groups only; unrelated user processes excluded."
+}

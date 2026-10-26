@@ -1,0 +1,12 @@
+{
+  "sourceCommit": "34002abf3dac9ca4a4689b7997108ce98e6aae73",
+  "syntaxFiles": 179,
+  "tests": 357,
+  "passed": 357,
+  "failed": 0,
+  "skipped": 0,
+  "cancelled": 0,
+  "durationMs": 296871.369291,
+  "logSha256": "ff2049cb36f2e80c4cc2181908f14016c2dc9f8d4ec20390ba56809319a6fd82",
+  "inferenceRequests": 0
+}

@@ -1,0 +1,26 @@
+{
+  "vulnerabilities": {
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 2,
+    "critical": 0,
+    "total": 2
+  },
+  "findings": [
+    {
+      "name": "@azure/identity",
+      "severity": "high",
+      "range": ">=4.13.1",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "@azure/msal-node",
+      "severity": "high",
+      "range": "5.0.0-beta.0 - 7.0.2",
+      "direct": false,
+      "fixAvailable": true
+    }
+  ]
+}

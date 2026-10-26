@@ -1,0 +1,91 @@
+{
+  "phases": [
+    {
+      "app": "CODOVYN Desktop",
+      "version": "1.140.0",
+      "passed": true,
+      "checks": {
+        "compactComposer": true,
+        "composerControls": true,
+        "inlineEffort": true,
+        "queueManagement": true,
+        "submissionAcknowledgement": true,
+        "submittedPrompt": true,
+        "streamingOrderAndTextSafety": true,
+        "navigationAndActivitySeparation": true,
+        "completionState": true,
+        "scrollFollowAndJump": true,
+        "sqliteJournalRestoration": true,
+        "interruptionState": true,
+        "openCodeModelAndVariant": true,
+        "contextFlowNarrowAndFocus": true,
+        "contextFlowReview": true,
+        "providerSegmentPresentation": true,
+        "transcriptMessages": [
+          "YouPersisted native journal request",
+          "AgentPersisted agent response from SQLite."
+        ],
+        "activityRows": [
+          "Started codex",
+          "Using agent tool: read_file",
+          "Agent tool finished: read_file",
+          "Completed with codex"
+        ],
+        "providerReadinessBlocked": true,
+        "providerMetadataVerified": true,
+        "metadataObservation": {
+          "identity": "031c6922d0678447115d7cb413452a933e25b2731674e8120e958d8b0186eba3",
+          "branch": "main",
+          "verifiedAt": "2026-10-26T04:32:20.677Z",
+          "models": 10
+        }
+      }
+    },
+    {
+      "app": "CODOVYN Desktop",
+      "version": "1.140.0",
+      "passed": true,
+      "checks": {
+        "openCodePreferencesRestored": true,
+        "openCodeEffectiveVariantRestored": true,
+        "compactComposer": true,
+        "composerControls": true,
+        "inlineEffort": true,
+        "queueRestoredAfterRestart": true,
+        "queueManagement": true,
+        "submissionAcknowledgement": true,
+        "submittedPrompt": true,
+        "streamingOrderAndTextSafety": true,
+        "navigationAndActivitySeparation": true,
+        "completionState": true,
+        "scrollFollowAndJump": true,
+        "sqliteJournalRestoration": true,
+        "interruptionState": true,
+        "openCodeQueueRestored": true,
+        "openCodeModelAndVariant": true,
+        "contextFlowNarrowAndFocus": true,
+        "contextFlowRejection": true,
+        "contextFlowReview": true,
+        "providerSegmentPresentation": true,
+        "transcriptMessages": [
+          "YouPersisted native journal request",
+          "AgentPersisted agent response from SQLite."
+        ],
+        "activityRows": [
+          "Started codex",
+          "Using agent tool: read_file",
+          "Agent tool finished: read_file",
+          "Completed with codex"
+        ],
+        "providerReadinessBlocked": true,
+        "providerMetadataVerified": true,
+        "metadataObservation": {
+          "identity": "031c6922d0678447115d7cb413452a933e25b2731674e8120e958d8b0186eba3",
+          "branch": "main",
+          "verifiedAt": "2026-10-26T04:32:30.550Z",
+          "models": 10
+        }
+      }
+    }
+  ]
+}

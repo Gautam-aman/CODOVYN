@@ -1,0 +1,14 @@
+{
+  "phase": "write",
+  "pid": 27869,
+  "result": {
+    "code": 0,
+    "signal": null
+  },
+  "survivors": [],
+  "elapsedMs": 3687,
+  "timeoutMs": 120000,
+  "graceMs": 1500,
+  "killGraceMs": 2500,
+  "lastProgress": "{\"phase\":\"write\",\"operation\":\"native-quit\",\"state\":\"complete\",\"pid\":27952,\"at\":\"2026-10-26T04:30:52.451Z\"}"
+}
