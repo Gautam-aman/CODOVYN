@@ -1,4 +1,4 @@
-const {spawn}=require('node:child_process');const{join}=require('node:path');
+const {spawn}=require('node:child_process');const{StringDecoder}=require('node:string_decoder');const{join}=require('node:path');
 const nativeDefault='/opt/homebrew/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/bin/codex';
 /** Host-owned native dialogs only. No webview approval handler, key input,
  * output channel logging, or arbitrary provider command supplied by a model. */
@@ -12,8 +12,8 @@ function registerCodexSession(api,context,{runtimePath,dataDirectory,present=()=
   stop();const root=api.workspace.workspaceFolders[0].uri.fsPath,native=api.workspace.getConfiguration('codovyn').get('codexNativePath','')||nativeDefault;
   if(!native.startsWith('/')||/[\0\r\n]/.test(native))throw new Error('An absolute pinned Codex executable is required');
   const child=launch(runtimePath(api,context),[join(context.extensionPath,'apps/cli/src/codex-session.js'),root,dataDirectory(context.globalStorageUri.fsPath),native],{cwd:root,shell:false,stdio:['pipe','pipe','pipe']});
-  const owned={child,models:[],authenticated:false,root,buffer:'',bytes:0,pendingSignIn:true};session=owned;child.stderr.resume();child.stdin.on('error',()=>{});
-  child.stdout.on('data',chunk=>{if(session!==owned)return;owned.bytes+=chunk.length;if(owned.bytes>2097152){stop();return;}owned.buffer+=chunk.toString('utf8');let at;while((at=owned.buffer.indexOf('\n'))!==-1){const line=owned.buffer.slice(0,at);owned.buffer=owned.buffer.slice(at+1);let message;try{message=JSON.parse(line);}catch{stop();return;}handle(message,owned).catch(()=>{stop();api.window.showWarningMessage('The isolated Codex session stopped. No automatic retry was made.');});}});
+  const owned={child,models:[],authenticated:false,root,buffer:'',decoder:new StringDecoder('utf8'),bytes:0,pendingSignIn:true};session=owned;child.stderr.resume();child.stdin.on('error',()=>{});
+  child.stdout.on('data',chunk=>{if(session!==owned)return;owned.bytes+=chunk.length;if(owned.bytes>2097152){stop();return;}owned.buffer+=owned.decoder.write(chunk);let at;while((at=owned.buffer.indexOf('\n'))!==-1){const line=owned.buffer.slice(0,at);owned.buffer=owned.buffer.slice(at+1);let message;try{message=JSON.parse(line);}catch{stop();return;}handle(message,owned).catch(()=>{stop();api.window.showWarningMessage('The isolated Codex session stopped. No automatic retry was made.');});}});
   child.once('error',()=>{if(session===owned)session=null;api.window.showWarningMessage('Could not start supported Codex. Configure its absolute native executable path in CODOVYN settings.');});child.once('close',()=>{if(session===owned)session=null;});
  };
  async function handle(message,owned){
