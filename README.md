@@ -12,7 +12,7 @@ CODOVYN is an independent Code-OSS/VSCodium-based desktop IDE with a bundled Nod
 
 The standalone Apple Silicon application has automated native coverage for editor/save, file search, Git, terminal, Java, Chat, queue/history and restoration. These are application/fixture checks, not human usability testing or proof of live AI coding.
 
-The supported preparation path is **isolated Codex device sign-in with strict macOS Keychain storage**. A stable profile identity survives worker cleanup; no global CLI credentials are imported. Real account restart verification remains owner-operated. The credential bridge to the restricted coding runtime is not implemented, so Ask, Agent editing, automatic failover, live OpenCode and cross-provider ContextFlow remain gated. Their implementations and deterministic tests are preserved for development.
+The selected alpha preparation path is a **native-reviewed, single OpenCode Calculator Ask** using the existing sandbox and durable request accounting. Isolated provider setup, an exact discovered model and fresh spending consent are required; no live AI response has been verified. General coding, Agent editing, automatic failover and live ContextFlow remain gated. Codex Keychain sign-in is preserved, while its coding bridge remains blocked. See [provider preparation and evidence](docs/development/first-provider-transport-validation.md).
 
 ## Build locally
 

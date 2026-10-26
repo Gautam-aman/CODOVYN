@@ -1,0 +1,10 @@
+{
+  "sourceCommit": "3953f079befbca785374ed0aa2ee3d1230e04b53",
+  "passed": true,
+  "authentication": "empty disposable context; owner setup required",
+  "inferenceSubmissions": 0,
+  "consents": 0,
+  "tasks": 0,
+  "cleanupVerified": true,
+  "providerWorkerGroup": 22404
+}

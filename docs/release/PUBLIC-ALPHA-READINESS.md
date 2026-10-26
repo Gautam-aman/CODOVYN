@@ -103,6 +103,22 @@ Tested fix `d650b8dab1bc7d48c3334cab56d28979d8e6a02b` revokes account bindings b
 
 Clean development DMG source: `d650b8dab1bc7d48c3334cab56d28979d8e6a02b`; SHA-256 `b6f131c0df42a2fbae4e6bee8045b515b2ae0b0b54eb0afeeb08fb9fa0c88da8`. Ad-hoc signed/unnotarized, copied-app verified, not published. `/Applications/CODOVYN.app` is unchanged. Final remote SHA is verified after this documentation commit and included in the handoff. **ALPHA BLOCKED — CRITICAL GATES REMAIN.**
 
+## Selected alpha path — guarded OpenCode Ask preparation
+
+The [three-path decision and qualification](../development/first-provider-transport-validation.md) selects the existing pinned **OpenCode 2.1.2 ACP adapter**, retaining its current OS/MCP boundary. Codex's Keychain/auth-only process remains untouched and blocked for coding. A separate API SDK/credential integration was deferred. No extra filesystem, Keychain, shell, Git or tool grant was introduced.
+
+Implementation `3953f079befbca785374ed0aa2ee3d1230e04b53` adds a private single-use ACP Ask transport, existing SQLite reservation/accounting, exact model/prompt native review, cancellation/uncertain-outcome handling and Settings actions. Normal composer/provider coding, Agent and ContextFlow remain gated. Only the unchanged public Calculator can use the new native validation entry, after fresh explicit approval. Earlier Codex consent never authorizes this provider.
+
+**411 tests passed, 0 failed/skipped; all 18 copied-DMG steps passed. Actual inference submissions: 0.** The real owner-worker empty-context preflight certifies cleanup and creates no task/consent/request. Source and copied actual ACP/MCP initialization passed without a prompt. Native Settings includes **Review one OpenCode Calculator Ask** and cancel controls; the capture uses labelled UI fixtures, not live AI.
+
+**Current owner gate:** OpenCode authentication is not configured in the isolated project context. Complete **OpenCode Setup** yourself, then select an actual discovered exact `provider/model` in the review flow. Account identity/access and costs are unverified; do not infer API coverage from a ChatGPT subscription. Only then can an exact model/account-bound spending proposal be approved. No login or inference was initiated automatically.
+
+Future scope: fixed 229-byte Calculator and prompt SHA `dfe2704168df0eb12655b1a5401b9b41aff59331519b03e4b0189c307f33cc96`; Provider Default reasoning; one outer submission; 120-second local deadline; zero tools/MCP tool calls/project changes; no host retries/fallback, Agent or handoff. Metadata MCP initialization/listing is separate. Internal SDK/model retries/calls, tokens, quota and exact cost are unknown and not bounded by that submission cap. An actual selected model is still required; **no complete spending proposal is being approved by this report**.
+
+Clean development DMG source: `3953f079befbca785374ed0aa2ee3d1230e04b53`; SHA-256 `ef76d371a3164edf16eaaf948a143c8ca5064b3df553181e5cb713e1a00d076b`. Ad-hoc/unnotarized, copied-app verified, not published. `/Applications/CODOVYN.app` remains unchanged. Final remote SHA is verified after documentation push and included in the handoff.
+
+Independent runtime investigation found official **VSCodium 1.143.17183**, published October 26. Bounded archive downloads timed out; its embedded fix coverage remains unqualified. Preserve the pinned editor until a complete checksum-verified candidate passes native qualification. Do not assume that no newer upstream build exists, or that Node 24.22.0 establishes October 21 fix coverage. [Captured upstream metadata](../assets/opencode-ask/editor-security.json). Signing/notarization, hosted CI billing, real Ask/Agent, issue #16, dependency/rights and clean-machine/human QA gates remain. **ALPHA BLOCKED — CRITICAL GATES REMAIN.**
+
 ## Historical first Ask proposal — blocked by current credential bridge
 
 Provider: official pinned Codex CLI **0.164.0**, native SHA `d8990e3ee7acfbc26f91265b12a1a83f0fee40d0e0f8f1f40a37d4ec21f499cf`. Model: **gpt-6.1-sol**, effort **Low**, subject to a fresh advertised capability check. Account: owner-initiated separate memory-only Codex context; no global credentials imported; authentication unverified until the owner signs in.

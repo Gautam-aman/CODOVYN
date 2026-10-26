@@ -1,0 +1,273 @@
+{
+  "classification": "PREPARED / DETERMINISTIC AND REAL OS METADATA TESTED; NO LIVE INFERENCE",
+  "startingSha": "39cca12c5f3263225b3a72b1cd6a82981fdc579a",
+  "implementationSha": "3953f079befbca785374ed0aa2ee3d1230e04b53",
+  "fullRegression": {
+    "pass": 411,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "durationMs": 162904.971125,
+    "logSha256": "cf84b901e67d6f2160875b612a5f19f1c18f506a8871c10497b2e648134f6909"
+  },
+  "sourceSteps": [
+    {
+      "name": "dependencies",
+      "exitCode": 0,
+      "seconds": 5.74
+    },
+    {
+      "name": "check",
+      "exitCode": 0,
+      "seconds": 158.616
+    },
+    {
+      "name": "keyring",
+      "exitCode": 0,
+      "seconds": 6.263
+    },
+    {
+      "name": "auth-worker",
+      "exitCode": 0,
+      "seconds": 2.134
+    },
+    {
+      "name": "ask-preflight",
+      "exitCode": 0,
+      "seconds": 0.716
+    },
+    {
+      "name": "opencode-task",
+      "exitCode": 0,
+      "seconds": 7.94
+    },
+    {
+      "name": "bridge",
+      "exitCode": 0,
+      "seconds": 2.761
+    },
+    {
+      "name": "codex-control",
+      "exitCode": 0,
+      "seconds": 1.19
+    },
+    {
+      "name": "codex-task",
+      "exitCode": 0,
+      "seconds": 2.595
+    },
+    {
+      "name": "extension",
+      "exitCode": 0,
+      "seconds": 10.923
+    }
+  ],
+  "buildSteps": [
+    {
+      "name": "build",
+      "exitCode": 0,
+      "seconds": 21.996
+    },
+    {
+      "name": "licenses",
+      "exitCode": 0,
+      "seconds": 0.216
+    },
+    {
+      "name": "package",
+      "exitCode": 0,
+      "seconds": 24.655
+    }
+  ],
+  "copiedInstaller": {
+    "image": "/Users/rigelsmacbook/Java Projects/Codovyn/dist/desktop/CODOVYN-darwin-arm64-development.dmg",
+    "sha256": "ef76d371a3164edf16eaaf948a143c8ca5064b3df553181e5cb713e1a00d076b",
+    "copiedApplication": "/private/tmp/codovyn-opencode-ask-copy-nvo6og5o/CODOVYN.app",
+    "readOnlyMount": true,
+    "steps": [
+      {
+        "name": "image-integrity",
+        "exitCode": 0,
+        "seconds": 3.002
+      },
+      {
+        "name": "signature",
+        "exitCode": 0,
+        "seconds": 0.964
+      },
+      {
+        "name": "host",
+        "exitCode": 0,
+        "seconds": 14.869
+      },
+      {
+        "name": "chat",
+        "exitCode": 0,
+        "seconds": 28.623
+      },
+      {
+        "name": "routing",
+        "exitCode": 0,
+        "seconds": 36.221
+      },
+      {
+        "name": "restoration",
+        "exitCode": 0,
+        "seconds": 7.963
+      },
+      {
+        "name": "codex-auth",
+        "exitCode": 0,
+        "seconds": 0.637
+      },
+      {
+        "name": "codex-control",
+        "exitCode": 0,
+        "seconds": 0.508
+      },
+      {
+        "name": "codex-task",
+        "exitCode": 0,
+        "seconds": 2.056
+      },
+      {
+        "name": "opencode-task",
+        "exitCode": 0,
+        "seconds": 6.054
+      },
+      {
+        "name": "keyring",
+        "exitCode": 0,
+        "seconds": 4.488
+      },
+      {
+        "name": "auth-bridge",
+        "exitCode": 0,
+        "seconds": 1.09
+      },
+      {
+        "name": "codex-worker",
+        "exitCode": 0,
+        "seconds": 0.332
+      },
+      {
+        "name": "persistent-auth-worker",
+        "exitCode": 0,
+        "seconds": 2.169
+      },
+      {
+        "name": "ask-preflight",
+        "exitCode": 0,
+        "seconds": 0.575
+      },
+      {
+        "name": "licenses",
+        "exitCode": 0,
+        "seconds": 0.1
+      },
+      {
+        "name": "java-workflow",
+        "exitCode": 0,
+        "seconds": 13.799
+      },
+      {
+        "name": "post-test-signature",
+        "exitCode": 0,
+        "seconds": 1.421
+      }
+    ],
+    "mountedSignatureVerified": true,
+    "detached": true,
+    "source": {
+      "identity": {
+        "name": "CODOVYN",
+        "bundleId": "org.codovyn.desktop",
+        "applicationName": "codovyn",
+        "repository": "https://github.com/Gautam-aman/CODOVYN",
+        "version": "0.1.0-alpha"
+      },
+      "artifacts": {
+        "editor": {
+          "filename": "VSCodium-darwin-arm64-1.140.06880.zip",
+          "url": "https://github.com/VSCodium/vscodium/releases/download/1.140.06880/VSCodium-darwin-arm64-1.140.06880.zip",
+          "sha256": "3a0ba1a13b6d743f79ffc20bebd7a2ef8bab2b40e54bcc80fae123da9ed552e0"
+        },
+        "runtime": {
+          "filename": "node-v26.12.1-darwin-arm64.tar.gz",
+          "url": "https://nodejs.org/dist/v26.12.1/node-v26.12.1-darwin-arm64.tar.gz",
+          "sha256": "1901d539912c02afa10d1cc126943a8855a7eedebe830119463470db5e6c59e8"
+        }
+      },
+      "sourceCommit": "3953f079befbca785374ed0aa2ee3d1230e04b53",
+      "sourceDirty": false,
+      "signing": "ad-hoc-development",
+      "platform": "darwin-arm64"
+    },
+    "copiedHarnesses": [
+      {
+        "name": "codex-auth",
+        "sourceScript": "validate-codex-auth.js",
+        "sha256": "52bfc05c7c14e41d2c1032e0d6ec89cdff059456b0e6c4b71f0756a8d8692d21",
+        "packageRoot": "/private/tmp/codovyn-opencode-ask-copy-nvo6og5o/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
+      },
+      {
+        "name": "codex-control",
+        "sourceScript": "validate-codex-control.js",
+        "sha256": "213b57b4a8c4f06b2cab9a5a532d91b59875d377401252e1003485203d76570d",
+        "packageRoot": "/private/tmp/codovyn-opencode-ask-copy-nvo6og5o/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
+      },
+      {
+        "name": "codex-task",
+        "sourceScript": "validate-codex-task-control.js",
+        "sha256": "564b8f3aec75006f78c15458e70cb9549cd51fb5c0794237a9009a550ffc0f2d",
+        "packageRoot": "/private/tmp/codovyn-opencode-ask-copy-nvo6og5o/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
+      },
+      {
+        "name": "opencode-task",
+        "sourceScript": "validate-opencode-task-execution.js",
+        "sha256": "cf98f710905d74bf0d7f9225be30fdcf7b3c82e949c70041cd09ac60d785c196",
+        "packageRoot": "/private/tmp/codovyn-opencode-ask-copy-nvo6og5o/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
+      },
+      {
+        "name": "keyring",
+        "sourceScript": "validate-codex-keyring.js",
+        "sha256": "0c0e88c31fd0b54ca6bef992f2b7332caeb1bdc7cc6f5ee66108327b83d92c9c",
+        "packageRoot": "/private/tmp/codovyn-opencode-ask-copy-nvo6og5o/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
+      },
+      {
+        "name": "auth-bridge",
+        "sourceScript": "validate-codex-auth-bridge.js",
+        "sha256": "ed9292d62e4c175193710d92b5c99690072613fdeb4c014f5692d320f32a2740",
+        "packageRoot": "/private/tmp/codovyn-opencode-ask-copy-nvo6og5o/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
+      }
+    ],
+    "runtimeEntitlements": {
+      "com.apple.security.cs.allow-jit": true
+    },
+    "minimumMacOS": "13.5",
+    "bundleVersion": "2",
+    "passed": true
+  },
+  "ownerContext": "OpenCode setup required; metadata inspected only, credential contents not read",
+  "ownerJournal": {
+    "tasks": 0,
+    "events": 0,
+    "campaign_consents": 0,
+    "campaign_requests": 0,
+    "activeLeases": 0
+  },
+  "fixtureHashes": {
+    ".gitignore": "b53ee26e6ff1da219b0563333a76d2c9ec19eec713d6ee54e11a1edacb0e9f3d",
+    "pom.xml": "038f8987ce54d1460794e05f81a4ac79401f5c7b8fed5928c5e849a7596ef6ae",
+    "README.md": "9f8d7c85cd6756f60eb1fac483e2358eff2be5b59f31d81b05d82c9cee177155",
+    "src/main/java/dev/codovyn/Calculator.java": "dee76c8f9584ba9286e2bd67948499030760f3978bb6a3e4074cbcf731088c26",
+    "src/main/java/dev/codovyn/TaskService.java": "4dc81d3a1e69235b0455bb6f5835ed4bf2056e1d65edad7abc80c2fdc930eaf8",
+    "src/test/java/dev/codovyn/CalculatorTest.java": "2c6ae1209b342ca6bb414b2744fb89b8b332035be8360e7a09b2fa53aeec22fc"
+  },
+  "originalGitUnchanged": true,
+  "actualInferenceSubmissions": 0,
+  "ownerAuthenticationStarted": false,
+  "sandboxGrantsExpanded": false,
+  "publicRelease": "BLOCKED",
+  "canonicalContextSymlinkRejection": "Verified with actual filesystem aliases; independent focused 6-pass and full 411-pass rerun"
+}

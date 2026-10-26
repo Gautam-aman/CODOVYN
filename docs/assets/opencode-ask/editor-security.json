@@ -1,0 +1,38 @@
+{
+  "checkedAt": "2026-10-26T18:12:21.871559+00:00",
+  "source": "https://api.github.com/repos/VSCodium/vscodium/releases/latest",
+  "latestRelease": "1.143.17183",
+  "publishedAt": "2026-10-26T08:18:16Z",
+  "htmlUrl": "https://github.com/VSCodium/vscodium/releases/tag/1.143.17183",
+  "arm64Assets": [
+    {
+      "name": "VSCodium-darwin-arm64-1.143.17183.zip",
+      "digest": "sha256:b31ca09d8187dd48e077c13ca39b01af234582fe8f5015a918e3c985cc76427e",
+      "downloadUrl": "https://github.com/VSCodium/vscodium/releases/download/1.143.17183/VSCodium-darwin-arm64-1.143.17183.zip"
+    },
+    {
+      "name": "VSCodium-darwin-arm64-1.143.17183.zip.sha1",
+      "digest": "sha256:7681012818f45f5e295cb357d66bd92a2766f74eee3360f7e6b3a94ddf09056a",
+      "downloadUrl": "https://github.com/VSCodium/vscodium/releases/download/1.143.17183/VSCodium-darwin-arm64-1.143.17183.zip.sha1"
+    },
+    {
+      "name": "VSCodium-darwin-arm64-1.143.17183.zip.sha256",
+      "digest": "sha256:04a8b2098c5432e5de8060f7d5fcf8a9febf67bdfa37ba05548feaf1476dde25",
+      "downloadUrl": "https://github.com/VSCodium/vscodium/releases/download/1.143.17183/VSCodium-darwin-arm64-1.143.17183.zip.sha256"
+    }
+  ],
+  "embeddedQualifiedVersion": {
+    "electron": "43.7.3",
+    "node": "24.21.0"
+  },
+  "upstreamElectronObservation": {
+    "version": "43.8.3",
+    "node": "24.22.0",
+    "source": "https://releases.electronjs.org/release/v43.8.3"
+  },
+  "nodeSecurityFixFloor": "24.22.1",
+  "nodeSecuritySource": "https://nodejs.org/en/blog/release/v24.22.1",
+  "status": "BLOCKED: newer official candidate 1.143.17183 found, but archive and embedded runtime remain unqualified; pinned verified editor was retained",
+  "candidateDownload": "BLOCKED: two bounded official archive download attempts timed out; partial data was never accepted or executed",
+  "candidateArchiveVerified": false
+}
