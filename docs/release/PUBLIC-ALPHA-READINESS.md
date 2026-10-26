@@ -93,6 +93,16 @@ See [persistent authentication qualification](../development/codex-persistent-au
 
 Current clean development artifact embeds `2018d71493793993d76a6c009396b01d78205e83`; DMG SHA-256 `4dddb268129a065285c93594041ed201754ac67e584ee6edea823e7e6a56fbf9`. It remains ad-hoc signed/unnotarized and was not published. The earlier checksum sections remain historical evidence of their own builds. The new copied app is left open using the stable **CODOVYN Owner Validation** profile for manual sign-in.
 
+## Pinned authentication bridge qualification — current execution blocker
+
+[Bridge validation](../development/codex-authentication-bridge-validation.md) reproduces the incompatibility against the official installed **Codex 0.164.0** without inference. Its managed Keychain identity restores in the authentication-only boundary and fails to restore in the unchanged coding sandbox. The pinned external `chatgptAuthTokens` path requires raw token import and is marked unstable/internal-only; it was rejected. Account metadata supplies no delegation handle. No safe supported bridge was found; production coding and the Ask control remain **BLOCKED**. Additional spending consent does not remove this technical gate.
+
+Tested fix `d650b8dab1bc7d48c3334cab56d28979d8e6a02b` revokes account bindings before refresh/sign-out, on account changes and disposal; rejects racing stale replies; invalidates native Signed in status without automatic login or retry. Previous account-bound approval cannot authorize a switched account. Strict Keychain storage and the original coding sandbox are preserved.
+
+**399 tests passed, 0 failed/skipped; all 17 copied-DMG steps passed.** These include actual OS/protocol witnesses, native host/Java, Chat/routing/restoration and deterministic task/SQLite/security controls. **Zero inference submissions and zero owner authentication starts.** The current owner profile has zero campaign consents/requests/active leases; Calculator hashes/Git remain unchanged. No credential material is published. Real owner-account restoration and live inference are not claimed.
+
+Clean development DMG source: `d650b8dab1bc7d48c3334cab56d28979d8e6a02b`; SHA-256 `b6f131c0df42a2fbae4e6bee8045b515b2ae0b0b54eb0afeeb08fb9fa0c88da8`. Ad-hoc signed/unnotarized, copied-app verified, not published. `/Applications/CODOVYN.app` is unchanged. Final remote SHA is verified after this documentation commit and included in the handoff. **ALPHA BLOCKED — CRITICAL GATES REMAIN.**
+
 ## Historical first Ask proposal — blocked by current credential bridge
 
 Provider: official pinned Codex CLI **0.164.0**, native SHA `d8990e3ee7acfbc26f91265b12a1a83f0fee40d0e0f8f1f40a37d4ec21f499cf`. Model: **gpt-6.1-sol**, effort **Low**, subject to a fresh advertised capability check. Account: owner-initiated separate memory-only Codex context; no global credentials imported; authentication unverified until the owner signs in.

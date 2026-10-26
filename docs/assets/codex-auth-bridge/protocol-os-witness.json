@@ -1,0 +1,78 @@
+{
+  "sourceCommit": "d650b8dab1bc7d48c3334cab56d28979d8e6a02b",
+  "executableSha256": "d8990e3ee7acfbc26f91265b12a1a83f0fee40d0e0f8f1f40a37d4ec21f499cf",
+  "classification": "REAL OS / PINNED PROTOCOL COMPATIBILITY; NO REAL ACCOUNT OR INFERENCE",
+  "inferenceSubmissions": 0,
+  "browserLogins": 0,
+  "productionExecution": "blocked",
+  "groups": [
+    69589,
+    69591,
+    69593,
+    69595,
+    69597,
+    69599,
+    69601,
+    69603
+  ],
+  "protocol": {
+    "stableLoginVariants": [
+      {
+        "type": "apiKey",
+        "required": [
+          "apiKey",
+          "type"
+        ]
+      },
+      {
+        "type": "chatgpt",
+        "required": [
+          "type"
+        ]
+      },
+      {
+        "type": "chatgptDeviceCode",
+        "required": [
+          "type"
+        ]
+      },
+      {
+        "type": "chatgptAuthTokens",
+        "required": [
+          "accessToken",
+          "chatgptAccountId",
+          "type"
+        ]
+      },
+      {
+        "type": "amazonBedrock",
+        "required": [
+          "apiKey",
+          "region",
+          "type"
+        ]
+      },
+      {
+        "type": "amazonBedrockAccessKeys",
+        "required": [
+          "accessKeyId",
+          "region",
+          "secretAccessKey",
+          "type"
+        ]
+      }
+    ],
+    "externalTokenImportInDefaultSchema": true,
+    "externalTokenStability": "Source marks internal-only experimental; schema presence does not establish support",
+    "externalTokenImportRequiresRawToken": true,
+    "delegatedHandleInLoginSchema": false,
+    "stableLoginSchemaSha256": "48fb9bea54d7e0890052653ac06737efb3200ba2261515b2c4014027f36bea3d",
+    "experimentalLoginSchemaSha256": "48fb9bea54d7e0890052653ac06737efb3200ba2261515b2c4014027f36bea3d"
+  },
+  "authComponentRestoresPublicWitness": true,
+  "unchangedCodingSandboxDeniesWitness": true,
+  "authenticationComponentCannotBecomeCodingRuntime": true,
+  "plaintextFallbackAbsent": true,
+  "passed": true,
+  "cleanupVerified": true
+}

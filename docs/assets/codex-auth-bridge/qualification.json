@@ -1,0 +1,256 @@
+{
+  "classification": "BLOCKED \u2014 ISOLATED AUTH DELEGATION UNSUPPORTED AT PIN; SECURITY AND REGRESSION CHECKS PASSED",
+  "startingSha": "32b3c1372bbbe010cc3ebcae44f18a6ef67ca76d",
+  "implementationSha": "d650b8dab1bc7d48c3334cab56d28979d8e6a02b",
+  "fullRegression": {
+    "pass": 399,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "durationMs": 134554.772708,
+    "logSha256": "7e6a661f9e51f469bfbcf6b9f23a3b98a0b444b651e625047e75fb9ece5911aa"
+  },
+  "sourceSteps": [
+    {
+      "name": "dependencies",
+      "exitCode": 0,
+      "seconds": 6.144
+    },
+    {
+      "name": "check",
+      "exitCode": 0,
+      "seconds": 140.358
+    },
+    {
+      "name": "keyring",
+      "exitCode": 0,
+      "seconds": 4.652
+    },
+    {
+      "name": "auth-worker",
+      "exitCode": 0,
+      "seconds": 1.925
+    },
+    {
+      "name": "bridge",
+      "exitCode": 0,
+      "seconds": 1.269
+    },
+    {
+      "name": "codex-control",
+      "exitCode": 0,
+      "seconds": 0.689
+    },
+    {
+      "name": "codex-task",
+      "exitCode": 0,
+      "seconds": 2.002
+    },
+    {
+      "name": "extension",
+      "exitCode": 0,
+      "seconds": 7.25
+    }
+  ],
+  "buildSteps": [
+    {
+      "name": "build",
+      "exitCode": 0,
+      "seconds": 15.846
+    },
+    {
+      "name": "licenses",
+      "exitCode": 0,
+      "seconds": 0.24
+    },
+    {
+      "name": "package",
+      "exitCode": 0,
+      "seconds": 22.572
+    }
+  ],
+  "copiedInstaller": {
+    "image": "/Users/rigelsmacbook/Java Projects/Codovyn/dist/desktop/CODOVYN-darwin-arm64-development.dmg",
+    "sha256": "b6f131c0df42a2fbae4e6bee8045b515b2ae0b0b54eb0afeeb08fb9fa0c88da8",
+    "copiedApplication": "/private/tmp/codovyn-auth-bridge-copy-vy4bdbi2/CODOVYN.app",
+    "readOnlyMount": true,
+    "steps": [
+      {
+        "name": "image-integrity",
+        "exitCode": 0,
+        "seconds": 4.19
+      },
+      {
+        "name": "signature",
+        "exitCode": 0,
+        "seconds": 0.767
+      },
+      {
+        "name": "host",
+        "exitCode": 0,
+        "seconds": 16.688
+      },
+      {
+        "name": "chat",
+        "exitCode": 0,
+        "seconds": 22.735
+      },
+      {
+        "name": "routing",
+        "exitCode": 0,
+        "seconds": 35.748
+      },
+      {
+        "name": "restoration",
+        "exitCode": 0,
+        "seconds": 7.771
+      },
+      {
+        "name": "codex-auth",
+        "exitCode": 0,
+        "seconds": 0.628
+      },
+      {
+        "name": "codex-control",
+        "exitCode": 0,
+        "seconds": 0.473
+      },
+      {
+        "name": "codex-task",
+        "exitCode": 0,
+        "seconds": 1.706
+      },
+      {
+        "name": "opencode-task",
+        "exitCode": 0,
+        "seconds": 5.805
+      },
+      {
+        "name": "keyring",
+        "exitCode": 0,
+        "seconds": 4.086
+      },
+      {
+        "name": "auth-bridge",
+        "exitCode": 0,
+        "seconds": 1.012
+      },
+      {
+        "name": "codex-worker",
+        "exitCode": 0,
+        "seconds": 0.305
+      },
+      {
+        "name": "persistent-auth-worker",
+        "exitCode": 0,
+        "seconds": 1.823
+      },
+      {
+        "name": "licenses",
+        "exitCode": 0,
+        "seconds": 0.094
+      },
+      {
+        "name": "java-workflow",
+        "exitCode": 0,
+        "seconds": 9.206
+      },
+      {
+        "name": "post-test-signature",
+        "exitCode": 0,
+        "seconds": 1.431
+      }
+    ],
+    "mountedSignatureVerified": true,
+    "detached": true,
+    "source": {
+      "identity": {
+        "name": "CODOVYN",
+        "bundleId": "org.codovyn.desktop",
+        "applicationName": "codovyn",
+        "repository": "https://github.com/Gautam-aman/CODOVYN",
+        "version": "0.1.0-alpha"
+      },
+      "artifacts": {
+        "editor": {
+          "filename": "VSCodium-darwin-arm64-1.140.06880.zip",
+          "url": "https://github.com/VSCodium/vscodium/releases/download/1.140.06880/VSCodium-darwin-arm64-1.140.06880.zip",
+          "sha256": "3a0ba1a13b6d743f79ffc20bebd7a2ef8bab2b40e54bcc80fae123da9ed552e0"
+        },
+        "runtime": {
+          "filename": "node-v26.12.1-darwin-arm64.tar.gz",
+          "url": "https://nodejs.org/dist/v26.12.1/node-v26.12.1-darwin-arm64.tar.gz",
+          "sha256": "1901d539912c02afa10d1cc126943a8855a7eedebe830119463470db5e6c59e8"
+        }
+      },
+      "sourceCommit": "d650b8dab1bc7d48c3334cab56d28979d8e6a02b",
+      "sourceDirty": false,
+      "signing": "ad-hoc-development",
+      "platform": "darwin-arm64"
+    },
+    "copiedHarnesses": [
+      {
+        "name": "codex-auth",
+        "sourceScript": "validate-codex-auth.js",
+        "sha256": "3c16b66803d09d1c97c6a6e2cb0e281d7b956a0d338e51cd9f11ae989acf012f",
+        "packageRoot": "/private/tmp/codovyn-auth-bridge-copy-vy4bdbi2/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
+      },
+      {
+        "name": "codex-control",
+        "sourceScript": "validate-codex-control.js",
+        "sha256": "4af769d8dadf58db3576ce44adc90df5d97a94e2b39884da8cc4d3c96ed63adf",
+        "packageRoot": "/private/tmp/codovyn-auth-bridge-copy-vy4bdbi2/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
+      },
+      {
+        "name": "codex-task",
+        "sourceScript": "validate-codex-task-control.js",
+        "sha256": "0594de8f2a143eed80de90d55b318405a79eeb56a67bf216db9a8427335dd7b0",
+        "packageRoot": "/private/tmp/codovyn-auth-bridge-copy-vy4bdbi2/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
+      },
+      {
+        "name": "opencode-task",
+        "sourceScript": "validate-opencode-task-execution.js",
+        "sha256": "54dde9f89ef58bf52bd65823e546ff4574f578137e87bafb3a58311fec6b09f8",
+        "packageRoot": "/private/tmp/codovyn-auth-bridge-copy-vy4bdbi2/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
+      },
+      {
+        "name": "keyring",
+        "sourceScript": "validate-codex-keyring.js",
+        "sha256": "43ddf710cb2750bfa64d8a6cf220f112539e1fb47a35e8c23a748a39e1d3f745",
+        "packageRoot": "/private/tmp/codovyn-auth-bridge-copy-vy4bdbi2/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
+      },
+      {
+        "name": "auth-bridge",
+        "sourceScript": "validate-codex-auth-bridge.js",
+        "sha256": "5180d429b8607277c6d0c91ad05a98ef6b46156da56909560792d78b4d09d673",
+        "packageRoot": "/private/tmp/codovyn-auth-bridge-copy-vy4bdbi2/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
+      }
+    ],
+    "runtimeEntitlements": {
+      "com.apple.security.cs.allow-jit": true
+    },
+    "minimumMacOS": "13.5",
+    "bundleVersion": "2",
+    "passed": true
+  },
+  "ownerProfileJournal": {
+    "tasks": 0,
+    "events": 0,
+    "campaign_consents": 0,
+    "campaign_requests": 0,
+    "activeLeases": 0
+  },
+  "originalFileHashes": {
+    ".gitignore": "b53ee26e6ff1da219b0563333a76d2c9ec19eec713d6ee54e11a1edacb0e9f3d",
+    "pom.xml": "038f8987ce54d1460794e05f81a4ac79401f5c7b8fed5928c5e849a7596ef6ae",
+    "README.md": "9f8d7c85cd6756f60eb1fac483e2358eff2be5b59f31d81b05d82c9cee177155",
+    "src/main/java/dev/codovyn/Calculator.java": "dee76c8f9584ba9286e2bd67948499030760f3978bb6a3e4074cbcf731088c26",
+    "src/main/java/dev/codovyn/TaskService.java": "4dc81d3a1e69235b0455bb6f5835ed4bf2056e1d65edad7abc80c2fdc930eaf8",
+    "src/test/java/dev/codovyn/CalculatorTest.java": "2c6ae1209b342ca6bb414b2744fb89b8b332035be8360e7a09b2fa53aeec22fc"
+  },
+  "originalGitUnchanged": true,
+  "inferenceSubmissions": 0,
+  "ownerAuthenticationStarted": false,
+  "productionCodingExecution": "blocked",
+  "codingSandboxFactoryUnchangedFromStartingSha": true
+}

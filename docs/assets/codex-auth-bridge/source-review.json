@@ -1,0 +1,33 @@
+{
+  "upstreamCommit": "6aaac694803004a63c6f393d153c96d22521a6b9",
+  "files": [
+    {
+      "path": "codex-rs/app-server-protocol/src/protocol/v2/account.rs",
+      "sha256": "f52c03c9f98f8fd496824616ec1669954f35470cbd2ff15101ce4b7e6a57b2ad"
+    },
+    {
+      "path": "codex-rs/app-server/src/request_processors/account_processor.rs",
+      "sha256": "f462380b847d6f895f587063cb71a07aec14cf33d46c13298a3940a9647a48d6"
+    },
+    {
+      "path": "codex-rs/login/src/auth/mod.rs",
+      "sha256": "d0d858e237a375bc3f3af8426ffcd58c0f94e599443efb43ecdc2efdfcfa6fcb"
+    },
+    {
+      "path": "codex-rs/login/src/auth/storage.rs",
+      "sha256": "1cce1de2b553f60fa919ec968863f3417476d66d54ceda37c587c54f3a8dd6ba"
+    },
+    {
+      "path": "codex-rs/responses-api-proxy/README.md",
+      "sha256": "04abbd6544cad89b267ef2e6d2d95722e018aa1cf425babc89db86ded7faa85d"
+    },
+    {
+      "path": "codex-rs/responses-api-proxy/src/auth.rs",
+      "sha256": "b7da119855a6608363f71f12540c72d4aeeca0691d4169ceb82ccb984900d347"
+    },
+    {
+      "path": "codex-rs/responses-api-proxy/src/read_api_key.rs",
+      "sha256": "8e38a6bd5f75c5d08ac006ce0ce0e474d76f7acf265f2586188c92db63cbcf77"
+    }
+  ]
+}
