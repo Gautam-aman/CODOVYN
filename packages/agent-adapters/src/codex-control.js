@@ -133,7 +133,7 @@ export class CodexControlConnection{
  }
  async #submitTurn({threadId,model,effort,prompt,onText,onAcknowledged,signal}){
   let resolve,reject;const completed=new Promise((a,b)=>{resolve=a;reject=b;});completed.catch(()=>{});
-  const turn={threadId,id:null,queued:[],text:'',usage:null,onText,resolve,reject};this.#turn=turn;
+  const turn={threadId,id:null,queued:[],text:'',items:new Map(),lastItem:null,usage:null,onText,resolve,reject};this.#turn=turn;
   const abort=()=>{if(turn.id&&!this.#closed)this.#rpc('turn/interrupt',{threadId,turnId:turn.id}).catch(()=>{});reject(new Error('Codex turn cancelled; submission may have occurred'));};signal.addEventListener('abort',abort,{once:true});
   try{if(signal.aborted)throw new Error('Cancelled before Codex turn');this.#methods.push('turn/start');const result=await this.#rpc('turn/start',{threadId,input:[{type:'text',text:prompt}],model,effort,cwd:this.#workspace,approvalPolicy:'on-request',approvalsReviewer:'user',sandboxPolicy:{type:'readOnly'},summary:'none'});
    if(typeof result?.turn?.id!=='string'||result.turn.id.length>100||!['inProgress','completed','failed','interrupted'].includes(result.turn.status))throw new Error('Malformed turn acknowledgement');turn.id=result.turn.id;if(!onAcknowledged())throw new Error('Late Codex acknowledgement rejected');for(const item of turn.queued)this.#turnNotification(...item);turn.queued=[];return await completed;
@@ -142,13 +142,15 @@ export class CodexControlConnection{
  #notification(method,params){
   if(method==='account/login/completed'){if(this.#login?.id)this.#completeLogin(params);else this.#loginNotice={loginId:params?.loginId,success:params?.success===true};return;}
   if(method==='account/updated'){if(this.#turn)this.fail(new Error('Account changed during request'));return;}
-  if(this.#turn&&['turn/completed','item/agentMessage/delta','item/started','thread/tokenUsage/updated'].includes(method)){
+  if(this.#turn&&['turn/completed','item/agentMessage/delta','item/started','item/completed','thread/tokenUsage/updated'].includes(method)){
    if(!this.#turn.id){if(this.#turn.queued.length>=128)throw new Error('Pre-acknowledgement event limit');this.#turn.queued.push([method,params]);return;}this.#turnNotification(method,params);
   }
  }
  #turnNotification(method,params){const turn=this.#turn;if(params?.threadId!==turn.threadId)throw new Error('Unexpected thread event');const id=method==='turn/completed'?params.turn?.id:params.turnId;if(id!==turn.id)throw new Error('Unexpected turn event');
-  if(method==='item/started'&&!['userMessage','agentMessage','reasoning'].includes(params.item?.type))throw new Error('Provider tool activity is not authorized');
-  if(method==='item/agentMessage/delta'){if(typeof params.delta!=='string'||Buffer.byteLength(turn.text)+Buffer.byteLength(params.delta)>65536)throw new Error('Codex response size exceeded');turn.text+=params.delta;turn.onText(params.delta);}
+  if(['item/started','item/completed'].includes(method)&&!['userMessage','agentMessage','reasoning'].includes(params.item?.type))throw new Error('Provider tool activity is not authorized');
+  const append=(id,text,final)=>{if(typeof id!=='string'||!id||id.length>100||typeof text!=='string')throw new Error('Invalid agent message');let item=turn.items.get(id),prefix='';if(!item){if(turn.items.size>=64)throw new Error('Agent message count bound');item={text:'',done:false};turn.items.set(id,item);if(turn.lastItem!==null)prefix='\n\n';turn.lastItem=id;}if(final&&item.done){if(text!==item.text)throw new Error('Conflicting repeated final message');return;}if(item.done||turn.lastItem!==id||final&&!text.startsWith(item.text))throw new Error('Agent message ordering/conflict');const delta=prefix+(final?text.slice(item.text.length):text);if(Buffer.byteLength(turn.text)+Buffer.byteLength(delta)>65536)throw new Error('Codex response size exceeded');item.text=final?text:item.text+text;item.done=final;turn.text+=delta;if(delta)turn.onText(delta);};
+  if(method==='item/agentMessage/delta')append(params.itemId,params.delta,false);
+  if(method==='item/completed'&&params.item?.type==='agentMessage')append(params.item.id,params.item.text,true);
   if(method==='thread/tokenUsage/updated'){const last=params.tokenUsage?.last;if(last&&['inputTokens','outputTokens','cachedInputTokens'].every(k=>Number.isSafeInteger(last[k])&&last[k]>=0))turn.usage={provenance:'provider-reported last usage snapshot; not request total or billing',inputTokens:last.inputTokens,outputTokens:last.outputTokens,cachedInputTokens:last.cachedInputTokens};}
   if(method==='turn/completed'){const status=params.turn?.status;if(!['completed','failed','interrupted'].includes(status))throw new Error('Unknown terminal status');turn.resolve({providerOutcome:status==='completed'&&turn.text?'completed':'failed',status,text:turn.text,usage:turn.usage});}
  }
