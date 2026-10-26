@@ -1,0 +1,84 @@
+name: Alpha qualification (no publication)
+on:
+  workflow_dispatch:
+    inputs:
+      authorize_signing:
+        description: Owner authorizes use of the protected signing runner and two Apple notarization submissions
+        type: boolean
+        default: false
+      identity_fingerprint:
+        description: Public Developer ID Application certificate fingerprint (no private key)
+        type: string
+      team_id:
+        description: Apple team identifier
+        type: string
+      notary_profile:
+        description: Existing owner-provisioned notarytool Keychain profile alias (no password)
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: alpha-qualification-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  qualify:
+    runs-on: macos-15
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.9.0
+          package-manager-cache: false
+      - run: npm ci --ignore-scripts
+      - run: npm run check
+      - run: npm run test:extension-host
+      - run: npm run build:desktop
+      - run: npm run test:desktop-host
+      - run: npm run test:desktop-chat
+      - run: npm run test:desktop-routing-ui
+      - run: npm run test:desktop-restoration
+      - run: node scripts/inventory-desktop-licenses.js
+      - run: npm run package:desktop
+      - run: shasum -a 256 dist/desktop/CODOVYN-darwin-arm64-development.dmg
+      # No uploads, releases or assertion that this ad-hoc image is public-ready.
+  signed-candidate:
+    if: ${{ inputs.authorize_signing }}
+    needs: qualify
+    environment: alpha-signing
+    runs-on: [self-hosted, macOS, ARM64, codovyn-signing]
+    timeout-minutes: 90
+    env:
+      SIGN_IDENTITY: ${{ inputs.identity_fingerprint }}
+      SIGN_TEAM: ${{ inputs.team_id }}
+      SIGN_NOTARY_PROFILE: ${{ inputs.notary_profile }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.9.0
+          package-manager-cache: false
+      - run: npm ci --ignore-scripts
+      - run: npm run check
+      - run: npm run build:desktop
+      - name: Owner-authorized local signing and Apple notarization
+        run: |
+          node --input-type=module <<'JS'
+          import {execFileSync} from 'node:child_process';
+          execFileSync(process.execPath,['apps/desktop/build/distribution.js','--authorize-signing','--authorize-notarization','--identity',process.env.SIGN_IDENTITY,'--team',process.env.SIGN_TEAM,'--notary-profile',process.env.SIGN_NOTARY_PROFILE],{stdio:'inherit'});
+          JS
+      - run: npm run test:desktop-host
+        env:
+          CODOVYN_DESKTOP_APP: dist/release/0.1.0-alpha/CODOVYN.app
+      - run: npm run test:desktop-chat
+        env:
+          CODOVYN_DESKTOP_APP: dist/release/0.1.0-alpha/CODOVYN.app
+      - run: npm run test:desktop-restoration
+        env:
+          CODOVYN_DESKTOP_APP: dist/release/0.1.0-alpha/CODOVYN.app
+      # Intentionally no publication or artifact upload. A candidate still needs
+      # live-provider, clean-Mac, license and final owner publication approval.

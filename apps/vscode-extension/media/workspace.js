@@ -193,8 +193,9 @@ const agentSettings = document.createElement('details');
 agentSettings.className = 'agent-settings';
 const agentSummary = document.createElement('summary'); agentSummary.textContent = 'AI Providers and backups';
 const agentHelp = document.createElement('p');
-agentHelp.textContent = 'Choose Project agents above to use these preferences. Enabling automatic switching authorizes sending this task and context to the selected backup providers. No quota or connection status is inferred from installation.';
+agentHelp.textContent = 'Alpha preparation: general live coding and automatic switching are gated. Start with isolated Codex sign-in, then separately review one read-only Calculator validation. Installation and model metadata do not prove inference access. Experimental provider preferences are retained for development.';
 agentSettings.append(agentSummary, agentHelp);
+for(const [label,type]of [['Sign in to isolated Codex','codex-sign-in'],['Review one Codex Ask validation','codex-validate-ask'],['Cancel isolated Codex session','codex-cancel']]){const button=document.createElement('button');button.type='button';button.textContent=label;button.addEventListener('click',()=>vscode.postMessage({type}));agentSettings.append(button);}
 function providerSelect(labelText, optional = false) {
   const label = document.createElement('label'); label.textContent = labelText;
   const select = document.createElement('select'); select.setAttribute('aria-label', labelText);
@@ -959,7 +960,7 @@ workspacePanels.get('chat').append(chatHeading, chatLog, jumpToLatestChat, docum
 workspacePanels.get('activity').append(document.querySelector('.activity'));
 workspacePanels.get('history').append(document.querySelector('.recent'));
 // A stopped task's transfer is reviewed separately from ordinary Chat configuration.
-const switchAgent=document.createElement('button');switchAgent.id='switch-agent';switchAgent.type='button';switchAgent.textContent='Switch Agent';switchAgent.title='Review a stopped Codex task for continuation with OpenCode';
+const switchAgent=document.createElement('button');switchAgent.id='switch-agent';switchAgent.type='button';switchAgent.textContent='Switch Agent';switchAgent.title='Experimental ContextFlow review; live provider continuation is not verified and execution stays gated';
 status.after(switchAgent);
 const flow=document.createElement('section');flow.className='contextflow-review';flow.id='contextflow-review';flow.hidden=true;
 const flowHeading=document.createElement('h2');flowHeading.textContent='ContextFlow';flowHeading.tabIndex=-1;

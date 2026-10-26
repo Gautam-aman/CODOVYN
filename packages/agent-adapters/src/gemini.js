@@ -59,7 +59,7 @@ export function createGeminiAdapter({ cwd, command = 'gemini', prefixArgs = [], 
   if (model !== undefined && (typeof model !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,127}$/.test(model))) throw new TypeError('Invalid Gemini model');
   const tools = [...geminiReadTools, ...(write ? ['replace', 'write_file'] : [])];
   return {
-    id: 'gemini', capabilities: { streaming: true, tools: true, writes: write, resume: false, authenticationStatus: false, usage: true, shell: false },
+    id: 'gemini', executionSupported:command===process.execPath&&prefixArgs.length>0, diagnostic:'Gemini live execution is deferred for the macOS alpha; fixture coverage is not live validation.', capabilities: { streaming: true, tools: true, writes: write, resume: false, authenticationStatus: false, usage: true, shell: false },
     async availability() {
       try {
         const { stdout } = await execute(command, [...prefixArgs, '--help'], { cwd: tmpdir(), env: agentEnvironment(), timeout: 10000, maxBuffer: 1024 * 1024 });
@@ -67,6 +67,7 @@ export function createGeminiAdapter({ cwd, command = 'gemini', prefixArgs = [], 
       } catch { return 'unavailable'; }
     },
     async *run({ handoff, signal, execution }) {
+      if(!(command===process.execPath&&prefixArgs.length))throw new AgentFailure('fatal','Gemini live execution is deferred for the macOS alpha; no provider started');
       if (signal?.aborted) throw new AgentFailure('cancelled', 'Gemini cancelled');
       await assertUnmanaged();
       const root = await realpath(cwd);

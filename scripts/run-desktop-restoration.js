@@ -22,7 +22,8 @@ try {
   for (const phase of ['write', 'read']) {
     const reportPath = join(directory, `${phase}.json`);
     const args = [...(phase === 'write' ? [fixture] : []), ...nativeProfileArgs(directory), '--disable-workspace-trust', '--skip-welcome', '--skip-release-notes'];
-    await runDesktopProcess({ signal: cancellation.signal, executable: join(app, 'Contents/MacOS/CODOVYN'), args,
+    const phaseApp=phase==='write'&&process.env.CODOVYN_RESTORATION_FIRST_APP?resolve(process.env.CODOVYN_RESTORATION_FIRST_APP):app;
+    await runDesktopProcess({ signal: cancellation.signal, executable: join(phaseApp, 'Contents/MacOS/CODOVYN'), args,
       directory, phase,
       env: { ...process.env, PATH: '/usr/bin:/bin:/usr/sbin:/sbin', CODOVYN_RESTORE_PHASE: phase, CODOVYN_RESTORE_REPORT: reportPath } });
     const report = JSON.parse(await readFile(reportPath));
@@ -31,6 +32,7 @@ try {
       assert.equal(report.workspace, true); assert.equal(report.editor, true); assert.equal(report.localState, true);
       assert.equal(report.savedContent, true); assert.equal(report.routingPreferences, true);
       await mkdir(join(root, 'dist/desktop'), { recursive: true });
+      if(process.env.CODOVYN_RESTORATION_FIRST_APP)report.upgrade={from:JSON.parse(await readFile(join(process.env.CODOVYN_RESTORATION_FIRST_APP,'Contents/Resources/codovyn-build.json'))).sourceCommit,to:JSON.parse(await readFile(join(app,'Contents/Resources/codovyn-build.json'))).sourceCommit};
       await writeFile(join(root, 'dist/desktop/restoration-result.json'), JSON.stringify(report, null, 2));
     }
     await mkdir(join(root, 'dist/desktop'), { recursive: true });

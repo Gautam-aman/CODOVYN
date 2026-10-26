@@ -2,6 +2,7 @@ import { readFile, writeFile, mkdir, mkdtemp, cp, rename, rm, readdir } from 'no
 import { resolve, join } from 'node:path';
 import { homedir } from 'node:os';
 import { execFileSync } from 'node:child_process';
+import {hardenedEntitlements,entitlementPlist} from './signing.js';
 import { obtainArtifact } from './artifacts.js';
 import { workbenchThemes } from './themes.js';
 import { codovynProduct, desktopIdentity, macApplicationMetadata } from './product.js';
@@ -27,6 +28,12 @@ try {
   await writeFile(productPath, JSON.stringify(codovynProduct(JSON.parse(await readFile(productPath))), null, 2));
   run('/usr/bin/tar', ['-xzf', runtime, '-C', stage]);
   await rename(join(stage, `node-v${manifest.nodeVersion}-darwin-arm64`), join(resources, 'runtime'));
+  // The upstream Node artifact includes debug/DYLD entitlements. The packaged
+  // CLI runtime needs JIT only; never distribute its upstream debug allowance.
+  const nodeEntitlements=join(stage,'node-entitlements.plist');
+  await writeFile(nodeEntitlements,entitlementPlist(hardenedEntitlements({}, {node:true})));
+  run('/usr/bin/codesign',['--force','--sign','-','--options','runtime','--entitlements',nodeEntitlements,join(resources,'runtime/bin/node')]);
+  run(join(resources,'runtime/bin/node'),['--input-type=module','-e',"import{DatabaseSync}from'node:sqlite';const db=new DatabaseSync(':memory:');db.exec('CREATE TABLE smoke(n)');db.close();"]);
   const upstreamCli = join(editorRoot, 'bin/codium');
   await writeFile(join(editorRoot, 'bin/codovyn'), (await readFile(upstreamCli, 'utf8')).replaceAll('VSCodium', 'CODOVYN').replaceAll("'codium'", "'codovyn'"), { mode: 0o755 });
   await rm(upstreamCli);
@@ -55,10 +62,13 @@ try {
   const iconset = join(stage, 'CODOVYN.iconset');
   run('/usr/bin/swift', [join(root, 'apps/desktop/build/icon.swift'), iconset]);
   run('/usr/bin/iconutil', ['-c', 'icns', iconset, '-o', join(resources, 'CODOVYN.icns')]);
+  const runtimeCommands=execFileSync('/usr/bin/otool',['-l',join(resources,'runtime/bin/node')],{encoding:'utf8'});
+  const runtimeMinimum=runtimeCommands.match(/\bminos\s+(\d+(?:[.]\d+)+)/)?.[1];
+  if(!runtimeMinimum)throw new Error('Bundled runtime deployment minimum is unverifiable');
   const plistPath = join(app, 'Contents/Info.plist');
   const plist = JSON.parse(execFileSync('/usr/bin/plutil', ['-convert', 'json', '-o', '-', plistPath], { encoding: 'utf8' }));
   const originalExecutable = plist.CFBundleExecutable;
-  await writeFile(plistPath, JSON.stringify(macApplicationMetadata(plist)));
+  await writeFile(plistPath, JSON.stringify(macApplicationMetadata(plist,runtimeMinimum)));
   run('/usr/bin/plutil', ['-convert', 'xml1', plistPath]);
   await rename(join(app, 'Contents/MacOS', originalExecutable), join(app, 'Contents/MacOS/CODOVYN'));
   const frameworks = join(app, 'Contents/Frameworks');

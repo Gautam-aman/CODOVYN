@@ -49,7 +49,7 @@ export function createCodexAdapter({ cwd, command = 'codex', prefixArgs = [], wr
   return {
     id: 'codex',
     executionSupported: command===process.execPath&&prefixArgs.length>0,
-    diagnostic: 'Live Codex execution is blocked pending verified pre-action controls and durable campaign admission. Metadata and deterministic fixtures do not establish inference access.',
+    diagnostic: 'General Codex execution remains blocked until live validation passes. Use Settings → isolated Codex sign-in and the separately approved one-request Ask validation; metadata is not inference access.',
     capabilities: { shell:true, streaming: true, resume: false, tools: true, writes: write, authenticationStatus: false, usage: true },
     async availability() {
       try { await execute(command, [...prefixArgs, '--version'], { timeout: 5000, env: agentEnvironment() }); return 'available'; }
@@ -123,6 +123,8 @@ export function createClaudeAdapter({ cwd, command = 'claude', prefixArgs = [], 
   if (typeof write !== 'boolean') throw new TypeError('Write permission must be explicit');
   return {
     id: 'claude',
+    executionSupported: command===process.execPath&&prefixArgs.length>0,
+    diagnostic: 'Claude live execution is deferred for the macOS alpha; fixture coverage is not live validation.',
     capabilities: { shell:false, streaming: true, resume: false, tools: true, writes: write,
       authenticationStatus: false, usage: true },
     async availability() {
@@ -130,6 +132,7 @@ export function createClaudeAdapter({ cwd, command = 'claude', prefixArgs = [], 
       catch { return 'unavailable'; }
     },
     async *run({ handoff, signal, execution }) {
+      if(!(command===process.execPath&&prefixArgs.length))throw new AgentFailure('fatal','Claude live execution is deferred for the macOS alpha; no provider started');
       if (signal?.aborted) throw new AgentFailure('cancelled', 'Claude Code was cancelled');
       const prompt = formatHandoffPrompt(handoff) + (write
         ? '\n\nEdit only this isolated draft workspace. Do not commit, push, deploy, or modify files outside the worktree. Shell commands are unavailable in this mode; report checks the user should run.' : '');

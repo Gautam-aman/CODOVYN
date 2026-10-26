@@ -1,0 +1,3 @@
+/** Read-only verification. Does not sign, notarize, upload or publish. */
+import{resolve}from'node:path';import{verifyPublicDistribution}from'../apps/desktop/build/distribution.js';
+const [app,image,team]=process.argv.slice(2);if(process.argv.length!==5||!app||!image||!/^[A-Z0-9]{10}$/.test(team||'')){console.error('Usage: node scripts/verify-public-alpha.js /absolute/CODOVYN.app /absolute/image.dmg TEAMID');process.exitCode=1;}else try{console.log(JSON.stringify(verifyPublicDistribution(resolve(app),resolve(image),team)));}catch(error){console.error('PUBLIC DISTRIBUTION BLOCKED: '+error.message);process.exitCode=1;}

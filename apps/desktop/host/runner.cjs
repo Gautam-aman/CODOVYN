@@ -89,6 +89,17 @@ exports.run = async () => {
   assert.equal(await step('apply-edit', () => vscode.workspace.applyEdit(edit)), true);
   assert.equal(await step('save-document', () => document.save()), true);
   assert.match(fs.readFileSync(file.fsPath, 'utf8'), /Edited by CODOVYN Desktop/);
+  const saved=document.getText(),editor=vscode.window.activeTextEditor;
+  assert.equal(editor.document,document);
+  await step('editor-unsaved-edit',()=>editor.edit(builder=>builder.insert(document.positionAt(saved.length),'Unsaved undo witness\n')));
+  assert.equal(document.isDirty,true);assert.equal(fs.readFileSync(file.fsPath,'utf8'),saved,'Unsaved text must not mutate disk');
+  await step('editor-undo',()=>vscode.commands.executeCommand('undo'));assert.equal(document.getText(),saved);
+  await step('editor-redo',()=>vscode.commands.executeCommand('redo'));assert.match(document.getText(),/Unsaved undo witness/);
+  await vscode.commands.executeCommand('undo');assert.equal(document.getText(),saved);await document.save();
+  const second=vscode.Uri.file(path.join(folder,'nested folder','second file.txt'));await vscode.workspace.fs.createDirectory(vscode.Uri.file(path.dirname(second.fsPath)));await vscode.workspace.fs.writeFile(second,Buffer.from('Second native tab\n'));
+  await vscode.window.showTextDocument(document,{preview:false});await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(second),{preview:false});
+  const tabs=vscode.window.tabGroups.all.flatMap(group=>group.tabs).map(tab=>tab.input?.uri?.fsPath);assert.ok(tabs.includes(file.fsPath)&&tabs.includes(second.fsPath),'Both real editor tabs remain open');
+  await step('explorer-view',()=>vscode.commands.executeCommand('workbench.view.explorer'));await step('git-view',()=>vscode.commands.executeCommand('workbench.view.scm'));
   if(process.env.CODOVYN_HOST_JAVA_VALIDATION==='1'){const java=await step('java-open-editor',()=>vscode.workspace.openTextDocument(vscode.Uri.file(path.join(folder,'src/main/java/dev/codovyn/Calculator.java'))));await vscode.window.showTextDocument(java);assert.equal(java.languageId,'java');assert.match(java.getText(),/class Calculator/);}
   const panel = await step('agent-panel', () => vscode.commands.executeCommand('codovyn.open'));
   assert.match(panel.webview.html, /Task activity/);
@@ -135,7 +146,7 @@ exports.run = async () => {
     const report=fs.readFileSync(path.join(folder,'target/surefire-reports/TEST-dev.codovyn.CalculatorTest.xml'),'utf8');assert.match(report,/tests="3"/);assert.match(report,/failures="0"/);assert.match(report,/errors="0"/);javaValidation={...javaValidation,tests:3,javaEditor:true};trace('java-terminal-tests','complete');
   }
   terminal.dispose(); panel.dispose();
-  const report = { app: vscode.env.appName, version: vscode.version, edit: true, fileSearch: true, fileSearchDurationMs,
+  const report = { app: vscode.env.appName, version: vscode.version, edit: true, undoRedo:true, unsavedDiskIsolation:true, multipleTabs:true, explorerAndGitViews:true, fileSearch: true, fileSearchDurationMs,
     fileSearchPattern: process.env.CODOVYN_HOST_SEARCH_GLOB || '**/desktop-smoke.txt', git: true, terminal: true, bundledNode: true,...(javaValidation?{javaValidation}: {}) };
   fs.writeFileSync(path.join(folder, 'host-result.json'), JSON.stringify(report, null, 2));
   console.log('CODOVYN DESKTOP HOST PASSED', report);

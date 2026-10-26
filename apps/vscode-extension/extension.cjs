@@ -388,6 +388,7 @@ function createExtension(api, runner = runCli) {
             } catch { sendAppearance('Could not save the theme. Your previous selection is retained.'); }
             return;
           }
+          if (['codex-sign-in','codex-validate-ask','codex-cancel'].includes(message.type)) { const commands={'codex-sign-in':'codovyn.codexSignIn','codex-validate-ask':'codovyn.codexValidateAsk','codex-cancel':'codovyn.codexCancel'}; await api.commands.executeCommand(commands[message.type]); return; }
           if (message.type === 'gemini-setup') {
             await api.env.openExternal(api.Uri.parse('https://geminicli.com/docs/get-started/authentication/'));
             return;

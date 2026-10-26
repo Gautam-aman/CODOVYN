@@ -1,6 +1,6 @@
 export const desktopIdentity = Object.freeze({
   name: 'CODOVYN', bundleId: 'org.codovyn.desktop', applicationName: 'codovyn',
-  repository: 'https://github.com/Gautam-aman/CODOVYN', version: '0.1.0-alpha.1',
+  repository: 'https://github.com/Gautam-aman/CODOVYN', version: '0.1.0-alpha',
 });
 
 /** Product identity and service policy, without replacing upstream license notices. */
@@ -46,10 +46,12 @@ export function codovynProduct(upstream) {
   return product;
 }
 
-export function macApplicationMetadata(upstream) {
+export function minimumMacOS(editor,runtime){const parse=x=>{if(typeof x!=='string'||!/^\d{1,3}(?:[.]\d{1,3}){1,2}$/.test(x))throw new Error('Invalid Mach-O minimum macOS version');return x.split('.').map(Number);};const a=parse(editor),b=parse(runtime);for(let i=0;i<3;i++){if((a[i]||0)>(b[i]||0))return editor;if((a[i]||0)<(b[i]||0))return runtime;}return editor;}
+export function macApplicationMetadata(upstream,runtimeMinimum='13.5') {
   return { ...structuredClone(upstream), CFBundleName: desktopIdentity.name,
     CFBundleDisplayName: desktopIdentity.name, CFBundleIdentifier: desktopIdentity.bundleId,
     CFBundleExecutable: desktopIdentity.name, CFBundleIconFile: 'CODOVYN.icns',
-    CFBundleShortVersionString: desktopIdentity.version.split('-')[0], CFBundleVersion: '1',
+    CFBundleShortVersionString: desktopIdentity.version.split('-')[0], CFBundleVersion: '2',
+    LSMinimumSystemVersion: minimumMacOS(upstream.LSMinimumSystemVersion||runtimeMinimum,runtimeMinimum),
     CFBundleURLTypes: [{ CFBundleURLName: desktopIdentity.name, CFBundleURLSchemes: ['codovyn'] }] };
 }
