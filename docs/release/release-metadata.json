@@ -1,0 +1,19 @@
+{
+  "product": "CODOVYN",
+  "version": "0.1.0-alpha",
+  "platform": "darwin-arm64",
+  "status": "blocked",
+  "downloadEnabled": false,
+  "publicationApproved": false,
+  "installer": null,
+  "plannedFilename": "CODOVYN-0.1.0-alpha-darwin-arm64.dmg",
+  "verifiedHardware": "Apple M2, 8 GiB",
+  "verifiedOS": "macOS 27.0.1 (26A434)",
+  "declaredRuntimeFloor": "13.5; not a verified compatibility range",
+  "providerStatus": "Isolated Codex authentication/Ask implemented; live inference and Agent editing unverified",
+  "installationGuide": "docs/release/INSTALLATION.md",
+  "knownIssues": "docs/release/KNOWN-ISSUES.md",
+  "releaseNotes": "docs/release/RELEASE-NOTES.md",
+  "feedback": "https://github.com/Gautam-aman/CODOVYN/issues",
+  "publicInstallerSha256": null
+}

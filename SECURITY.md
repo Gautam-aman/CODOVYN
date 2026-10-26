@@ -28,64 +28,14 @@ context is not removed automatically. Tasks with open edit drafts cannot be
 deleted or pruned until the draft is applied or discarded, preserving the
 base commit and history needed for review.
 
-The Codex and Claude adapters delegate authentication to their installed CLIs.
-Commands without `-edit` request read-only execution. Explicit edit modes create
-a separate Git worktree from a clean committed repository. Codex uses its
-`workspace-write` sandbox; Claude uses `acceptEdits`, a restricted file-tool
-list, bare mode, and denial of permission prompts. Claude shell and MCP tools
-are unavailable in this integration. These are provider-enforced boundaries,
-not an independent CODOVYN operating-system sandbox; Claude's live enforcement
-has not been verified locally. The CLI does not print provider stderr into
-stored task history. No hosted CODOVYN service exists.
+## Alpha execution gates
 
-Draft application requires a hash of the displayed patch and an unchanged,
-clean base repository. Drafts cannot introduce symlinks or submodules. Rejecting
-a draft deletes its isolated worktree, including ignored build outputs. A
-worktree shares Git metadata with its repository and is not a security boundary
-by itself. Review generated changes and run project checks before committing.
+General live coding is blocked. The native isolated Codex flow uses official memory-only device authentication, a private process and explicit one-request review. Global credentials are not copied. Authentication and metadata do not authorize inference. Credentials/device codes must never enter Chat, Git, logs or issue attachments.
 
-Git staging, branching, committing, fetching, pulling, and pushing require
-explicit CLI commands. Branch, commit, fetch, pull, and push use an empty hooks
-directory so repository-provided hooks do not run. Fetch and pull reject Git's
-external-command transport. Pull only fast-forwards a clean branch. Push
-results omit remote URLs, which may contain embedded credentials.
+The first guarded Ask sends only the reviewed fixed Calculator excerpt. Shell, Git, nested agents and file tools receive no grants; the OS boundary denies project/private reads, project writes and executable spawning. Durable SQLite reservation precedes submission. Uncertain outcomes remain spent/fenced after restart and are never automatically retried. Cancellation cannot guarantee a remote provider immediately stops billing.
 
-Repository and task text can contain untrusted instructions. Do not treat that
-text as authorization to run commands, publish data, or grant access. Current
-limitations include no encrypted task database, no cross-process writer lock,
-and no independent validation of provider-side sandbox enforcement. Do not
-store sensitive prompts in CODOVYN until those limits are addressed for your
-use case.
+Agent execution remains disabled until separately approved and live-verified. Existing isolated draft mediation records intents before mutation, checks versions/identity, and requires explicit patch review. Unverified third-party live providers and automatic fallback are gated. ContextFlow authorization cannot bypass task admission.
 
-## Standalone development distribution
+Task data is not encrypted; ordinary source may contain sensitive information even when known secret paths are denied. Secret detection is not perfect. Do not export raw task databases, auth files, provider stderr or private worktrees as public bug reports. Campaign accounting cannot be erased by ordinary task retention commands.
 
-Desktop assembly accepts only pinned SHA-256 editor and Node artifacts from the
-committed manifest. Rebranding uses local ad-hoc signing, not a public developer
-identity or notarization. Do not treat the development DMG as a verified public
-release. Preserve the included upstream and third-party license notices.
-
-The desktop workbench runs installed compatible extensions with the normal
-Code-OSS extension-host privileges. Install only extensions you trust. Provider
-credentials stay in the provider's supported CLI authentication storage; CODOVYN
-does not pass them to its welcome or agent webviews. The native integrations
-allowlist webview actions and retain explicit draft-edit and patch-application
-confirmations. A Git worktree protects the open working tree from unapproved
-patch application; it is not an operating-system security boundary against
-malicious tools or repository build scripts.
-
-Remote-debugging flags used during local verification expose application control.
-They are not part of normal launch instructions and must not be enabled on a
-shared or untrusted network.
-
-
-## Routing budget records
-
-Routing reservations are local estimates, not exact provider billing or quotas.
-They retain task IDs, session/month scopes and amounts after task-history deletion;
-otherwise deleting a task could silently restore already used allowance. Unknown
-amounts remain unknown and may block later finite budgets. Only provably unstarted
-preparation is refunded automatically. No cancellation/crash refund is inferred.
-The ledger stores no prompts or source code. Explicit ledger retention/usage
-settlement controls are not implemented; back up the private database before
-maintenance. Deleting the database resets all local accounting and is not secure
-erasure or a way to change provider charges.
+The bundled Node runtime is hardened with JIT-only entitlements; the upstream debugging/DYLD allowances are removed during assembly. Development ad-hoc signing is not public Developer ID/notarization. See [release gates](docs/release/PUBLIC-ALPHA-READINESS.md), [redistribution review](docs/release/REDISTRIBUTION.md), and the current validation report. No claim of general production readiness or security on other platforms is made.

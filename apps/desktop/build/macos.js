@@ -47,7 +47,7 @@ try {
   delete extension.scripts; delete extension.devDependencies; delete extension.workspaces;
   extension.codovynBundledRuntime = '../../../runtime/bin/node';
   await writeFile(join(integration, 'package.json'), JSON.stringify(extension, null, 2));
-  for (const name of ['LICENSE', 'README.md']) await cp(join(root, name), join(integration, name));
+  for (const name of ['LICENSE', 'NOTICE', 'README.md']) await cp(join(root, name), join(integration, name));
   await cp(join(root, 'apps/desktop/integration'), join(editorRoot, 'extensions/codovyn-desktop'), { recursive: true });
   const desktopExtension = join(editorRoot, 'extensions/codovyn-desktop');
   const desktopManifest = JSON.parse(await readFile(join(desktopExtension, 'package.json')));

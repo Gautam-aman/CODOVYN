@@ -1,0 +1,23 @@
+name: Feature request
+description: Propose a focused developer workflow improvement
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Developer problem
+      description: Explain the concrete workflow without private source or credentials.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Desired behavior and acceptance criteria
+      description: Keep this independently testable; identify current source files if known.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and alternatives
+      description: Note platform, accessibility and security implications. Search existing issues first.

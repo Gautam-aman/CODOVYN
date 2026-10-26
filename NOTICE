@@ -1,0 +1,8 @@
+CODOVYN retains the repository's existing Apache License, Version 2.0, for
+CODOVYN-owned source. This notice does not relicense upstream components or
+assert ownership of third-party material.
+
+The desktop build incorporates separately licensed VSCodium/Code-OSS, Electron,
+Chromium and Node.js distributions. Their original license/third-party notices
+remain in the application bundle. See docs/release/REDISTRIBUTION.md and the
+build-generated license inventory before approving redistribution.

@@ -2,6 +2,9 @@ name: Bug report
 description: Report a reproducible CODOVYN defect
 labels: [bug]
 body:
+  - type: markdown
+    attributes:
+      value: "For security vulnerabilities use SECURITY.md and private reporting. Never attach auth files, device codes, private source or raw task databases."
   - type: textarea
     id: behavior
     attributes:

@@ -14,7 +14,7 @@ Downloads are checked against committed SHA-256 pins. Cache defaults to `~/Libra
 
 The application is ad-hoc signed for local development, not notarized or approved for public distribution. macOS arm64 is the only assembly target currently implemented. Windows and Linux packages are not implemented or validated. Updates are disabled because upstream updates would replace the CODOVYN distribution. Open VSX provides compatible extensions; Microsoft Marketplace services are not configured.
 
-The existing agent CLI authorization is separate. Install and authorize Codex or Claude Code through their documented interfaces. A live Codex edit, streamed tool activity, hash-reviewed patch acceptance, passing tests and cancellation were also verified in the standalone macOS application. Automated native-host tests cover editing/saving, Git status, panel activation and bundled Node in the integrated terminal. A two-launch native test now verifies workspace, editor, theme and local state restoration (#13). Simulated failover does not prove live cross-provider compatibility.
+Current provider execution is gated. Use the owner-initiated isolated Codex device sign-in and separately reviewed disposable Ask validation described in [Codex setup](../../docs/release/CODEX.md). No live inference or Agent editing is verified under the current runtime. Historical adapter reports are not release evidence for this build. OpenCode/Claude/Gemini and live ContextFlow remain deferred.
 
 See [foundation decision](../../docs/architecture/0003-standalone-foundation.md). Startup debugging must use a disposable user-data directory; do not expose a remote-debugging port during normal use.
 
