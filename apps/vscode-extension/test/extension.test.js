@@ -72,7 +72,7 @@ test('extension starts a repository task and exposes a safe handoff timeline', a
     ] };
   };
   createExtension(api, runner).activate(context);
-  assert.equal(context.subscriptions.length, 7);
+  assert.equal(context.subscriptions.length, 12);
   command();
   assert.match(panel.webview.html, /Content-Security-Policy/);
   assert.match(panel.webview.html, /Claude Code/);

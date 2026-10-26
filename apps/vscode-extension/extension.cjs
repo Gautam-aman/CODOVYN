@@ -799,6 +799,7 @@ function createExtension(api, runner = runCli) {
         ['codovyn.openRepositoryDiff', 'diff'],
       ].map(([id, section]) => api.commands.registerCommand(id, () => openSection(section)));
       context.subscriptions.push(command, ...sectionCommands);
+      require('./codex-session.cjs').registerCodexSession(api,context,{runtimePath,dataDirectory,ensureChat:()=>openSection('chat'),present:message=>currentPanel?.webview.postMessage(message)});
     },
   };
 }

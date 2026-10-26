@@ -48,6 +48,22 @@
       {
         "command": "codovyn.openRepositoryDiff",
         "title": "CODOVYN: Open Repository Diff"
+      },
+      {
+        "command": "codovyn.codexSignIn",
+        "title": "CODOVYN: Sign In to Codex (Isolated)"
+      },
+      {
+        "command": "codovyn.codexValidateAsk",
+        "title": "CODOVYN: Validate One Codex Ask (Approval Required)"
+      },
+      {
+        "command": "codovyn.codexSignOut",
+        "title": "CODOVYN: Sign Out of Isolated Codex"
+      },
+      {
+        "command": "codovyn.codexCancel",
+        "title": "CODOVYN: Cancel Isolated Codex Session"
       }
     ],
     "configuration": {
@@ -76,6 +92,12 @@
           "default": "",
           "scope": "application",
           "description": "Optional absolute path to the official OpenCode 2.1.2 executable. CODOVYN uses an isolated provider context and never imports global credentials or plugins."
+        },
+        "codovyn.codexNativePath": {
+          "type": "string",
+          "default": "",
+          "scope": "application",
+          "description": "Absolute path to the supported official native Codex 0.164.0 macOS ARM64 executable. Integrity-pinned; no global credentials are imported."
         }
       }
     },
