@@ -125,7 +125,7 @@ export class CodexControlConnection{
   this.#methods.push(method);return this.#rpc(method,params);
  }
  #deadline(ms){clearTimeout(this.#timer);this.#timer=setTimeout(()=>{this.#authObserver({phase:'session-deadline'});this.fail(new Error('Codex isolated session deadline exceeded'));},ms);}
- async accountState({refreshToken=false}={}){if(typeof refreshToken!=='boolean'||refreshToken&&!this.#authOnly)throw new Error('Token refresh requires the dedicated authentication component');if(this.#identity)assertCodexIdentity(this.#identity);if(!this.#session)throw new Error('Owner-controlled session required');let timer,result;try{if(refreshToken)timer=setTimeout(()=>{this.#authObserver({phase:'account-status-deadline'});this.fail(new Error('Authentication status deadline exceeded'));},15000);result=await this.#rpc('account/read',{refreshToken});}finally{clearTimeout(timer);}const authenticated=result?.account?.type==='chatgpt';this.#accountDigest=authenticated?createHash('sha256').update(this.#contextNonce+JSON.stringify(result.account)).digest('hex'):null;return {authenticated,accountType:['chatgpt','apiKey'].includes(result?.account?.type)?result.account.type:null,storage:this.#authOnly?'keyring':'memory-only',inferenceVerified:false,contextDigest:this.#accountDigest};}
+ async accountState({refreshToken=false}={}){this.#accountDigest=null;const contextNonce=this.#contextNonce;if(typeof refreshToken!=='boolean'||refreshToken&&!this.#authOnly)throw new Error('Token refresh requires the dedicated authentication component');if(this.#identity)assertCodexIdentity(this.#identity);if(!this.#session)throw new Error('Owner-controlled session required');let timer,result;try{if(refreshToken)timer=setTimeout(()=>{this.#authObserver({phase:'account-status-deadline'});this.fail(new Error('Authentication status deadline exceeded'));},15000);result=await this.#rpc('account/read',{refreshToken});}finally{clearTimeout(timer);}if(contextNonce!==this.#contextNonce)throw new Error('Account changed during metadata refresh; fresh owner status check required');const authenticated=result?.account?.type==='chatgpt';this.#accountDigest=authenticated?createHash('sha256').update(this.#contextNonce+JSON.stringify(result.account)).digest('hex'):null;return {authenticated,accountType:['chatgpt','apiKey'].includes(result?.account?.type)?result.account.type:null,storage:this.#authOnly?'keyring':'memory-only',inferenceVerified:false,contextDigest:this.#accountDigest};}
  async loginDevice({confirm,display}={}){
   if(!this.#session||this.#login||this.#turn||typeof confirm!=='function'||typeof display!=='function')throw new Error('Owner-initiated isolated login required');
   if(await confirm()!=='Sign in to isolated Codex')throw new Error('Isolated login not approved');
@@ -137,7 +137,7 @@ export class CodexControlConnection{
  }
  #completeLogin(params){if(params?.loginId!==this.#login?.id)return;this.#authObserver({phase:'provider-login-completed',success:params.success===true});params.success===true?this.#login.resolve():this.#login.reject(new Error('Official device sign-in failed'));}
  async cancelLogin(){const login=this.#login;this.#login=null;this.#accountDigest=null;if(login){login.reject(new Error('Isolated sign-in cancelled'));if(login.id)await this.#rpc('account/login/cancel',{loginId:login.id});}}
- async logout(){if(this.#turn)throw new Error('Cancel the active request before logout');await this.cancelLogin();await this.#rpc('account/logout',{});this.#accountDigest=null;this.#contextNonce=randomUUID();return {authenticated:false,storage:this.#authOnly?'keyring':'memory-only',inferenceVerified:false};}
+ async logout(){if(this.#turn)throw new Error('Cancel the active request before logout');this.#accountDigest=null;this.#contextNonce=randomUUID();await this.cancelLogin();await this.#rpc('account/logout',{});return {authenticated:false,storage:this.#authOnly?'keyring':'memory-only',inferenceVerified:false};}
  bindExecution(execution){if(this.#authOnly)throw new Error('Authentication component cannot bind task execution');if(this.#execution||!isTaskExecutionAuthority(execution?.authority)||execution.authority.provider!=='codex'||execution.authority.permission!=='read'||!['ask','plan'].includes(execution.authority.intent)||execution.authority.workspace!==this.#boundary.workspace)throw new Error('Matching read-only TaskEngine authority required');execution.authority.verifyAdmission();const identity=this.#boundary.executable===realpathSync(process.execPath)?{executable:this.#boundary.executable,sha256:createHash('sha256').update(readFileSync(this.#boundary.executable)).digest('hex')}:verifyCodexControlExecutable(this.#boundary.executable);execution.starting();execution.spawned({pid:this.pid,group:true});execution.authority.bindProcess(this.#child,identity);this.#execution=execution.authority;}
  async runApproved({execution,consentId,requestId,selection,prompt,onText=()=>{},signal}){if(this.#authOnly)throw new Error('Authentication component cannot submit inference');
   selection=validateCampaignSpec(selection);
@@ -164,7 +164,7 @@ export class CodexControlConnection{
  }
  #notification(method,params){
   if(method==='account/login/completed'){if(this.#login?.id)this.#completeLogin(params);else this.#loginNotice={loginId:params?.loginId,success:params?.success===true};return;}
-  if(method==='account/updated'){if(this.#turn)this.fail(new Error('Account changed during request'));return;}
+  if(method==='account/updated'){this.#accountDigest=null;this.#contextNonce=randomUUID();this.#authObserver({phase:'account-state-invalidated'});if(this.#turn)this.fail(new Error('Account changed during request'));return;}
   if(this.#turn&&['turn/completed','item/agentMessage/delta','item/started','item/completed','thread/tokenUsage/updated'].includes(method)){
    if(!this.#turn.id){if(this.#turn.queued.length>=128)throw new Error('Pre-acknowledgement event limit');this.#turn.queued.push([method,params]);return;}this.#turnNotification(method,params);
   }
@@ -179,7 +179,7 @@ export class CodexControlConnection{
  }
 
  initialized(){this.#send({method:'initialized'});}
- fail(error){if(this.#closed)return;this.#closed=true;this.#login?.reject(error);this.#login=null;this.#turn?.reject(error);for(const p of this.#pending.values())p.reject(error);this.#pending.clear();this.#controller.abort();}
+ fail(error){if(this.#closed)return;this.#accountDigest=null;this.#contextNonce=randomUUID();this.#closed=true;this.#login?.reject(error);this.#login=null;this.#turn?.reject(error);for(const p of this.#pending.values())p.reject(error);this.#pending.clear();this.#controller.abort();}
  async close(){clearTimeout(this.#timer);this.#signal?.removeEventListener('abort',this.#abort);this.fail(new Error('Codex control disposed'));await this.#lifecycle.dispose();await this.#pump;}
 }
 export function verifyCodexControlExecutable(command){const executable=realpathSync(command),sha256=createHash('sha256').update(readFileSync(executable)).digest('hex');if(sha256!==supportedCodexNativeSha256)throw new Error('Unsupported Codex executable hash');return {executable,sha256};}
