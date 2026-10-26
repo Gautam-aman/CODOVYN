@@ -8,9 +8,21 @@ Target: **v0.1.0-alpha**, Apple Silicon macOS only. There is no deadline overrid
 
 Sprint starting SHA: `f009b9e64c15381c65a562499f201c17483180e4`, clean local/remote `main`. Work remains on main; no branches, PRs, release, visibility change or website deployment was created.
 
-- `b9442d37223763922efd2c4261cbf735e5e6a5b2`: isolated official memory-only sign-in, private guarded turn transport, native one-request consent and protocol/SQLite tests.
-- `b87fbbd1bc8b2cc19380c1d1eb367081c9b74ddf`: runtime hardening, version/minimum-OS correction, deferred-provider gates, owner-only distribution and qualification workflow, native editor/upgrade assertions.
-- The subsequent source/documentation checkpoint adds contributor/release documentation and required notice packaging. Final implementation/build/evidence SHAs and remote verification are recorded with the qualification evidence below; the final response gives the final evidence commit's full remote SHA.
+| Commit | Tested implementation |
+| --- | --- |
+| [`b9442d3`](https://github.com/Gautam-aman/CODOVYN/commit/b9442d37223763922efd2c4261cbf735e5e6a5b2) | feat(codex): add isolated sign-in and consent-bound Ask turns |
+| [`b87fbbd`](https://github.com/Gautam-aman/CODOVYN/commit/b87fbbd1bc8b2cc19380c1d1eb367081c9b74ddf) | feat(release): harden alpha runtime and gate public distribution |
+| [`52465de`](https://github.com/Gautam-aman/CODOVYN/commit/52465de663baf33e08552e564e862041a17fde09) | docs(release): prepare alpha gates, onboarding and contributor guidance |
+| [`cb3a3b5`](https://github.com/Gautam-aman/CODOVYN/commit/cb3a3b535952615a00fd7ce4d14c5ea30d5cc069) | fix(packaging): smoke-test runtime after sealing the application |
+| [`08fe51d`](https://github.com/Gautam-aman/CODOVYN/commit/08fe51d85ad3f7e7e89da577cb7c030fab4453dd) | fix(codex): reconcile final message snapshots without duplicate text |
+| [`7499994`](https://github.com/Gautam-aman/CODOVYN/commit/7499994bca6536d5a898025f64a38b5392c481e3) | test(desktop): await document state after undo and redo |
+| [`18ea1bd`](https://github.com/Gautam-aman/CODOVYN/commit/18ea1bd79b8eaf1cfd5f1eb8c5b8065f4ea15ee7) | fix(packaging): retain licenses for the native integration extension |
+| [`67850aa`](https://github.com/Gautam-aman/CODOVYN/commit/67850aa50f75c7c060ab294729b3414b538a856a) | fix(chat): preserve UTF-8 across native worker stream chunks |
+| [`0500389`](https://github.com/Gautam-aman/CODOVYN/commit/05003899e0fb8a7195c7a53dde927a0471844619) | test(security): bound all remaining native race barriers |
+| [`004896d`](https://github.com/Gautam-aman/CODOVYN/commit/004896decd0608b0ff575617c1bca8c92bc53f1c) | fix(security): pin the patched standalone Node runtime |
+| [`1356a75`](https://github.com/Gautam-aman/CODOVYN/commit/1356a7544cc14cd3c44c3a214fc7969c3dc61e40) | fix(onboarding): state live coding gates in the empty Chat view |
+
+The evidence/documentation commit follows this implementation. Its final remote SHA is reported after push; the embedded build SHA remains unchanged.
 
 ## Minimum release scope
 
@@ -52,9 +64,22 @@ Deferred: OpenCode coding, Claude/Gemini live execution, automatic provider fail
 
 ## Qualification evidence
 
-Material-change full qualification is recorded here after execution. Until then, do not describe the new build as passed based on the previous checkpoint. Results must distinguish real OS/process checks, metadata-only ACP/auth, fixed protocol actors and paid inference. Actual live model requests in this sprint: **0**. Actual account-specific sign-in requests initiated by the engineering agent: **0**.
+Qualification uses real OS/process probes, metadata-only ACP/authentication, deterministic protocol actors and native app automation as separate evidence categories. **Actual live requests: 0. Account-specific sign-in requests initiated: 0.**
 
-Development artifact: `dist/desktop/CODOVYN-darwin-arm64-development.dmg`. It is not the public `CODOVYN-0.1.0-alpha-darwin-arm64.dmg`. Do not publish it or enable downloads. Source SHA/checksum and copied qualification results will be attached after the clean build; all apps are disposable copies, never `/Applications/CODOVYN.app`.
+- Full regression: **380 passed, 0 failed, 0 cancelled, 0 skipped**, under isolated Node **26.12.1**, 107276.581666 ms. This includes SQLite consent/request accounting, task leases, OS-denial witnesses, write-intent recovery, ContextFlow and provider fixtures. It is not 380 live-provider tests.
+- Final onboarding text change: **45 extension tests passed, 0 failed/skipped**, plus syntax check. These overlap the 380 and are not added to that count.
+- Real source probes: isolated Codex auth/read/logout (no login), native worker EOF, Codex pre-action/task controls; OpenCode broker **7 actual metadata sessions / 6 transitions**, task-adapter **2 actual metadata sessions**; deterministic Java accept/reject and independent offline Maven oracle; extension-host check. All passed. No `session/prompt` or live `turn/start` was sent.
+- Final clean application/DMG embeds implementation SHA **`1356a7544cc14cd3c44c3a214fc7969c3dc61e40`**, version **0.1.0-alpha**, bundle build **2**, `sourceDirty: false`. The final evidence/documentation commit follows this build and is not claimed as its embedded source. Final remote SHA is verified in the handoff; avoid a self-referential commit hash inside this file.
+- Mounted-image/copy qualification and checksum: see [evidence](../assets/public-alpha/qualification.json). All 14 copied qualification steps passed, including read-only mount, pre/post deep/strict signature, Java native host, Chat/routing, old-to-new restoration, provider probes and Java draft workflow. The disposable copy is separate from `/Applications/CODOVYN.app`. Some probe headers record the host checkout as dirty while report text was prepared; their imports point to the copied bundle, whose embedded clean-source provenance is separately verified.
+- Required notice inventory: **8** hashed notices, **96** bundled extension entries; [inventory](../assets/public-alpha/license-inventory.json). This is evidence preservation, not legal clearance.
+
+Observed failures fixed during qualification: runtime smoke ran before the outer bundle was sealed and was killed; the unchanged smoke now runs after full signing/verification. Undo/redo completion raced document propagation; native assertions now await the document event without weakening contents or search deadlines. Final-only/duplicate message snapshots and split UTF-8 stream chunks have focused regressions. Two native race barriers could hang after signal exit; existing deadlines now also observe signals and expiry, with the same assertions. The initial runtime test interrupted by that harness defect is not reported as a passing run.
+
+The separate Node update is pinned to the official security archive and tested without replacing the owner's global Node. A harmless local TLS identity witness rejected the noncanonical IP under 26.12.1 where 26.9.0 did not. **Electron's embedded Node remains a separate unresolved release gate.** The two high npm development-chain findings remain; no unsupported major override was applied.
+
+Hosted CI at [004896d](https://github.com/Gautam-aman/CODOVYN/actions/runs/40287034122) completed with **three failed jobs, zero executed steps**. Its annotation says recent account payments failed or the spending limit needs increase. Owner action: resolve **Billing & plans**, then rerun CI. Local passes are not hosted CI passes. Issue #16 remains OPEN; passing source fresh/warm and copied search checks do not identify a cause. Issue #15 still needs independent accessibility QA.
+
+Development artifact: `dist/desktop/CODOVYN-darwin-arm64-development.dmg`. SHA-256: `958c2c71c4be9742f0ed3d041fe48be1d50916b01998c93802507b3e34ff1160`. Signature: **ad-hoc hardened development**, not Developer ID/notarized. The read-only public verifier correctly rejected it for lacking the intended Developer ID/Hardened Runtime nested signature. Public installer/download fields remain null/disabled. No signing credentials, Gatekeeper settings, release, website, account billing or repository visibility were changed. No app/DMG is committed.
 
 ## Exact first Ask proposal — pending explicit approval
 

@@ -1,0 +1,28 @@
+{
+  "classification": "DEPENDENCY METADATA; NOT COMPLETE SECURITY CLEARANCE",
+  "totals": {
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 2,
+    "critical": 0,
+    "total": 2
+  },
+  "findings": {
+    "@azure/identity": {
+      "name": "@azure/identity",
+      "severity": "high",
+      "isDirect": false,
+      "range": ">=4.13.1",
+      "fixAvailable": true
+    },
+    "@azure/msal-node": {
+      "name": "@azure/msal-node",
+      "severity": "high",
+      "isDirect": false,
+      "range": "5.0.0-beta.0 - 7.0.2",
+      "fixAvailable": true
+    }
+  },
+  "runtime": "Standalone Node 26.12.1 updated; embedded Electron Node coverage remains unverified."
+}

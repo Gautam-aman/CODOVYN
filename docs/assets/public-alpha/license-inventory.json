@@ -1,0 +1,645 @@
+{
+  "app": "/private/tmp/codovyn-alpha-copy-p3b7zrlm/CODOVYN.app",
+  "legalClearance": false,
+  "notices": [
+    {
+      "path": "app/LICENSE.txt",
+      "bytes": 1185,
+      "sha256": "2fa3f8948a0a17ea30b62845caf1ee8aae8b55b5417273920ca2df2642209e0e"
+    },
+    {
+      "path": "app/ThirdPartyNotices.txt",
+      "bytes": 183203,
+      "sha256": "51b3fd6b279f33c324ba7d32ed9f8849bb51cc2d7c61eaf13c2e8eba5efdd523"
+    },
+    {
+      "path": "LICENSES.chromium.html",
+      "bytes": 19956022,
+      "sha256": "7ae82e97b8a60b9d97871e0e11a05285aea2d42bef665f93f6a4f415235839ed"
+    },
+    {
+      "path": "runtime/LICENSE",
+      "bytes": 156386,
+      "sha256": "8e603aa87c70d36e497004f0dec63111511cb61b7d65ace12e10ea791599286c"
+    },
+    {
+      "path": "app/extensions/codovyn/LICENSE",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "app/extensions/codovyn/NOTICE",
+      "bytes": 497,
+      "sha256": "cfbc591533e913d50e86b7085a187a88cb9c605d197de18e8da3cd25465c0aa8"
+    },
+    {
+      "path": "app/extensions/codovyn-desktop/LICENSE",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "app/extensions/codovyn-desktop/NOTICE",
+      "bytes": 497,
+      "sha256": "cfbc591533e913d50e86b7085a187a88cb9c605d197de18e8da3cd25465c0aa8"
+    }
+  ],
+  "extensions": [
+    {
+      "id": "codovyn-local.codovyn",
+      "version": "0.0.0",
+      "declaredLicense": null,
+      "licenseFiles": [
+        "LICENSE",
+        "NOTICE"
+      ]
+    },
+    {
+      "id": "codovyn-local.codovyn-desktop",
+      "version": "0.1.0",
+      "declaredLicense": "Apache-2.0",
+      "licenseFiles": [
+        "LICENSE",
+        "NOTICE"
+      ]
+    },
+    {
+      "id": "ms-vscode.js-debug",
+      "version": "1.140.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": [
+        "LICENSE.txt",
+        "ThirdPartyNotices.txt"
+      ]
+    },
+    {
+      "id": "ms-vscode.js-debug-companion",
+      "version": "1.1.3",
+      "declaredLicense": "MIT",
+      "licenseFiles": [
+        "LICENSE.txt",
+        "ThirdPartyNotices.txt"
+      ]
+    },
+    {
+      "id": "ms-vscode.vscode-js-profile-table",
+      "version": "1.0.11",
+      "declaredLicense": "MIT",
+      "licenseFiles": [
+        "ThirdPartyNotices.txt"
+      ]
+    },
+    {
+      "id": "vscode.bat",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.builtin-notebook-renderers",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.clojure",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.coffeescript",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.configuration-editing",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.cpp",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.csharp",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.css",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.css-language-features",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.dart",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.debug-auto-launch",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.debug-server-ready",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.diff",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.docker",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.dotenv",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.emmet",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.extension-editing",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.fsharp",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.git",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.git-base",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.github",
+      "version": "0.0.1",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.github-authentication",
+      "version": "0.0.2",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.go",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.groovy",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.grunt",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.gulp",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.handlebars",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.hlsl",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.html",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.html-language-features",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.ini",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.ipynb",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.jake",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.java",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.javascript",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.json",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.json-language-features",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.julia",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.latex",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.less",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.log",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.lua",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.make",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.markdown",
+      "version": "30.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.markdown-language-features",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.markdown-math",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.media-preview",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.merge-conflict",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.mermaid-markdown-features",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": [
+        "ThirdPartyNotices.txt"
+      ]
+    },
+    {
+      "id": "vscode.microsoft-authentication",
+      "version": "0.0.1",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.npm",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.objective-c",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.perl",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.php",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.php-language-features",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.powershell",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.prompt",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.pug",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.python",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.r",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.razor",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.references-view",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.restructuredtext",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.ruby",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.rust",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.scss",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.search-result",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.shaderlab",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.shellscript",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.simple-browser",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.sql",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.swift",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.terminal-suggest",
+      "version": "1.0.1",
+      "declaredLicense": "MIT",
+      "licenseFiles": [
+        "ThirdPartyNotices.txt"
+      ]
+    },
+    {
+      "id": "vscode.theme-abyss",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.theme-defaults",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.theme-kimbie-dark",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.theme-monokai",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.theme-monokai-dimmed",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.theme-quietlight",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.theme-red",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.theme-solarized-dark",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.theme-solarized-light",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.theme-tomorrow-night-blue",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.tunnel-forwarding",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.typescript",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.typescript-language-features",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.vb",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.vscode-modern-icons",
+      "version": "1.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.vscode-theme-seti",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": [
+        "ThirdPartyNotices.txt"
+      ]
+    },
+    {
+      "id": "vscode.xml",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    },
+    {
+      "id": "vscode.yaml",
+      "version": "10.0.0",
+      "declaredLicense": "MIT",
+      "licenseFiles": []
+    }
+  ],
+  "limitations": "Inventory is not permission. Owner must confirm notices/assets and redistribution obligations; unsupported provider CLIs are not bundled."
+}

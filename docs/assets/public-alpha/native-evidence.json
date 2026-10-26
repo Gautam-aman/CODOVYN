@@ -1,0 +1,227 @@
+{
+  "host-host-result.json": {
+    "app": "CODOVYN Desktop",
+    "version": "1.140.0",
+    "edit": true,
+    "undoRedo": true,
+    "unsavedDiskIsolation": true,
+    "multipleTabs": true,
+    "explorerAndGitViews": true,
+    "fileSearch": true,
+    "fileSearchDurationMs": 85.717708,
+    "fileSearchPattern": "**/desktop-smoke.txt",
+    "git": true,
+    "terminal": true,
+    "bundledNode": true,
+    "javaValidation": {
+      "exitCode": 0,
+      "tests": 3,
+      "javaEditor": true
+    }
+  },
+  "host-host-lifecycle.json": {
+    "phase": "host-fresh-profile",
+    "pid": 16440,
+    "result": {
+      "code": 0,
+      "signal": null
+    },
+    "survivors": [],
+    "elapsedMs": 14517,
+    "timeoutMs": 120000,
+    "graceMs": 1500,
+    "killGraceMs": 2500,
+    "lastProgress": "{\"phase\":\"java-terminal-tests\",\"state\":\"complete\",\"pid\":16487,\"elapsedMs\":5161.502208,\"at\":\"2026-10-26T07:45:37.250Z\"}"
+  },
+  "chat-chat-host-result.json": {
+    "phases": [
+      {
+        "app": "CODOVYN Desktop",
+        "version": "1.140.0",
+        "passed": true,
+        "checks": {
+          "compactComposer": true,
+          "composerControls": true,
+          "inlineEffort": true,
+          "queueManagement": true,
+          "submissionAcknowledgement": true,
+          "submittedPrompt": true,
+          "streamingOrderAndTextSafety": true,
+          "navigationAndActivitySeparation": true,
+          "completionState": true,
+          "scrollFollowAndJump": true,
+          "sqliteJournalRestoration": true,
+          "interruptionState": true,
+          "openCodeModelAndVariant": true,
+          "contextFlowNarrowAndFocus": true,
+          "contextFlowReview": true,
+          "providerSegmentPresentation": true,
+          "transcriptMessages": [
+            "YouPersisted native journal request",
+            "AgentPersisted agent response from SQLite."
+          ],
+          "activityRows": [
+            "Started codex",
+            "Using agent tool: read_file",
+            "Agent tool finished: read_file",
+            "Completed with codex"
+          ],
+          "providerReadinessBlocked": true,
+          "providerMetadataVerified": true,
+          "metadataObservation": {
+            "identity": "3831d40bef3ace285d61de1b07975c6828f7eb1c6f83914a2f0aa3ed7f34d3d2",
+            "branch": "main",
+            "verifiedAt": "2026-10-26T07:45:52.470Z",
+            "models": 10
+          }
+        }
+      },
+      {
+        "app": "CODOVYN Desktop",
+        "version": "1.140.0",
+        "passed": true,
+        "checks": {
+          "openCodePreferencesRestored": true,
+          "openCodeEffectiveVariantRestored": true,
+          "compactComposer": true,
+          "composerControls": true,
+          "inlineEffort": true,
+          "queueRestoredAfterRestart": true,
+          "queueManagement": true,
+          "submissionAcknowledgement": true,
+          "submittedPrompt": true,
+          "streamingOrderAndTextSafety": true,
+          "navigationAndActivitySeparation": true,
+          "completionState": true,
+          "scrollFollowAndJump": true,
+          "sqliteJournalRestoration": true,
+          "interruptionState": true,
+          "openCodeQueueRestored": true,
+          "openCodeModelAndVariant": true,
+          "contextFlowNarrowAndFocus": true,
+          "contextFlowRejection": true,
+          "contextFlowReview": true,
+          "providerSegmentPresentation": true,
+          "transcriptMessages": [
+            "YouPersisted native journal request",
+            "AgentPersisted agent response from SQLite."
+          ],
+          "activityRows": [
+            "Started codex",
+            "Using agent tool: read_file",
+            "Agent tool finished: read_file",
+            "Completed with codex"
+          ],
+          "providerReadinessBlocked": true,
+          "providerMetadataVerified": true,
+          "metadataObservation": {
+            "identity": "3831d40bef3ace285d61de1b07975c6828f7eb1c6f83914a2f0aa3ed7f34d3d2",
+            "branch": "main",
+            "verifiedAt": "2026-10-26T07:46:04.791Z",
+            "models": 10
+          }
+        }
+      }
+    ]
+  },
+  "chat-chat-first-launch-lifecycle.json": {
+    "phase": "chat-first-launch",
+    "pid": 17706,
+    "result": {
+      "code": 0,
+      "signal": null
+    },
+    "survivors": [],
+    "elapsedMs": 15589,
+    "timeoutMs": 120000,
+    "graceMs": 1500,
+    "killGraceMs": 2500,
+    "lastProgress": "{\"phase\":\"first-launch\",\"state\":\"all-chat-assertions-passed\",\"pid\":17714,\"monotonicNs\":\"187048283553625\",\"at\":\"2026-10-26T07:45:53.272Z\",\"report\":\"/var/folders/m6/yq18_j7n0l70y1zllfgm50s80000gn/T/codovyn-desktop-chat-hRxhmR/first-launch/chat-result.json\"}"
+  },
+  "chat-chat-relaunch-lifecycle.json": {
+    "phase": "chat-relaunch",
+    "pid": 18366,
+    "result": {
+      "code": 0,
+      "signal": null
+    },
+    "survivors": [],
+    "elapsedMs": 11449,
+    "timeoutMs": 120000,
+    "graceMs": 1500,
+    "killGraceMs": 2500,
+    "lastProgress": "{\"phase\":\"relaunch\",\"state\":\"all-chat-assertions-passed\",\"pid\":18374,\"monotonicNs\":\"187059826054750\",\"at\":\"2026-10-26T07:46:04.815Z\",\"report\":\"/var/folders/m6/yq18_j7n0l70y1zllfgm50s80000gn/T/codovyn-desktop-chat-hRxhmR/relaunch/chat-result.json\"}"
+  },
+  "routing-host-result.json": {
+    "app": "CODOVYN Desktop",
+    "version": "1.140.0",
+    "edit": true,
+    "undoRedo": true,
+    "unsavedDiskIsolation": true,
+    "multipleTabs": true,
+    "explorerAndGitViews": true,
+    "fileSearch": true,
+    "fileSearchDurationMs": 47.262584,
+    "fileSearchPattern": "**/desktop-smoke.txt",
+    "git": true,
+    "terminal": true,
+    "bundledNode": true
+  },
+  "routing-host-lifecycle.json": {
+    "phase": "host-fresh-profile",
+    "pid": 19131,
+    "result": {
+      "code": 0,
+      "signal": null
+    },
+    "survivors": [],
+    "elapsedMs": 35182,
+    "timeoutMs": 120000,
+    "graceMs": 1500,
+    "killGraceMs": 2500,
+    "lastProgress": "{\"phase\":\"terminal\",\"state\":\"complete\",\"pid\":19214,\"elapsedMs\":32367.466125,\"at\":\"2026-10-26T07:46:40.615Z\"}"
+  },
+  "restoration-restoration-result.json": {
+    "phase": "read",
+    "workspace": true,
+    "editor": true,
+    "theme": "CODOVYN Warm Paper",
+    "localState": true,
+    "savedContent": true,
+    "routingPreferences": true,
+    "upgrade": {
+      "from": "34002abf3dac9ca4a4689b7997108ce98e6aae73",
+      "to": "1356a7544cc14cd3c44c3a214fc7969c3dc61e40"
+    }
+  },
+  "restoration-restoration-write-lifecycle.json": {
+    "phase": "write",
+    "pid": 20896,
+    "result": {
+      "code": 0,
+      "signal": null
+    },
+    "survivors": [],
+    "elapsedMs": 4356,
+    "timeoutMs": 120000,
+    "graceMs": 1500,
+    "killGraceMs": 2500,
+    "lastProgress": "{\"phase\":\"write\",\"operation\":\"native-quit\",\"state\":\"complete\",\"pid\":20981,\"at\":\"2026-10-26T07:46:45.221Z\"}"
+  },
+  "restoration-restoration-read-lifecycle.json": {
+    "phase": "read",
+    "pid": 21036,
+    "result": {
+      "code": 0,
+      "signal": null
+    },
+    "survivors": [],
+    "elapsedMs": 2945,
+    "timeoutMs": 120000,
+    "graceMs": 1500,
+    "killGraceMs": 2500,
+    "lastProgress": "{\"phase\":\"read\",\"operation\":\"native-quit\",\"state\":\"complete\",\"pid\":21073,\"at\":\"2026-10-26T07:46:48.221Z\"}"
+  },
+  "classification": "REAL COPIED APPLICATION / FIXTURE CHAT; NO MODEL INFERENCE",
+  "routingResult": "> codovyn@0.0.0 test:desktop-routing-ui\n> node scripts/desktop-routing-ui-smoke.js\n\nVerified native routing form: valid workspace save, discard restoration, and associated validation error. DOM focus observability: unavailable in the isolated webview harness. Task timeline follow and local recent-task filters also passed."
+}

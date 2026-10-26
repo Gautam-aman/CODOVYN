@@ -1,0 +1,320 @@
+{
+  "classification": "REAL OS / METADATA / NATIVE AUTOMATION; NO LIVE INFERENCE",
+  "startingSha": "f009b9e64c15381c65a562499f201c17483180e4",
+  "implementationSha": "1356a7544cc14cd3c44c3a214fc7969c3dc61e40",
+  "platform": {
+    "hardware": "Apple M2, 8 GiB",
+    "os": "macOS 27.0.1 (26A434)",
+    "architecture": "arm64",
+    "declaredMinimumMacOS": "13.5; older systems NOT qualified"
+  },
+  "regression": {
+    "testedImplementation": "004896decd0608b0ff575617c1bca8c92bc53f1c",
+    "node": "26.12.1",
+    "tests": 380,
+    "passed": 380,
+    "failed": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "durationMs": 107276.581666,
+    "logSha256": "d98406214cf4d67fa1581b34412bfe478ffbc6635228038dffdfcf8297c53f8b"
+  },
+  "onboardingFollowup": {
+    "tests": 45,
+    "passed": 45,
+    "failed": 0,
+    "skipped": 0,
+    "overlapsFullRegression": true,
+    "logSha256": "d75e6d79d6adc4e8fab4d4bb137e75b3e5d50117e97d74d496a62a78de913961"
+  },
+  "sourceProbes": [
+    {
+      "name": "codex-auth",
+      "exitCode": 0,
+      "seconds": 0.704
+    },
+    {
+      "name": "codex-worker",
+      "exitCode": 0,
+      "seconds": 0.31
+    },
+    {
+      "name": "codex-control",
+      "exitCode": 0,
+      "seconds": 0.513
+    },
+    {
+      "name": "codex-task",
+      "exitCode": 0,
+      "seconds": 1.946
+    },
+    {
+      "name": "opencode-broker",
+      "exitCode": 0,
+      "seconds": 23.066
+    },
+    {
+      "name": "opencode-task",
+      "exitCode": 0,
+      "seconds": 5.005
+    },
+    {
+      "name": "java-workflow",
+      "exitCode": 0,
+      "seconds": 7.689
+    },
+    {
+      "name": "extension",
+      "exitCode": 0,
+      "seconds": 4.038
+    },
+    {
+      "name": "build",
+      "exitCode": 0,
+      "seconds": 16.196
+    },
+    {
+      "name": "licenses",
+      "exitCode": 0,
+      "seconds": 0.45
+    },
+    {
+      "name": "package",
+      "exitCode": 0,
+      "seconds": 25.822
+    }
+  ],
+  "installer": {
+    "image": "/Users/rigelsmacbook/Java Projects/Codovyn/dist/desktop/CODOVYN-darwin-arm64-development.dmg",
+    "sha256": "958c2c71c4be9742f0ed3d041fe48be1d50916b01998c93802507b3e34ff1160",
+    "copiedApplication": "/private/tmp/codovyn-alpha-copy-p3b7zrlm/CODOVYN.app",
+    "readOnlyMount": true,
+    "steps": [
+      {
+        "name": "image-integrity",
+        "exitCode": 0,
+        "seconds": 4.006
+      },
+      {
+        "name": "signature",
+        "exitCode": 0,
+        "seconds": 1.87
+      },
+      {
+        "name": "host",
+        "exitCode": 0,
+        "seconds": 15.262
+      },
+      {
+        "name": "chat",
+        "exitCode": 0,
+        "seconds": 27.485
+      },
+      {
+        "name": "routing",
+        "exitCode": 0,
+        "seconds": 35.599
+      },
+      {
+        "name": "restoration",
+        "exitCode": 0,
+        "seconds": 7.752
+      },
+      {
+        "name": "codex-auth",
+        "exitCode": 0,
+        "seconds": 0.648
+      },
+      {
+        "name": "codex-control",
+        "exitCode": 0,
+        "seconds": 0.501
+      },
+      {
+        "name": "codex-task",
+        "exitCode": 0,
+        "seconds": 2.745
+      },
+      {
+        "name": "opencode-task",
+        "exitCode": 0,
+        "seconds": 8.929
+      },
+      {
+        "name": "codex-worker",
+        "exitCode": 0,
+        "seconds": 0.67
+      },
+      {
+        "name": "licenses",
+        "exitCode": 0,
+        "seconds": 0.109
+      },
+      {
+        "name": "java-workflow",
+        "exitCode": 0,
+        "seconds": 9.158
+      },
+      {
+        "name": "post-test-signature",
+        "exitCode": 0,
+        "seconds": 1.664
+      }
+    ],
+    "mountedSignatureVerified": true,
+    "detached": true,
+    "source": {
+      "identity": {
+        "name": "CODOVYN",
+        "bundleId": "org.codovyn.desktop",
+        "applicationName": "codovyn",
+        "repository": "https://github.com/Gautam-aman/CODOVYN",
+        "version": "0.1.0-alpha"
+      },
+      "artifacts": {
+        "editor": {
+          "filename": "VSCodium-darwin-arm64-1.140.06880.zip",
+          "url": "https://github.com/VSCodium/vscodium/releases/download/1.140.06880/VSCodium-darwin-arm64-1.140.06880.zip",
+          "sha256": "3a0ba1a13b6d743f79ffc20bebd7a2ef8bab2b40e54bcc80fae123da9ed552e0"
+        },
+        "runtime": {
+          "filename": "node-v26.12.1-darwin-arm64.tar.gz",
+          "url": "https://nodejs.org/dist/v26.12.1/node-v26.12.1-darwin-arm64.tar.gz",
+          "sha256": "1901d539912c02afa10d1cc126943a8855a7eedebe830119463470db5e6c59e8"
+        }
+      },
+      "sourceCommit": "1356a7544cc14cd3c44c3a214fc7969c3dc61e40",
+      "sourceDirty": false,
+      "signing": "ad-hoc-development",
+      "platform": "darwin-arm64"
+    },
+    "copiedHarnesses": [
+      {
+        "name": "codex-auth",
+        "sourceScript": "validate-codex-auth.js",
+        "sha256": "853cf51fc476995b8d2e271633534427144dba1c979ea05371f64f77420115cc",
+        "packageRoot": "/private/tmp/codovyn-alpha-copy-p3b7zrlm/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
+      },
+      {
+        "name": "codex-control",
+        "sourceScript": "validate-codex-control.js",
+        "sha256": "2926666e797bc7b0046bbbf5c334c1e1aa996d04c0758c2612504472b8536a71",
+        "packageRoot": "/private/tmp/codovyn-alpha-copy-p3b7zrlm/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
+      },
+      {
+        "name": "codex-task",
+        "sourceScript": "validate-codex-task-control.js",
+        "sha256": "945616f000d01c199f83ee69ffe42cf1dade5781a811b317da6ced33b2d80393",
+        "packageRoot": "/private/tmp/codovyn-alpha-copy-p3b7zrlm/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
+      },
+      {
+        "name": "opencode-task",
+        "sourceScript": "validate-opencode-task-execution.js",
+        "sha256": "20458270e992eb51f24e39132d95a63d26a03a2fa59b1f69f48e966bebbbcb20",
+        "packageRoot": "/private/tmp/codovyn-alpha-copy-p3b7zrlm/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
+      }
+    ],
+    "runtimeEntitlements": {
+      "com.apple.security.cs.allow-jit": true
+    },
+    "minimumMacOS": "13.5",
+    "bundleVersion": "2",
+    "passed": true
+  },
+  "copySteps": [
+    {
+      "name": "image-integrity",
+      "exitCode": 0,
+      "seconds": 4.006
+    },
+    {
+      "name": "signature",
+      "exitCode": 0,
+      "seconds": 1.87
+    },
+    {
+      "name": "host",
+      "exitCode": 0,
+      "seconds": 15.262
+    },
+    {
+      "name": "chat",
+      "exitCode": 0,
+      "seconds": 27.485
+    },
+    {
+      "name": "routing",
+      "exitCode": 0,
+      "seconds": 35.599
+    },
+    {
+      "name": "restoration",
+      "exitCode": 0,
+      "seconds": 7.752
+    },
+    {
+      "name": "codex-auth",
+      "exitCode": 0,
+      "seconds": 0.648
+    },
+    {
+      "name": "codex-control",
+      "exitCode": 0,
+      "seconds": 0.501
+    },
+    {
+      "name": "codex-task",
+      "exitCode": 0,
+      "seconds": 2.745
+    },
+    {
+      "name": "opencode-task",
+      "exitCode": 0,
+      "seconds": 8.929
+    },
+    {
+      "name": "codex-worker",
+      "exitCode": 0,
+      "seconds": 0.67
+    },
+    {
+      "name": "licenses",
+      "exitCode": 0,
+      "seconds": 0.109
+    },
+    {
+      "name": "java-workflow",
+      "exitCode": 0,
+      "seconds": 9.158
+    },
+    {
+      "name": "post-test-signature",
+      "exitCode": 0,
+      "seconds": 1.664
+    }
+  ],
+  "liveModelRequests": 0,
+  "accountSignInRequests": 0,
+  "productionCoding": "BLOCKED",
+  "publicRelease": "BLOCKED",
+  "publicVerifier": {
+    "exitCode": 1,
+    "diagnostic": "PUBLIC DISTRIBUTION BLOCKED: Nested executable lacks the intended Developer ID/Hardened Runtime"
+  },
+  "hostedCI": {
+    "run": "https://github.com/Gautam-aman/CODOVYN/actions/runs/40287034122",
+    "source": "004896decd0608b0ff575617c1bca8c92bc53f1c",
+    "failedJobs": 3,
+    "executedSteps": 0,
+    "reason": "Recent account payments failed or spending limit needs increase; owner Billing & plans action required"
+  },
+  "limitations": [
+    "No authenticated inference, actual model edit or live ContextFlow.",
+    "Developer ID/signing credentials not accessed; notarization/stapling/clean-Mac Gatekeeper not performed.",
+    "Electron 43.7.3 / embedded Node 24.21.0 patch coverage is unverified after October 21 security release.",
+    "Two high development dependency findings remain.",
+    "Issue 16 intermittent search cause unresolved; issue 15 human accessibility QA incomplete.",
+    "Automated native screenshots are not human usability testing."
+  ],
+  "metadataProvenanceNote": "Some copied-harness metadata records sourceDirty=true for the host checkout while report text was being prepared. These probes load package code from the disposable copied bundle. The mounted and copied build manifest itself records sourceDirty=false and the exact implementation SHA; no provider code or installed app was modified."
+}
