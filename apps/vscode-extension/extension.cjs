@@ -800,10 +800,12 @@ function createExtension(api, runner = runCli) {
         ['codovyn.openRepositoryDiff', 'diff'],
       ].map(([id, section]) => api.commands.registerCommand(id, () => openSection(section)));
       context.subscriptions.push(command, ...sectionCommands);
-      require('./codex-session.cjs').registerCodexSession(api,context,{runtimePath,dataDirectory,ensureChat:()=>openSection('chat'),present:message=>currentPanel?.webview.postMessage(message)});
+      return require('./codex-session.cjs').registerCodexSession(api,context,{runtimePath,dataDirectory,ensureChat:()=>openSection('chat'),present:message=>currentPanel?.webview.postMessage(message)});
     },
   };
 }
 
-function activate(context) { createExtension(require('vscode')).activate(context); }
-module.exports = { runtimePath, activate, createExtension, dataDirectory, runCli, timeline };
+let activeCodexSession;
+function activate(context) { activeCodexSession=createExtension(require('vscode')).activate(context); }
+async function deactivate(){await activeCodexSession?.dispose();activeCodexSession=null;}
+module.exports = { runtimePath, activate, deactivate, createExtension, dataDirectory, runCli, timeline };
