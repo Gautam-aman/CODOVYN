@@ -33,7 +33,6 @@ try {
   const nodeEntitlements=join(stage,'node-entitlements.plist');
   await writeFile(nodeEntitlements,entitlementPlist(hardenedEntitlements({}, {node:true})));
   run('/usr/bin/codesign',['--force','--sign','-','--options','runtime','--entitlements',nodeEntitlements,join(resources,'runtime/bin/node')]);
-  run(join(resources,'runtime/bin/node'),['--input-type=module','-e',"import{DatabaseSync}from'node:sqlite';const db=new DatabaseSync(':memory:');db.exec('CREATE TABLE smoke(n)');db.close();"]);
   const upstreamCli = join(editorRoot, 'bin/codium');
   await writeFile(join(editorRoot, 'bin/codovyn'), (await readFile(upstreamCli, 'utf8')).replaceAll('VSCodium', 'CODOVYN').replaceAll("'codium'", "'codovyn'"), { mode: 0o755 });
   await rm(upstreamCli);
@@ -96,6 +95,8 @@ try {
   await writeFile(entitlementPath, entitlements);
   run('/usr/bin/codesign', ['--force', '--deep', '--sign', '-', '--entitlements', entitlementPath, app]);
   run('/usr/bin/codesign', ['--verify', '--deep', '--strict', app]);
+  // Execute inside the fully sealed bundle, not the partially modified upstream app.
+  run(join(resources,'runtime/bin/node'),['--input-type=module','-e',"import{DatabaseSync}from'node:sqlite';const db=new DatabaseSync(':memory:');db.exec('CREATE TABLE smoke(n)');db.close();"]);
   const destination = join(output, 'CODOVYN.app');
   // Only replace this script's managed build output, never a user's installed app.
   await rm(destination, { recursive: true, force: true });
