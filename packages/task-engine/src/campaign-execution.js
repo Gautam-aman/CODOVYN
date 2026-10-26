@@ -1,3 +1,4 @@
+import {claimOpenCodePromptTransport} from '../../agent-adapters/src/opencode.js';
 import {claimCodexTurnTransport} from '../../agent-adapters/src/codex-control.js';
 import {createHash} from 'node:crypto';
 import {isTaskExecutionAuthority} from './execution-authority.js';
@@ -5,11 +6,11 @@ import {validateCampaignSpec} from '../../agent-core/src/campaign-consent.js';
 import {repositorySnapshot} from '../../git-engine/src/index.js';
 import {recoveryFingerprint} from './recovery.js';
 /** A single host-controlled transport invocation, never a scheduler or retry
- * loop. Live execution requires a private, single-use read-only Codex transport;
+ * loop. Live execution requires a private, single-use read-only provider transport;
  * arbitrary callbacks are admitted only for deterministic fixtures. */
 export async function dispatchCampaignRequest({execution,consentId,requestId,selection,prompt,submit,signal,lifecycle,transport}){
  const spec=validateCampaignSpec(selection);
- if(spec.purpose==='live'){if(submit||lifecycle)throw new Error('Live campaign dispatch requires the private Codex transport');({submit,lifecycle}=claimCodexTurnTransport(transport,execution,spec,prompt));}
+ if(spec.purpose==='live'){if(submit||lifecycle)throw new Error('Live campaign dispatch requires a private provider transport');({submit,lifecycle}=(spec.provider==='codex'?claimCodexTurnTransport:claimOpenCodePromptTransport)(transport,execution,spec,prompt));}
  if(!isTaskExecutionAuthority(execution)||typeof submit!=='function'||typeof prompt!=='string'||Buffer.byteLength(prompt)>32768||createHash('sha256').update(prompt).digest('hex')!==spec.promptSha256)throw new Error('Matching host task and exact approved prompt required');
  execution.verify();if(!execution.ownsManagedLifecycle(lifecycle))throw new Error('Bound managed provider lifecycle required');
  if(recoveryFingerprint(await repositorySnapshot(execution.workspace))!==spec.repositoryFingerprint)throw new Error('Campaign repository fingerprint changed');

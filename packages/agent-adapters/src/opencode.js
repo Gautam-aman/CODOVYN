@@ -1,3 +1,5 @@
+import {openCodeAccountContext} from './opencode-campaign.js';
+import {validateCampaignSpec,campaignDigest} from '../../agent-core/src/campaign-consent.js';
 import { spawn } from 'node:child_process';
 import { realpathSync, statSync, constants, accessSync, lstatSync, readFileSync } from 'node:fs';
 import { join, delimiter, isAbsolute, resolve, relative, dirname } from 'node:path';
@@ -13,6 +15,18 @@ import { openCodeBoundary } from './opencode-sandbox.js';
 import { AgentFailure } from '../../agent-core/src/index.js';
 import { validateContextFlow } from '../../agent-core/src/contextflow.js';
 import { createHandoffPacket } from '../../agent-core/src/handoff.js';
+const promptTransports=new WeakMap();
+function issueOpenCodePromptTransport({execution,connection,selection,prompt,model,reasoning,stateDirectory,submit}){
+ const spec=validateCampaignSpec(selection);execution.verify();
+ if(!execution.ownsManagedLifecycle(connection.lifecycle)||spec.provider!=='opencode'||spec.mode!=='ask'||execution.permission!=='read'||spec.maxRequests!==1||spec.maxMcpToolCalls!==0||spec.model!==model||spec.reasoning!==(reasoning||''))throw new Error('Exact single read-only OpenCode Ask transport required');
+ if(spec.purpose==='live'&&openCodeAccountContext(stateDirectory)!==spec.accountContextDigest)throw new Error('Isolated OpenCode authentication context changed; review again');
+ const capability=Object.freeze({});promptTransports.set(capability,{execution,digest:campaignDigest(spec),prompt,submit,lifecycle:connection.lifecycle,stateDirectory});return capability;
+}
+export function claimOpenCodePromptTransport(capability,execution,selection,prompt){
+ const r=promptTransports.get(capability);if(!r||r.execution!==execution||r.digest!==campaignDigest(selection)||r.prompt!==prompt)throw new Error('Matching private OpenCode prompt transport required');promptTransports.delete(capability);
+ if(selection.purpose==='live'&&openCodeAccountContext(r.stateDirectory)!==selection.accountContextDigest)throw new Error('Isolated OpenCode authentication context changed; no submission');
+ return {submit:r.submit,lifecycle:r.lifecycle};
+}
 async function ownedOutput(command,args,options) {
   const controller=new AbortController();
   const child=spawn(command,args,{cwd:options.cwd,env:options.env,shell:false,detached:process.platform!=='win32',stdio:['pipe','pipe','pipe']});
@@ -144,7 +158,8 @@ export function createOpenCodeAdapter({cwd,stateDirectory,command,write=false,mo
     async *run({handoff,signal,execution}){
       const installation=await runtime.inspect(command);
       if(!installation.compatible)throw new AgentFailure('fatal','OpenCode version is not verified');
-      const secured=isTaskExecutionAuthority(execution?.authority);
+      const secured=isTaskExecutionAuthority(execution?.authority),campaign=runtime.campaign;
+      if(campaign){const spec=validateCampaignSpec(campaign.selection);if(spec.purpose!==(runtime.taskBound?'fixture':'live')||!secured||write||spec.provider!=='opencode'||spec.mode!=='ask'||spec.maxRequests!==1||spec.maxMcpToolCalls!==0||spec.model!==model||spec.reasoning!==(reasoning||'')||typeof campaign.prompt!=='string')throw new AgentFailure('fatal','Exact task-bound zero-tool Ask campaign required');if(spec.purpose==='live'&&openCodeAccountContext(stateDirectory)!==spec.accountContextDigest)throw new AgentFailure('fatal','Isolated authentication context changed');}
       if(runtime.taskBound&&!secured)throw new AgentFailure('fatal','Task-bound fixture requires real TaskEngine authority');
       if(runtime.taskBound&&(installation.command!==process.execPath||!Array.isArray(runtime.fixtureArgs)))throw new AgentFailure('fatal','Only the local deterministic Node fixture may use the fixture prompt transport');
       if(runtime.boundary===openCodeBoundary&&!secured){requireProjectReadiness(cwd);throw new AgentFailure('fatal','Host task-bound execution authority required; live inference is disabled');}
@@ -152,10 +167,11 @@ export function createOpenCodeAdapter({cwd,stateDirectory,command,write=false,mo
       if(secured&&!runtime.taskBound){const {brokeredOpenCodeSha256}=await import('./opencode-metadata.js');if(installation.version!==openCodeVersion||installation.binarySha256!==brokeredOpenCodeSha256)throw new AgentFailure('fatal','Task execution requires the pinned official OpenCode artifact');}
       const taskRuntime=secured?await prepareOpenCodeTaskRuntime({authority:execution.authority,cwd:realpathSync(cwd),stateDirectory,installation,write,signal}):null;
       const boundary=taskRuntime?.boundary||runtime.boundary({cwd,stateDirectory,command:installation.command,write});let privateServer;
-      const events=[],actions=new Set();let wake,sessionId=null,violation=false,textBytes=0;
+      const events=[],actions=new Set();let wake,sessionId=null,violation=false,textBytes=0,campaignAck=null,campaignText='';
       const enqueue=event=>{if(events.length>=256)throw new AgentFailure('fatal','OpenCode event backlog exceeded bound');events.push(event);wake?.();};
       const connection=new AcpConnection({...boundary,args:[...boundary.prefixArgs,...(runtime.taskBound?runtime.fixtureArgs:['acp'])],execution:secured?{...execution,stopped(){}}:execution,onRequest:(method,params)=>{
         if(method!=='session/request_permission'){violation=true;enqueue({type:'permission',status:'denied',action:'unsupported-client-capability'});queueMicrotask(()=>connection.fail(new AgentFailure('fatal','OpenCode requested an unadvertised client capability')));return null;}
+        if(campaign){violation=true;queueMicrotask(()=>connection.fail(new AgentFailure('fatal','Zero-tool campaign denied provider permission request')));return {outcome:{outcome:'cancelled'}};}
         const tool=params?.toolCall,kind=tool?.kind;
         const paths=[...(Array.isArray(tool?.locations)?tool.locations.map(entry=>entry.path):[]),...[tool?.rawInput?.filePath,tool?.rawInput?.path,tool?.rawInput?.file].filter(Boolean)];
         const allowed=params.sessionId===sessionId&&!tool?._meta&&(secured?taskRuntime.bridge.allows(tool?.name)&&kind==='other'&&typeof tool.rawInput?.path==='string': ['read','search',...(write?['edit']:[])].includes(kind)&&paths.length>0&&paths.length<=50&&paths.every(path=>scopePath(boundary.cwd,path,write&&kind!=='read'&&kind!=='search')));
@@ -167,9 +183,10 @@ export function createOpenCodeAdapter({cwd,stateDirectory,command,write=false,mo
         if(!sessionId&&!['agent_message_chunk','tool_call','tool_call_update'].includes(params?.update?.sessionUpdate))return;
         if(params?.sessionId!==sessionId)throw new AgentFailure('fatal','ACP notification belongs to another session');
         const update=params.update;
+        if(campaign&&['agent_message_chunk','tool_call','tool_call_update'].includes(update?.sessionUpdate)){if(!campaignAck||!campaignAck())throw new AgentFailure('fatal','Provider activity outside approved submission');if(update.sessionUpdate!=='agent_message_chunk')throw new AgentFailure('fatal','Zero-tool campaign denied tool activity');}
         if(update?.sessionUpdate==='agent_message_chunk'&&update.content?.type==='text'){
           if(typeof update.content.text!=='string'||Buffer.byteLength(update.content.text)>65536||(textBytes+=Buffer.byteLength(update.content.text))>1048576)throw new AgentFailure('fatal','OpenCode response exceeded text bound');
-          if(update.content.text)enqueue({type:'text',text:update.content.text});
+          if(update.content.text){if(campaign)campaignText+=update.content.text;enqueue({type:'text',text:update.content.text});}
         }else if(['tool_call','tool_call_update'].includes(update?.sessionUpdate)){
           const id=update.toolCallId;if(typeof id!=='string'||id.length>128)throw new AgentFailure('fatal','Invalid OpenCode tool identity');
           if(update.sessionUpdate==='tool_call'){if(actions.has(id)||actions.size>=256)throw new AgentFailure('fatal','Repeated or excessive OpenCode tool action');actions.add(id);enqueue({type:'tool-start',actionId:id,action:write&&update.kind==='edit'?'file_change':update.kind||'tool'});if(secured?update._meta||!taskRuntime.bridge.allows(update.name)||update.kind!=='other':!['read','search','think',...(write?['edit']:[])].includes(update.kind)){violation=true;throw new AgentFailure('fatal','OpenCode requested an unsupported tool capability');}}
@@ -182,7 +199,21 @@ export function createOpenCodeAdapter({cwd,stateDirectory,command,write=false,mo
         if(secured){execution.authority.bindProcess(connection.child,{executable:installation.command,sha256:installation.binarySha256});privateServer=runtime.taskBound?null:await captureOpenCodeServer(connection.child,installation.command,signal);if(privateServer)execution.authority.ownPrivateProcess(privateServer.pid);await taskRuntime.attach(privateServer?.pid||connection.child.pid);}
         const session=await begin(connection,boundary.cwd,model,reasoning,write,taskRuntime?.bridge);sessionId=session.sessionId;
         enqueue({type:'session',sessionId,model:configOption(session,'model')?.currentValue,reasoning:configOption(session,'effort')?.currentValue});
-        if(secured&&!runtime.taskBound){try{await taskRuntime.bridge.waitForCatalogue();}catch(error){error.cause={observations:taskRuntime.bridge.observations};throw error;}const observations=taskRuntime.bridge.observations;if(!observations.some(o=>o.route==='/mcp'&&o.method==='initialize')||!observations.some(o=>o.route==='/mcp'&&o.method==='tools/list'))throw new AgentFailure('fatal','Task MCP catalogue was not initialized');yield {type:'execution-boundary',provider:'opencode',mode:write?'agent':execution.authority.intent,metadataOnly:true,acpMethods:[...connection.methods],repositoryIdentity:taskRuntime.repository.identity.id,mcpMethods:observations.map(o=>({route:o.route,method:o.method}))};throw new AgentFailure('fatal','Live inference is disabled: secured ACP task initialization completed without session/prompt');}
+        if(secured&&!runtime.taskBound){try{await taskRuntime.bridge.waitForCatalogue();}catch(error){error.cause={observations:taskRuntime.bridge.observations};throw error;}const observations=taskRuntime.bridge.observations;if(!observations.some(o=>o.route==='/mcp'&&o.method==='initialize')||!observations.some(o=>o.route==='/mcp'&&o.method==='tools/list'))throw new AgentFailure('fatal','Task MCP catalogue was not initialized');yield {type:'execution-boundary',provider:'opencode',mode:write?'agent':execution.authority.intent,metadataOnly:true,acpMethods:[...connection.methods],repositoryIdentity:taskRuntime.repository.identity.id,mcpMethods:observations.map(o=>({route:o.route,method:o.method}))};if(!campaign)throw new AgentFailure('fatal','Live inference is disabled: secured ACP task initialization completed without session/prompt');}
+        if(campaign){
+          const spec=validateCampaignSpec(campaign.selection);
+          const submit=async({signal:requestSignal,onAcknowledged})=>{let acknowledged=false;campaignAck=()=>acknowledged||(acknowledged=onAcknowledged());const cancel=()=>{try{connection.notify('session/cancel',{sessionId});}catch{}connection.fail(new AgentFailure('cancelled','Approved Ask cancelled; do not retry'));};requestSignal.addEventListener('abort',cancel,{once:true});
+            try{if(requestSignal.aborted)throw new AgentFailure('cancelled','Cancelled before prompt');if(spec.purpose==='live'&&openCodeAccountContext(stateDirectory)!==spec.accountContextDigest)throw new AgentFailure('fatal','Authentication context changed before prompt');
+              // No file tool activation: this first campaign permits ZERO tools.
+              const outcome=await connection.request('session/prompt',{sessionId,prompt:[{type:'text',text:campaign.prompt}]},spec.maxRequestMs);
+              if(!campaignAck())throw new AgentFailure('fatal','Late provider acknowledgement rejected');if(violation||actions.size||outcome?.stopReason!=='end_turn'||!campaignText)throw new AgentFailure('fatal','Ask did not complete with a verified text response');return {providerOutcome:'completed',text:campaignText,usage:null};
+            }finally{requestSignal.removeEventListener('abort',cancel);campaignAck=null;}};
+          const transport=issueOpenCodePromptTransport({execution:execution.authority,connection,selection:spec,prompt:campaign.prompt,model,reasoning,stateDirectory,submit});
+          const {dispatchCampaignRequest}=await import('../../task-engine/src/campaign-execution.js');
+          const options=spec.purpose==='live'?{transport}:{submit,lifecycle:connection.lifecycle};let done=false,failure;
+          const work=dispatchCampaignRequest({execution:execution.authority,consentId:campaign.consentId,requestId:campaign.requestId,selection:spec,prompt:campaign.prompt,signal,...options}).catch(error=>{failure=error;}).finally(()=>{done=true;wake?.();});
+          while(!done||events.length){if(events.length)yield events.shift();else await new Promise(resolve=>{wake=resolve;});}await work;if(failure)throw failure;yield {type:'completed'};return;
+        }
         if(secured)taskRuntime.bridge.activate();
         let result,error,settled=false;
         const prompt=connection.request('session/prompt',{sessionId,prompt:[{type:'text',text:JSON.stringify(handoff.contextFlow?validateContextFlow(handoff.contextFlow):createHandoffPacket(handoff))}]},120000).then(value=>{result=value;},failure=>{error=failure;}).finally(()=>{settled=true;wake?.();});

@@ -68,6 +68,14 @@
       {
         "command": "codovyn.codexAuthStatus",
         "title": "CODOVYN: Refresh Isolated Codex Sign-In Status"
+      },
+      {
+        "command": "codovyn.opencodeValidateAsk",
+        "title": "CODOVYN: Review One OpenCode Calculator Ask"
+      },
+      {
+        "command": "codovyn.opencodeCancelAsk",
+        "title": "CODOVYN: Cancel OpenCode Ask Review"
       }
     ],
     "configuration": {

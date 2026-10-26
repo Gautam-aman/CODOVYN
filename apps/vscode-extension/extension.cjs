@@ -388,7 +388,7 @@ function createExtension(api, runner = runCli) {
             } catch { sendAppearance('Could not save the theme. Your previous selection is retained.'); }
             return;
           }
-          if (['codex-sign-in','codex-validate-ask','codex-cancel','codex-auth-status','codex-sign-out'].includes(message.type)) { const commands={'codex-sign-in':'codovyn.codexSignIn','codex-validate-ask':'codovyn.codexValidateAsk','codex-cancel':'codovyn.codexCancel','codex-auth-status':'codovyn.codexAuthStatus','codex-sign-out':'codovyn.codexSignOut'}; await api.commands.executeCommand(commands[message.type]); return; }
+          if (['codex-sign-in','codex-validate-ask','codex-cancel','codex-auth-status','codex-sign-out','opencode-validate-ask','opencode-cancel-ask'].includes(message.type)) { const commands={'opencode-validate-ask':'codovyn.opencodeValidateAsk','opencode-cancel-ask':'codovyn.opencodeCancelAsk','codex-sign-in':'codovyn.codexSignIn','codex-validate-ask':'codovyn.codexValidateAsk','codex-cancel':'codovyn.codexCancel','codex-auth-status':'codovyn.codexAuthStatus','codex-sign-out':'codovyn.codexSignOut'}; await api.commands.executeCommand(commands[message.type]); return; }
           if (message.type === 'gemini-setup') {
             await api.env.openExternal(api.Uri.parse('https://geminicli.com/docs/get-started/authentication/'));
             return;
@@ -800,7 +800,7 @@ function createExtension(api, runner = runCli) {
         ['codovyn.openRepositoryDiff', 'diff'],
       ].map(([id, section]) => api.commands.registerCommand(id, () => openSection(section)));
       context.subscriptions.push(command, ...sectionCommands);
-      return require('./codex-session.cjs').registerCodexSession(api,context,{runtimePath,dataDirectory,persistentAuthentication:true,ensureChat:()=>openSection('chat'),present:message=>currentPanel?.webview.postMessage(message)});
+      const codex=require('./codex-session.cjs').registerCodexSession(api,context,{runtimePath,dataDirectory,persistentAuthentication:true,ensureChat:()=>openSection('chat'),present:message=>currentPanel?.webview.postMessage(message)});const opencode=require('./opencode-ask.cjs').registerOpenCodeAsk(api,context,{runtimePath,dataDirectory,ensureChat:()=>openSection('chat'),present:message=>currentPanel?.webview.postMessage(message)});return {dispose:async()=>{const results=await Promise.allSettled([codex.dispose(),opencode.close()]);const failed=results.find(r=>r.status==='rejected');if(failed)throw failed.reason;}};
     },
   };
 }
