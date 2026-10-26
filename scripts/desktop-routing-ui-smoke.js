@@ -181,6 +181,16 @@ try {
     await evaluate(`window.dispatchEvent(new MessageEvent('message', { data: { type: 'focus-section', section: ${JSON.stringify(section)} } }))`);
     assert.equal(await evaluate(`document.querySelector(${JSON.stringify(selector)}).open`), true,
       `The ${section} command expands its destination in the real webview.`);
+    if(section==='agents'){
+      const controls=await evaluate("[...document.querySelectorAll('.agent-settings > button')].map(b=>({label:b.textContent,disabled:b.disabled,description:b.getAttribute('aria-describedby'),visible:b.getBoundingClientRect().width>0}))");
+      for(const label of ['Sign in to isolated Codex','Refresh sign-in status','Sign out of isolated Codex','Cancel isolated Codex session'])assert.ok(controls.some(b=>b.label===label&&b.visible&&!b.disabled&&b.description==='codex-auth-status'),'Native authentication control is available: '+label);
+      for(const [state,text]of [['not-signed-in','Not signed in'],['signing-in','Signing in'],['signed-in','Signed in'],['session-expired','Session expired'],['authentication-failed','Authentication failed']]){
+        await evaluate(`window.dispatchEvent(new window.CodovynFixtureMessageEvent('message',{data:{type:'codex-auth-state',state:${JSON.stringify(state)},detail:'UI fixture only — not authenticated inference'}}))`);
+        assert.ok((await evaluate("document.querySelector('#codex-auth-status').textContent")).startsWith(text));
+        assert.equal(await evaluate("[...document.querySelectorAll('.agent-settings > button')].find(b=>b.textContent.startsWith('Ask validation blocked')).disabled"),true,'Even a fixture Signed in event must not enable inference');
+      }
+      await evaluate("window.dispatchEvent(new window.CodovynFixtureMessageEvent('message',{data:{type:'codex-auth-state',state:'not-signed-in',detail:'UI fixture — no authentication requested'}}))");
+    }
     await evaluate(`document.querySelector(${JSON.stringify(selector)}).open = false`);
   }
   const added = await evaluate(`(() => { const button = [...document.querySelectorAll('button')].find(item => item.textContent.trim() === 'Add model'); button.click(); return { count: document.querySelectorAll('.routing-model').length, active: document.activeElement?.outerHTML?.slice(0, 160) }; })()`);
@@ -236,6 +246,9 @@ try {
     const captureDirectory = resolve(process.env.CODOVYN_CAPTURE_DIR);
     await mkdir(captureDirectory, { recursive: true });
     const snapshot = async name => { const capture = await captureApplication(); await writeFile(join(captureDirectory, name), Buffer.from(capture.data, 'base64')); };
+    await selectTab('settings');
+    await evaluate("document.querySelector('.agent-settings').open=true; document.querySelector('.routing-settings').open=false; document.querySelector('#codex-auth-status').scrollIntoView({block:'center',behavior:'instant'})");
+    await snapshot('authentication-settings.png');
     await selectTab('chat');
     await evaluate("document.querySelector('#model-chip').scrollIntoView({ block: 'center', behavior: 'instant' })");
     await snapshot('composer-dark.png');
