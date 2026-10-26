@@ -193,9 +193,12 @@ const agentSettings = document.createElement('details');
 agentSettings.className = 'agent-settings';
 const agentSummary = document.createElement('summary'); agentSummary.textContent = 'AI Providers and backups';
 const agentHelp = document.createElement('p');
-agentHelp.textContent = 'Alpha preparation: general live coding and automatic switching are gated. Start with isolated Codex sign-in, then separately review one read-only Calculator validation. Installation and model metadata do not prove inference access. Experimental provider preferences are retained for development.';
+agentHelp.textContent = 'Alpha preparation: general live coding and automatic switching are gated. Isolated Codex sign-in uses strict macOS Keychain storage. Authentication does not enable coding; its credential bridge remains blocked. Installation and model metadata do not prove inference access. Experimental provider preferences are retained for development.';
 agentSettings.append(agentSummary, agentHelp);
-for(const [label,type]of [['Sign in to isolated Codex','codex-sign-in'],['Review one Codex Ask validation','codex-validate-ask'],['Cancel isolated Codex session','codex-cancel']]){const button=document.createElement('button');button.type='button';button.textContent=label;button.addEventListener('click',()=>vscode.postMessage({type}));agentSettings.append(button);}
+const codexAuthStatus=document.createElement('p');codexAuthStatus.setAttribute('role','status');codexAuthStatus.setAttribute('aria-live','polite');codexAuthStatus.textContent='Codex sign-in status not checked. Refresh to inspect this isolated Keychain identity.';agentSettings.append(codexAuthStatus);
+const authLabels={'checking':'Checking isolated sign-in','not-signed-in':'Not signed in','signing-in':'Signing in — complete the official page within five minutes','signed-in':'Signed in — Keychain stored; inference unverified','session-expired':'Session expired — refresh to restore saved sign-in','authentication-failed':'Authentication failed — Keychain, account expiry or sign-in needs attention'};
+window.addEventListener('message',({data})=>{if(data?.type==='codex-auth-state'){codexAuthStatus.textContent=(authLabels[data.state]||'Sign-in state unknown')+(data.detail?' · '+data.detail:'');}});
+for(const [label,type]of [['Sign in to isolated Codex','codex-sign-in'],['Refresh sign-in status','codex-auth-status'],['Sign out of isolated Codex','codex-sign-out'],['Ask validation blocked — credential bridge unverified','codex-validate-ask'],['Cancel isolated Codex session','codex-cancel']]){const button=document.createElement('button');button.type='button';button.textContent=label;if(type==='codex-validate-ask'){button.disabled=true;button.title='Persistent authentication is separate from the coding sandbox. No verified credential bridge or inference approval is available.';}button.addEventListener('click',()=>vscode.postMessage({type}));agentSettings.append(button);}
 function providerSelect(labelText, optional = false) {
   const label = document.createElement('label'); label.textContent = labelText;
   const select = document.createElement('select'); select.setAttribute('aria-label', labelText);
@@ -867,7 +870,7 @@ chatLog.setAttribute('aria-relevant', 'additions');
 chatLog.tabIndex = 0;
 const chatEmpty = document.createElement('p');
 chatEmpty.className = 'chat-empty';
-chatEmpty.textContent = 'Alpha preparation: open Settings to set up isolated Codex and review the one-request Ask validation. Live Agent editing and provider switching remain disabled.';
+chatEmpty.textContent = 'Alpha preparation: open Settings to set up isolated Codex and inspect saved sign-in. Coding execution, Agent editing and provider switching remain disabled.';
 chatLog.append(chatEmpty);
 const jumpToLatestChat = document.createElement('button');
 jumpToLatestChat.type = 'button';

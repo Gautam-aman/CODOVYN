@@ -64,6 +64,10 @@
       {
         "command": "codovyn.codexCancel",
         "title": "CODOVYN: Cancel Isolated Codex Session"
+      },
+      {
+        "command": "codovyn.codexAuthStatus",
+        "title": "CODOVYN: Refresh Isolated Codex Sign-In Status"
       }
     ],
     "configuration": {

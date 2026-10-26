@@ -1,3 +1,5 @@
+import{assertCodexIdentity}from'./codex-identity.js';
+import{homedir}from'node:os';
 import {realpathSync,lstatSync,mkdirSync,readFileSync,writeFileSync} from 'node:fs';
 import {join,relative,isAbsolute} from 'node:path';
 import {spawn} from 'node:child_process';
@@ -55,6 +57,27 @@ sleep_tool = false
  if(fixtureScript&&(executable!==realpathSync(process.execPath)||!realpathSync(fixtureScript).startsWith(state+'/')))throw new Error('Fixed Node fixture must be in private state');
  const boundary=Object.freeze({command:'/usr/bin/sandbox-exec',prefixArgs:Object.freeze(['-p',profile,executable,...(fixtureScript?['--openssl-config=/dev/null',realpathSync(fixtureScript)]:[])]),cwd:scratch,env:{PATH:'/usr/bin:/bin',LANG:'en_US.UTF-8',HOME:home,CODEX_HOME:home,TMPDIR:scratch},stateDirectory:state,executable,workspace:root});boundaries.add(boundary);return boundary;
 }
+/** Trusted owner authentication only. Never accepts project context or model input.
+ * This is NOT the coding boundary: its protocol cannot start threads/turns or bind execution. */
+export function codexAuthenticationBoundary({identity,stateDirectory,command}){
+ if(process.platform!=='darwin'||process.arch!=='arm64')throw new Error('Isolated Keychain authentication is macOS ARM64 only');assertCodexIdentity(identity);const executable=verifyCodexControlExecutable(command).executable;
+ mkdirSync(stateDirectory,{recursive:true,mode:0o700});const state=realpathSync(stateDirectory);if(lstatSync(state).uid!==process.getuid()||lstatSync(state).mode&0o077||state===identity.home||state.startsWith(identity.home+'/')||identity.home.startsWith(state+'/'))throw new Error('Separate private authentication runtime required');
+ const scratch=join(state,'scratch');mkdirSync(scratch,{mode:0o700});
+ const q=JSON.stringify,profile=`(version 1)
+(allow default)
+; Trusted authentication SDK only: no model/thread methods or project context.
+(deny process-fork)
+(deny process-exec)
+(allow process-exec (literal ${q(executable)}))
+(deny file-link)
+(deny file-write*)
+(allow file-write* (subpath ${q(state)}) (subpath ${q(identity.home)}) (subpath ${q(join(homedir(),"Library/Keychains"))}) (literal "/dev/null"))
+; Strict pre-action plaintext prevention, even if managed policy tries to select file storage.
+(deny file-write* (regex #".*/[aA][uU][tT][hH][.][jJ][sS][oO][nN]([.].*)?$") (literal ${q(identity.config)}))
+(deny file-read-data (regex #".*/([.][eE][nN][vV]([.].*)?|[aA][uU][tT][hH][.][jJ][sS][oO][nN]|[cC][rR][eE][dD][eE][nN][tT][iI][aA][lL][sS][^/]*|id_rsa|id_ed25519|[^/]*[.]pem|[^/]*[.]key)$") (regex #".*/[.](ssh|aws|codex[^/]*)(/.*)?$"))`;
+ const boundary=Object.freeze({authOnly:true,identity,credentialStorage:'keyring',command:'/usr/bin/sandbox-exec',executable,prefixArgs:Object.freeze(['-p',profile,executable,'-c',`log_dir=${JSON.stringify(join(state,'logs'))}`,'-c',`sqlite_home=${JSON.stringify(join(state,'sqlite'))}`]),cwd:scratch,workspace:null,stateDirectory:state,env:Object.freeze({PATH:'/usr/bin:/bin',LANG:'en_US.UTF-8',HOME:homedir(),CODEX_HOME:identity.home,CODEX_SQLITE_HOME:join(state,'sqlite'),TMPDIR:scratch})});boundaries.add(boundary);return boundary;
+}
+export function isCodexAuthenticationBoundary(value){return boundaries.has(value)&&value.authOnly===true;}
 /** No grants, cached approvals, policy amendments, dynamic tools or inputs. */
 export function denyCodexServerRequest(method){
  if(['item/commandExecution/requestApproval','item/fileChange/requestApproval'].includes(method))return {decision:'cancel'};
@@ -63,7 +86,7 @@ export function denyCodexServerRequest(method){
  return null;
 }
 export class CodexControlConnection{
- #diagnostics='';#workspace;#methods;#pending;#incoming;#nextId;#closed;#controller;#abort;#signal;#child;#lifecycle;#timer;#pump;#boundary;#execution;#models=[];#thread=null;#login=null;#loginNotice=null;#accountDigest=null;#contextNonce=randomUUID();#turn=null;#usedTurn=false;#session=false;
+ #diagnostics='';#workspace;#methods;#pending;#incoming;#nextId;#closed;#controller;#abort;#signal;#child;#lifecycle;#timer;#pump;#boundary;#execution;#models=[];#thread=null;#login=null;#loginNotice=null;#accountDigest=null;#contextNonce=randomUUID();#turn=null;#usedTurn=false;#session=false;#authOnly=false;#identity=null;#authObserver=()=>{};
  get closed(){return this.#lifecycle.closed;}
  get accountContextDigest(){return this.#accountDigest;}
  get diagnostic(){return redactContext(this.#diagnostics).slice(0,1024);}
@@ -78,13 +101,13 @@ export class CodexControlConnection{
   try{if(execution){const identity=verifyCodexControlExecutable(boundary.executable);execution.spawned({pid:connection.#child.pid,group:true});execution.authority.bindProcess(connection.#child,identity);}return connection;}
   catch(error){await connection.close();execution?.stopped();throw error;}
  }
- constructor(boundary,{signal,timeoutMs=15000,session=false}={}){
-  if(!boundaries.has(boundary))throw new Error('Host-issued Codex boundary required');
+ constructor(boundary,{signal,timeoutMs=15000,session=false,onAuthenticationEvent=()=>{}}={}){
+  if(!boundaries.has(boundary))throw new Error('Host-issued Codex boundary required');if(typeof onAuthenticationEvent!=='function')throw new Error('Trusted authentication observer required');
   if(!Number.isSafeInteger(timeoutMs)||timeoutMs<1||timeoutMs>(session?300000:15000))throw new Error('Invalid metadata deadline');
-  this.#boundary=boundary;this.#session=session;this.#workspace=boundary.cwd;this.#methods=[];this.#pending=new Map();this.#incoming=new Set();this.#nextId=0;this.#closed=false;this.#controller=new AbortController();this.#abort=()=>this.fail(new Error('Codex metadata cancelled'));signal?.addEventListener('abort',this.#abort,{once:true});this.#signal=signal;
+  this.#authObserver=onAuthenticationEvent;this.#authOnly=boundary.authOnly===true;this.#identity=boundary.identity||null;this.#boundary=boundary;this.#session=session;this.#workspace=boundary.cwd;this.#methods=[];this.#pending=new Map();this.#incoming=new Set();this.#nextId=0;this.#closed=false;this.#controller=new AbortController();this.#abort=()=>this.fail(new Error('Codex metadata cancelled'));signal?.addEventListener('abort',this.#abort,{once:true});this.#signal=signal;
   this.#child=spawn(boundary.command,[...boundary.prefixArgs,'app-server','--stdio'],{cwd:boundary.cwd,env:boundary.env,shell:false,detached:true,stdio:['pipe','pipe','pipe']});this.#lifecycle=manageAgentProcess(this.#child,this.#controller.signal);let bytes=0,messages=0,errors=0;
   this.#child.stderr.on('data',b=>{errors+=b.length;if(!this.#session&&this.#diagnostics.length<1024)this.#diagnostics+=b.toString('utf8').slice(0,1024-this.#diagnostics.length);if(errors>65536)this.fail(new Error('Codex diagnostic limit'));});
-  this.#timer=setTimeout(()=>this.fail(new Error('Codex metadata deadline exceeded')),timeoutMs);
+  this.#timer=setTimeout(()=>{this.#authObserver({phase:'metadata-session-deadline'});this.fail(new Error('Codex metadata deadline exceeded'));},timeoutMs);
   this.#pump=(async()=>{try{const bounded=async function*(stream){for await(const b of stream){bytes+=b.length;if(bytes>2097152)throw new Error('Codex metadata output limit');yield b;}};
    for await(const m of boundedJsonLines(bounded(this.#child.stdout),262144)){
     if(++messages>256)throw new Error('Codex metadata message limit');
@@ -97,26 +120,26 @@ export class CodexControlConnection{
  }
  #send(message){if(this.#closed)throw new Error('Codex control closed');const data=JSON.stringify(message)+'\n';if(Buffer.byteLength(data)>32768)throw new Error('Codex metadata input limit');this.#child.stdin.write(data);}
  #rpc(method,params){if(!this.#methods.includes(method))this.#methods.push(method);if(this.#closed)return Promise.reject(new Error('Codex isolated session is closed'));return new Promise((resolve,reject)=>{const id=++this.#nextId;this.#pending.set(id,{resolve,reject,method});try{this.#send({id,method,params});}catch(e){this.fail(e);}});}
- request(method,params){if(!['initialize','model/list','config/read','thread/start'].includes(method)||this.#methods.includes(method)||this.#closed)throw new Error('Inference or repeated metadata method is disabled');
+ request(method,params){if(this.#authOnly&&(!['initialize','config/read'].includes(method)||method==='config/read'&&(params.cwd!==this.#workspace||params.includeLayers!==false)||method==='initialize'&&params.capabilities?.experimentalApi!==false))throw new Error('Authentication component cannot execute coding or experimental protocols');if(!['initialize','model/list','config/read','thread/start'].includes(method)||this.#methods.includes(method)||this.#closed)throw new Error('Inference or repeated metadata method is disabled');
   if(method==='thread/start'&&(Object.keys(params).sort().join(',')!=='approvalPolicy,approvalsReviewer,cwd,ephemeral,model,sandbox'||params.cwd!==this.#workspace||params.approvalPolicy!=='on-request'||params.approvalsReviewer!=='user'||params.sandbox!=='read-only'||params.ephemeral!==true))throw new Error('Explicit restrictive thread policy required');
   this.#methods.push(method);return this.#rpc(method,params);
  }
- #deadline(ms){clearTimeout(this.#timer);this.#timer=setTimeout(()=>this.fail(new Error('Codex isolated session deadline exceeded')),ms);}
- async accountState(){if(!this.#session)throw new Error('Owner-controlled session required');const result=await this.#rpc('account/read',{refreshToken:false});const authenticated=result?.account?.type==='chatgpt';this.#accountDigest=authenticated?createHash('sha256').update(this.#contextNonce+JSON.stringify(result.account)).digest('hex'):null;return {authenticated,storage:'memory-only',inferenceVerified:false,contextDigest:this.#accountDigest};}
+ #deadline(ms){clearTimeout(this.#timer);this.#timer=setTimeout(()=>{this.#authObserver({phase:'session-deadline'});this.fail(new Error('Codex isolated session deadline exceeded'));},ms);}
+ async accountState({refreshToken=false}={}){if(typeof refreshToken!=='boolean'||refreshToken&&!this.#authOnly)throw new Error('Token refresh requires the dedicated authentication component');if(this.#identity)assertCodexIdentity(this.#identity);if(!this.#session)throw new Error('Owner-controlled session required');let timer,result;try{if(refreshToken)timer=setTimeout(()=>{this.#authObserver({phase:'account-status-deadline'});this.fail(new Error('Authentication status deadline exceeded'));},15000);result=await this.#rpc('account/read',{refreshToken});}finally{clearTimeout(timer);}const authenticated=result?.account?.type==='chatgpt';this.#accountDigest=authenticated?createHash('sha256').update(this.#contextNonce+JSON.stringify(result.account)).digest('hex'):null;return {authenticated,accountType:['chatgpt','apiKey'].includes(result?.account?.type)?result.account.type:null,storage:this.#authOnly?'keyring':'memory-only',inferenceVerified:false,contextDigest:this.#accountDigest};}
  async loginDevice({confirm,display}={}){
   if(!this.#session||this.#login||this.#turn||typeof confirm!=='function'||typeof display!=='function')throw new Error('Owner-initiated isolated login required');
   if(await confirm()!=='Sign in to isolated Codex')throw new Error('Isolated login not approved');
-  this.#deadline(120000);let resolve,reject;const completion=new Promise((a,b)=>{resolve=a;reject=b;});completion.catch(()=>{});this.#login={id:null,resolve,reject};
-  try{const result=await this.#rpc('account/login/start',{type:'chatgptDeviceCode'});if(result?.type!=='chatgptDeviceCode'||typeof result.loginId!=='string'||result.loginId.length>100||result.verificationUrl!=='https://auth.openai.com/codex/device'||typeof result.userCode!=='string'||!/^[A-Z0-9-]{4,32}$/.test(result.userCode))throw new Error('Unsupported official device login response');this.#login.id=result.loginId;
+  this.#deadline(this.#authOnly?300000:120000);let resolve,reject;const completion=new Promise((a,b)=>{resolve=a;reject=b;});completion.catch(()=>{});this.#login={id:null,resolve,reject};
+  try{const result=await this.#rpc('account/login/start',{type:'chatgptDeviceCode'});if(result?.type!=='chatgptDeviceCode'||typeof result.loginId!=='string'||result.loginId.length>100||result.verificationUrl!=='https://auth.openai.com/codex/device'||typeof result.userCode!=='string'||!/^[A-Z0-9-]{4,32}$/.test(result.userCode))throw new Error('Unsupported official device login response');this.#login.id=result.loginId;this.#authObserver({phase:'device-flow-started'});
    if(this.#loginNotice?.loginId===result.loginId)this.#completeLogin(this.#loginNotice);
-   await display({url:result.verificationUrl,code:result.userCode});await completion;const state=await this.accountState();if(!state.authenticated)throw new Error('Official sign-in did not establish authentication');this.#deadline(300000);return state;
+   await display({url:result.verificationUrl,code:result.userCode});await completion;const state=await this.accountState();if(!state.authenticated)throw new Error('Official sign-in did not establish authentication');this.#authObserver({phase:'provider-account-confirmed'});this.#deadline(300000);return state;
   }catch(error){await this.cancelLogin();throw error;}finally{this.#login=null;this.#loginNotice=null;}
  }
- #completeLogin(params){if(params?.loginId!==this.#login?.id)return;params.success===true?this.#login.resolve():this.#login.reject(new Error('Official device sign-in failed'));}
+ #completeLogin(params){if(params?.loginId!==this.#login?.id)return;this.#authObserver({phase:'provider-login-completed',success:params.success===true});params.success===true?this.#login.resolve():this.#login.reject(new Error('Official device sign-in failed'));}
  async cancelLogin(){const login=this.#login;this.#login=null;this.#accountDigest=null;if(login){login.reject(new Error('Isolated sign-in cancelled'));if(login.id)await this.#rpc('account/login/cancel',{loginId:login.id});}}
- async logout(){if(this.#turn)throw new Error('Cancel the active request before logout');await this.cancelLogin();await this.#rpc('account/logout',{});this.#accountDigest=null;this.#contextNonce=randomUUID();return {authenticated:false,storage:'memory-only',inferenceVerified:false};}
- bindExecution(execution){if(this.#execution||!isTaskExecutionAuthority(execution?.authority)||execution.authority.provider!=='codex'||execution.authority.permission!=='read'||!['ask','plan'].includes(execution.authority.intent)||execution.authority.workspace!==this.#boundary.workspace)throw new Error('Matching read-only TaskEngine authority required');execution.authority.verifyAdmission();const identity=this.#boundary.executable===realpathSync(process.execPath)?{executable:this.#boundary.executable,sha256:createHash('sha256').update(readFileSync(this.#boundary.executable)).digest('hex')}:verifyCodexControlExecutable(this.#boundary.executable);execution.starting();execution.spawned({pid:this.pid,group:true});execution.authority.bindProcess(this.#child,identity);this.#execution=execution.authority;}
- async runApproved({execution,consentId,requestId,selection,prompt,onText=()=>{},signal}){
+ async logout(){if(this.#turn)throw new Error('Cancel the active request before logout');await this.cancelLogin();await this.#rpc('account/logout',{});this.#accountDigest=null;this.#contextNonce=randomUUID();return {authenticated:false,storage:this.#authOnly?'keyring':'memory-only',inferenceVerified:false};}
+ bindExecution(execution){if(this.#authOnly)throw new Error('Authentication component cannot bind task execution');if(this.#execution||!isTaskExecutionAuthority(execution?.authority)||execution.authority.provider!=='codex'||execution.authority.permission!=='read'||!['ask','plan'].includes(execution.authority.intent)||execution.authority.workspace!==this.#boundary.workspace)throw new Error('Matching read-only TaskEngine authority required');execution.authority.verifyAdmission();const identity=this.#boundary.executable===realpathSync(process.execPath)?{executable:this.#boundary.executable,sha256:createHash('sha256').update(readFileSync(this.#boundary.executable)).digest('hex')}:verifyCodexControlExecutable(this.#boundary.executable);execution.starting();execution.spawned({pid:this.pid,group:true});execution.authority.bindProcess(this.#child,identity);this.#execution=execution.authority;}
+ async runApproved({execution,consentId,requestId,selection,prompt,onText=()=>{},signal}){if(this.#authOnly)throw new Error('Authentication component cannot submit inference');
   selection=validateCampaignSpec(selection);
   if(this.#usedTurn||execution!==this.#execution||!this.#session||selection.provider!=='codex'||!['ask','plan'].includes(selection.mode)||selection.maxRequests!==1||selection.maxMcpToolCalls!==0)throw new Error('Single read-only owner-approved Codex request required');
   const fixture=this.#boundary.executable===realpathSync(process.execPath);if(fixture!== (selection.purpose==='fixture'))throw new Error('Fixture/live provider identity mismatch');
