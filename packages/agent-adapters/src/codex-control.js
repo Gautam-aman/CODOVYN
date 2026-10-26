@@ -45,8 +45,9 @@ sleep_tool = false
 (allow file-read-data (subpath "/System") (subpath "/usr/lib") (subpath "/usr/share") (subpath "/Library/Apple") (subpath "/opt/homebrew/Cellar") (literal ${q(executable)}) (subpath ${q(state)}) (subpath "/dev"))
 (allow file-write* (subpath ${q(state)}) (literal "/dev/null"))
 (allow file-read-metadata)
-(deny file-read-data (regex #".*/([.]env([.].*)?|auth[.]json|credentials[^/]*|id_rsa|id_ed25519|[^/]*[.]pem|[^/]*[.]key)$") (regex #".*/[.](ssh|aws|git)(/.*)?$"))
-(deny file-write* (literal ${q(configuration)}) (regex #".*/[.]git(/.*)?$") (subpath ${q(root)}))
+(deny file-read-data (regex #".*/([.][eE][nN][vV]([.].*)?|[aA][uU][tT][hH][.][jJ][sS][oO][nN]|[cC][rR][eE][dD][eE][nN][tT][iI][aA][lL][sS][^/]*|id_rsa|id_ed25519|[^/]*[.]pem|[^/]*[.]key)$") (regex #".*/[.](ssh|aws|git)(/.*)?$"))
+(deny file-write* (regex #".*/([.][eE][nN][vV]([.].*)?|[aA][uU][tT][hH][.][jJ][sS][oO][nN]([.].*)?|[cC][rR][eE][dD][eE][nN][tT][iI][aA][lL][sS][^/]*|id_rsa|id_ed25519|[^/]*[.]pem|[^/]*[.]key)$"))
+(deny file-write* (regex #".*/[cC][oO][nN][fF][iI][gG][.][tT][oO][mM][lL]$") (literal ${q(configuration)}) (regex #".*/[.]git(/.*)?$") (subpath ${q(root)}))
 (deny file-read-data (subpath ${q(root)}))`;
  const boundary=Object.freeze({command:'/usr/bin/sandbox-exec',prefixArgs:['-p',profile,executable],cwd:scratch,env:{PATH:'/usr/bin:/bin',LANG:'en_US.UTF-8',HOME:home,CODEX_HOME:home,TMPDIR:scratch},stateDirectory:state,executable,workspace:root});boundaries.add(boundary);return boundary;
 }
