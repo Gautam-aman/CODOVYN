@@ -1,6 +1,13 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import{execFileSync}from'node:child_process';import{mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync,existsSync}from'node:fs';import{tmpdir}from'node:os';import{join}from'node:path';
-import{main}from'../src/index.js';
+import{main}from'../src/index.js';import{fileURLToPath}from'node:url';
+test('Ask worker reports a vanished workspace without opening a journal or leaking its path',()=>{
+ const base=mkdtempSync(join(tmpdir(),'opencode-missing-workspace-'));try{
+  const root=join(base,'PRIVATE-PATH-WITNESS'),data=join(base,'private');
+  const output=execFileSync(process.execPath,[fileURLToPath(new URL('../src/opencode-ask.js',import.meta.url)),root,data,'/must-not-execute'],{encoding:'utf8',timeout:5000,stdio:['ignore','pipe','pipe']});
+  const messages=output.trim().split('\n').map(x=>JSON.parse(x));assert.equal(messages[0].code,'REPOSITORY_IDENTITY_FAILED');assert.deepEqual(messages[1],{type:'closed',cleanupVerified:true});assert.equal(output.includes('PRIVATE-PATH-WITNESS'),false);assert.equal(existsSync(data),false);
+ }finally{rmSync(base,{recursive:true,force:true});}
+});
 
 test('OpenCode uses the existing task journal/draft review and never applies before approval',async()=>{
  const temp=mkdtempSync(join(tmpdir(),'codovyn-cli-opencode-')),repo=join(temp,'repo'),saved={};

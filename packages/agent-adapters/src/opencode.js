@@ -125,6 +125,12 @@ function scopePath(cwd,path,write) {
 }
 function statExists(path){try{lstatSync(path);return true;}catch{return false;}}
 export async function discoverOpenCode({cwd,stateDirectory,configured,model,modelId,signal}={}) {
+  // Validate the caller's current workspace before compiling helpers or starting
+  // the provider. A vanished disposable project is not a sandbox failure.
+  await diagnostics.at('REPOSITORY_IDENTITY_FAILED',()=>{
+    if(typeof cwd!=='string'||!isAbsolute(cwd)||!statSync(cwd).isDirectory())throw new Error('Existing workspace required');
+    if(realpathSync(cwd)!==cwd)throw new Error('Canonical workspace required');
+  });
   const installation=await diagnostics.at('EXECUTABLE_INVALID',()=>inspectOpenCodeInstallation(configured));
   if(!installation.compatible)throw diagnostics.mark(new AgentFailure('fatal',`OpenCode ${installation.version} is unverified; supported version is ${openCodeVersion}`),'EXECUTABLE_INVALID');
   if(!openCodeProjectReadiness(cwd).executionSupported){
