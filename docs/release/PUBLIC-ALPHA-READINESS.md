@@ -148,3 +148,11 @@ This report is not consent. Owner sign-in is not spending consent. A separate ex
 See [CODEX](CODEX.md), [MANUAL-QA](MANUAL-QA.md), [INSTALLATION](INSTALLATION.md), [KNOWN-ISSUES](KNOWN-ISSUES.md), [RELEASE-NOTES](RELEASE-NOTES.md), [DISTRIBUTION](DISTRIBUTION.md), [REDISTRIBUTION](REDISTRIBUTION.md) and [CONTRIBUTOR-BACKLOG](CONTRIBUTOR-BACKLOG.md). The existing Phase 16 evidence remains historical and is supplemented, not relabelled as live validation.
 
 **Release verdict: BLOCKED — CRITICAL GATES REMAIN.**
+
+## OpenCode Ask diagnostics correction
+
+See the [investigation and actual qualification](../development/opencode-ask-failure-validation.md). Fixes `8e010662b59b2fdc4d8ae1cdad97272148a96836` and `9b28547d44f36af276f1b963cc41c20e32b327df` replace the incorrect legacy authentication-file requirement with bounded read-only SQLite credential metadata validation, add visible Models progress and safe stage diagnostics, and stop vanished-workspace preparation before opening a journal/provider.
+
+**418 tests passed, 0 failed/cancelled/skipped** on the final full run; initial failures and unchanged successful follow-up are documented. Extension-host and copied native host/Chat/routing/restoration passed. Real copied OpenCode metadata initialization returned **39 models**, with owned-group cleanup, unchanged credential metadata and unchanged new disposable source. This is **not inference or entitlement verification**. Owner accounting remains **zero tasks/consents/requests/leases**. The recorded original Calculator directory is now missing; it was not recreated and current original hashes cannot be certified. Do not repeat authentication solely because `auth.json` is absent or reuse a stale approval.
+
+Clean development installer source: `9b28547d44f36af276f1b963cc41c20e32b327df`; SHA-256 `6257df2b24a83742102177aaf2503bd7351bef52bfcdc8f8dadbd8f8f7305567`. Ad-hoc/unnotarized, copied-app tested, not published. No inference is authorized by this debugging task. **ALPHA BLOCKED — CRITICAL GATES REMAIN.**

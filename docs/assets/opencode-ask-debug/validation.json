@@ -1,0 +1,101 @@
+{
+  "implementationSha": "9b28547d44f36af276f1b963cc41c20e32b327df",
+  "authenticationAndUiFixSha": "8e010662b59b2fdc4d8ae1cdad97272148a96836",
+  "inferenceSubmissions": 0,
+  "ownerLedger": {
+    "projectExists": false,
+    "journalExists": true,
+    "inferenceInitiated": false,
+    "counts": {
+      "tasks": 0,
+      "execution_leases": 0,
+      "queued_tasks": 0,
+      "task_queue_settings": 0,
+      "campaign_consents": 0,
+      "campaign_requests": 0
+    }
+  },
+  "storedContext": {
+    "databaseExists": true,
+    "legacyFileExists": false,
+    "safeMetadataValidation": true,
+    "storedIntegrationCount": 2
+  },
+  "copiedMetadata": {
+    "inferenceSubmissions": 0,
+    "scope": "New disposable Git-backed Java fixture; metadata only; no approval reused",
+    "models": 39,
+    "metadataInitialization": "verified",
+    "authentication": "Stored context only; inference/authentication unverified",
+    "cleanupVerified": true,
+    "accountMetadataUnchanged": true,
+    "fixtureUnchanged": true,
+    "success": true,
+    "elapsedMs": 8413
+  },
+  "fullRegression": {
+    "pass": 418,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "durationMs": 125390.038708
+  },
+  "firstRegressionRun": {
+    "pass": 414,
+    "fail": 3,
+    "cancelled": 1,
+    "skipped": 0
+  },
+  "nativeSteps": [
+    {
+      "name": "build",
+      "exitCode": 0,
+      "seconds": 55.64
+    },
+    {
+      "name": "package",
+      "exitCode": 0,
+      "seconds": 29.75
+    },
+    {
+      "name": "signature",
+      "exitCode": 0,
+      "seconds": 1.12
+    },
+    {
+      "name": "extension-host",
+      "exitCode": 0,
+      "seconds": 14.24
+    },
+    {
+      "name": "host",
+      "exitCode": 0,
+      "seconds": 11.37
+    },
+    {
+      "name": "chat",
+      "exitCode": 0,
+      "seconds": 25.58
+    },
+    {
+      "name": "routing",
+      "exitCode": 0,
+      "seconds": 34.79
+    },
+    {
+      "name": "restoration",
+      "exitCode": 0,
+      "seconds": 11.27
+    }
+  ],
+  "installer": {
+    "filename": "CODOVYN-darwin-arm64-development.dmg",
+    "sha256": "6257df2b24a83742102177aaf2503bd7351bef52bfcdc8f8dadbd8f8f7305567",
+    "version": "0.1.0-alpha",
+    "sourceDirty": false,
+    "signing": "ad-hoc, unnotarized development only"
+  },
+  "originalCalculator": "Recorded temporary directory absent before this continuation; not recreated; current hashes cannot be certified",
+  "installedApplication": "No writes performed",
+  "otherProcesses": "Pre-existing unrelated OpenCode processes left untouched; only owned groups certified"
+}

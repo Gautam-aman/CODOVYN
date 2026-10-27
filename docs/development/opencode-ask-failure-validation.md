@@ -38,3 +38,15 @@ The first full run was **414 passed, 3 failed, 1 cancelled**: shutdown fixture r
 - If sandbox startup fails again, preserve safe substage/lifecycle evidence before closing; keep the execution fence if cleanup is unverified.
 - No request is authorized by this debugging task. Fresh exact provider/model native review and explicit spending approval remain required before any inference.
 - Agent execution, ContextFlow live continuation and public release remain blocked. Ad-hoc development signing is not notarization. Historical issue #16 and hosted CI billing restrictions are not resolved here.
+
+## Final copied-application qualification
+
+Clean implementation source/remote checkpoint: `9b28547d44f36af276f1b963cc41c20e32b327df` (`sourceDirty: false`), version **0.1.0-alpha**. A final evidence-only commit follows; its remote SHA is verified in the handoff. [Sanitized evidence](../assets/opencode-ask-debug/validation.json).
+
+- Build, development packaging, image integrity, read-only mount/copy/detach and deep/strict copied-bundle signature: passed.
+- Extension-host: passed. Copied standalone native host (Java/editor/Git/search/terminal), Chat, Models/routing and restart restoration: all passed, sequentially. UI assertions use deterministic fixtures, not real AI responses.
+- The new copied module completed **real OpenCode metadata-only ACP initialization**, returning **39 models** in **8413 ms** against a new disposable Git-backed Java project. Canonical workspace identity is required; an initial noncanonical-path harness call was rejected before startup, then the trusted host resolved the canonical path. No authorization was bypassed.
+- Every owned group recorded by metadata inspection was absent after completion. Credential metadata binding and new fixture hashes remained unchanged. Pre-existing unrelated OpenCode processes were not terminated.
+- Final owner journal recheck: **0 tasks, 0 consents, 0 requests, 0 execution leases**. Stored integrations: **2**; safe metadata validation passed, legacy file absent. No browser login, inference, model tool action or original-project write was performed.
+
+Development DMG SHA-256: `6257df2b24a83742102177aaf2503bd7351bef52bfcdc8f8dadbd8f8f7305567`. Ad-hoc signed and unnotarized; not published, not a public release. The installed application is unchanged. The missing original fixture and previously unexplained startup failure remain explicitly recorded above; successful new-fixture metadata does not retroactively certify either.
