@@ -1,6 +1,6 @@
 # Selected alpha provider transport — protected OpenCode Ask
 
-**PREPARED — NOT LIVE VERIFIED.** Starting main: `39cca12c5f3263225b3a72b1cd6a82981fdc579a`. Tested implementation and clean development installer: `3953f079befbca785374ed0aa2ee3d1230e04b53`. A documentation/evidence commit follows; final remote SHA is verified after its push.
+**PREPARED — NOT LIVE VERIFIED.** Starting main: `39cca12c5f3263225b3a72b1cd6a82981fdc579a`. Tested implementation and clean development installer: `e83a712102a035c2fa659e63cb5c3f75dc55c814`. Initial transport commit: `3953f079befbca785374ed0aa2ee3d1230e04b53`; canonical-context hardening and first qualification commit: `e83a712102a035c2fa659e63cb5c3f75dc55c814`. A final evidence commit follows; final remote SHA is verified after its push.
 
 ## Decision
 
@@ -26,7 +26,7 @@ No new daemon, scheduler, journal, native helper, dependency or global credentia
 
 ### Credential and tool boundary
 
-`openCodeAccountContext` uses strictly canonical path (including rejection of symlinked context roots), filesystem identity, owner/mode/link checks and credential-file size/timestamps. **It never reads credential contents.** Ordinary runtime directory changes do not invalidate it; credential replacement or modification does. This binds a particular isolated credential-store state, not a proven account name, entitlement or valid token. Provider refresh may invalidate review; that fails closed without an automatic new approval or request. Authenticated startup/refresh with the owner's actual account remains untested.
+`openCodeAccountContext` uses strictly canonical path (including rejection of symlinked context roots), filesystem identity, owner/mode/link checks and credential-file size/timestamps. **It never reads credential contents.** Ordinary runtime directory changes do not invalidate it; credential replacement or modification does. This binds a particular isolated credential-store state, not a proven account name, entitlement or valid token. Provider refresh may invalidate review; that fails closed without an automatic new approval or request. These checks are not a race-proof account-identity assertion or a lock on owner-operated credential changes. Authenticated startup/refresh with the owner's actual account remains untested.
 
 The official OpenCode SDK continues to manage its own credentials inside the existing owner-only per-project context. This is not Codex Keychain delegation or a new Keychain-backed OpenCode store. No key reaches renderer, source excerpt, task journal or file broker. The underlying provider/account must be configured by the owner using **OpenCode Setup**, and its costs must be reviewed separately. The current owner context has no credential-file metadata; real authentication is **BLOCKED — OWNER SETUP REQUIRED**.
 
@@ -51,7 +51,7 @@ This first campaign never activates MCP file execution. Metadata `initialize`/`t
 - Real pinned ACP Ask/Agent metadata initialization, MCP catalogue, repository boundary and process ownership probes passed without `session/prompt`. Existing OS denial tests and deterministic Java accept/reject workflows passed; their generated responses are fixtures.
 - Source dependencies, syntax, extension host, Keychain/auth-worker, Codex controls, build, notice inventory and packaging passed sequentially.
 - **18 copied-DMG steps passed**: read-only image/mounted-copy integrity, deep/strict pre/post signatures, native host/Java/editor/Git/search/terminal, Chat, routing, restoration, provider/security probes, the new empty-auth owner-worker preflight and deterministic Java workflow.
-- Clean development source `3953f079befbca785374ed0aa2ee3d1230e04b53`, version `0.1.0-alpha`, ad-hoc/unnotarized. DMG SHA-256 **`ef76d371a3164edf16eaaf948a143c8ca5064b3df553181e5cb713e1a00d076b`**. No public installer or release was published. `/Applications/CODOVYN.app` was not changed.
+- Clean development source `e83a712102a035c2fa659e63cb5c3f75dc55c814`, version `0.1.0-alpha`, ad-hoc/unnotarized. DMG SHA-256 **`265533f391da734d2251c4c0cdd4f27c8663c7eee7c7ef26b5d04b8b4b8e83a1`**. No public installer or release was published. `/Applications/CODOVYN.app` was not changed.
 
 [Machine-readable evidence](../assets/opencode-ask/qualification.json), [empty-auth worker result](../assets/opencode-ask/empty-auth-preflight.json), [actual copied Settings screenshot](../assets/opencode-ask/settings.png). The screenshot uses clearly labelled fixture authentication messages, not a genuine account or live AI response. Automated desktop checks are not a human usability test.
 

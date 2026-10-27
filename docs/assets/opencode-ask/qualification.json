@@ -1,7 +1,7 @@
 {
   "classification": "PREPARED / DETERMINISTIC AND REAL OS METADATA TESTED; NO LIVE INFERENCE",
   "startingSha": "39cca12c5f3263225b3a72b1cd6a82981fdc579a",
-  "implementationSha": "3953f079befbca785374ed0aa2ee3d1230e04b53",
+  "implementationSha": "e83a712102a035c2fa659e63cb5c3f75dc55c814",
   "fullRegression": {
     "pass": 411,
     "fail": 0,
@@ -66,114 +66,114 @@
     {
       "name": "build",
       "exitCode": 0,
-      "seconds": 21.996
+      "seconds": 19.512
     },
     {
       "name": "licenses",
       "exitCode": 0,
-      "seconds": 0.216
+      "seconds": 0.198
     },
     {
       "name": "package",
       "exitCode": 0,
-      "seconds": 24.655
+      "seconds": 28.576
     }
   ],
   "copiedInstaller": {
     "image": "/Users/rigelsmacbook/Java Projects/Codovyn/dist/desktop/CODOVYN-darwin-arm64-development.dmg",
-    "sha256": "ef76d371a3164edf16eaaf948a143c8ca5064b3df553181e5cb713e1a00d076b",
-    "copiedApplication": "/private/tmp/codovyn-opencode-ask-copy-nvo6og5o/CODOVYN.app",
+    "sha256": "265533f391da734d2251c4c0cdd4f27c8663c7eee7c7ef26b5d04b8b4b8e83a1",
+    "copiedApplication": "/private/tmp/codovyn-opencode-ask-copy-pl6fmu4g/CODOVYN.app",
     "readOnlyMount": true,
     "steps": [
       {
         "name": "image-integrity",
         "exitCode": 0,
-        "seconds": 3.002
+        "seconds": 2.469
       },
       {
         "name": "signature",
         "exitCode": 0,
-        "seconds": 0.964
+        "seconds": 1.788
       },
       {
         "name": "host",
         "exitCode": 0,
-        "seconds": 14.869
+        "seconds": 20.335
       },
       {
         "name": "chat",
         "exitCode": 0,
-        "seconds": 28.623
+        "seconds": 24.962
       },
       {
         "name": "routing",
         "exitCode": 0,
-        "seconds": 36.221
+        "seconds": 35.557
       },
       {
         "name": "restoration",
         "exitCode": 0,
-        "seconds": 7.963
+        "seconds": 7.731
       },
       {
         "name": "codex-auth",
         "exitCode": 0,
-        "seconds": 0.637
+        "seconds": 0.64
       },
       {
         "name": "codex-control",
         "exitCode": 0,
-        "seconds": 0.508
+        "seconds": 0.528
       },
       {
         "name": "codex-task",
         "exitCode": 0,
-        "seconds": 2.056
+        "seconds": 2.507
       },
       {
         "name": "opencode-task",
         "exitCode": 0,
-        "seconds": 6.054
+        "seconds": 6.506
       },
       {
         "name": "keyring",
         "exitCode": 0,
-        "seconds": 4.488
+        "seconds": 3.95
       },
       {
         "name": "auth-bridge",
         "exitCode": 0,
-        "seconds": 1.09
+        "seconds": 1.066
       },
       {
         "name": "codex-worker",
         "exitCode": 0,
-        "seconds": 0.332
+        "seconds": 0.317
       },
       {
         "name": "persistent-auth-worker",
         "exitCode": 0,
-        "seconds": 2.169
+        "seconds": 1.905
       },
       {
         "name": "ask-preflight",
         "exitCode": 0,
-        "seconds": 0.575
+        "seconds": 0.381
       },
       {
         "name": "licenses",
         "exitCode": 0,
-        "seconds": 0.1
+        "seconds": 0.095
       },
       {
         "name": "java-workflow",
         "exitCode": 0,
-        "seconds": 13.799
+        "seconds": 8.253
       },
       {
         "name": "post-test-signature",
         "exitCode": 0,
-        "seconds": 1.421
+        "seconds": 2.388
       }
     ],
     "mountedSignatureVerified": true,
@@ -198,7 +198,7 @@
           "sha256": "1901d539912c02afa10d1cc126943a8855a7eedebe830119463470db5e6c59e8"
         }
       },
-      "sourceCommit": "3953f079befbca785374ed0aa2ee3d1230e04b53",
+      "sourceCommit": "e83a712102a035c2fa659e63cb5c3f75dc55c814",
       "sourceDirty": false,
       "signing": "ad-hoc-development",
       "platform": "darwin-arm64"
@@ -207,38 +207,38 @@
       {
         "name": "codex-auth",
         "sourceScript": "validate-codex-auth.js",
-        "sha256": "52bfc05c7c14e41d2c1032e0d6ec89cdff059456b0e6c4b71f0756a8d8692d21",
-        "packageRoot": "/private/tmp/codovyn-opencode-ask-copy-nvo6og5o/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
+        "sha256": "152531e8dd717c2ef248ca45d51fbb6e3e1773b9e13923ac0ecdf63d6d7e5c92",
+        "packageRoot": "/private/tmp/codovyn-opencode-ask-copy-pl6fmu4g/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
       },
       {
         "name": "codex-control",
         "sourceScript": "validate-codex-control.js",
-        "sha256": "213b57b4a8c4f06b2cab9a5a532d91b59875d377401252e1003485203d76570d",
-        "packageRoot": "/private/tmp/codovyn-opencode-ask-copy-nvo6og5o/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
+        "sha256": "7cdbbdf0eb00dfbdf562838b85354cb56fc9ce8639dcf4b1fb3abb45045b9665",
+        "packageRoot": "/private/tmp/codovyn-opencode-ask-copy-pl6fmu4g/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
       },
       {
         "name": "codex-task",
         "sourceScript": "validate-codex-task-control.js",
-        "sha256": "564b8f3aec75006f78c15458e70cb9549cd51fb5c0794237a9009a550ffc0f2d",
-        "packageRoot": "/private/tmp/codovyn-opencode-ask-copy-nvo6og5o/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
+        "sha256": "c6ea854cff748a832a0865efa31e67dc58dbaf56c67e3a3d5dd0ce8ee94e3966",
+        "packageRoot": "/private/tmp/codovyn-opencode-ask-copy-pl6fmu4g/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
       },
       {
         "name": "opencode-task",
         "sourceScript": "validate-opencode-task-execution.js",
-        "sha256": "cf98f710905d74bf0d7f9225be30fdcf7b3c82e949c70041cd09ac60d785c196",
-        "packageRoot": "/private/tmp/codovyn-opencode-ask-copy-nvo6og5o/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
+        "sha256": "ee42e21a02dc0517743dfc61d646fdf8e02005ef681d516c095e515b6b58d7a1",
+        "packageRoot": "/private/tmp/codovyn-opencode-ask-copy-pl6fmu4g/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
       },
       {
         "name": "keyring",
         "sourceScript": "validate-codex-keyring.js",
-        "sha256": "0c0e88c31fd0b54ca6bef992f2b7332caeb1bdc7cc6f5ee66108327b83d92c9c",
-        "packageRoot": "/private/tmp/codovyn-opencode-ask-copy-nvo6og5o/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
+        "sha256": "88d02cb767595c45c1a33f70b1d944896af5fc5df98d7b7f8ba093f2851b9bba",
+        "packageRoot": "/private/tmp/codovyn-opencode-ask-copy-pl6fmu4g/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
       },
       {
         "name": "auth-bridge",
         "sourceScript": "validate-codex-auth-bridge.js",
-        "sha256": "ed9292d62e4c175193710d92b5c99690072613fdeb4c014f5692d320f32a2740",
-        "packageRoot": "/private/tmp/codovyn-opencode-ask-copy-nvo6og5o/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
+        "sha256": "fefc7078ed4af12f5f6ff81df0c32c4df26c4ec1eb1e38a6635068f6e7349269",
+        "packageRoot": "/private/tmp/codovyn-opencode-ask-copy-pl6fmu4g/CODOVYN.app/Contents/Resources/app/extensions/codovyn"
       }
     ],
     "runtimeEntitlements": {
@@ -269,5 +269,6 @@
   "ownerAuthenticationStarted": false,
   "sandboxGrantsExpanded": false,
   "publicRelease": "BLOCKED",
-  "canonicalContextSymlinkRejection": "Verified with actual filesystem aliases; independent focused 6-pass and full 411-pass rerun"
+  "canonicalContextSymlinkRejection": "Verified with actual filesystem aliases; independent focused 6-pass and full 411-pass rerun",
+  "initialTransportSha": "3953f079befbca785374ed0aa2ee3d1230e04b53"
 }
