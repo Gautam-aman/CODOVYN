@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import openCodeDiagnostics from '../../../packages/agent-adapters/src/opencode-diagnostics.cjs';
 import {inspectDraftWriteLocks} from '../../../packages/task-engine/src/recovery.js';
 import { contextFlowUsage } from '../../../packages/agent-core/src/contextflow-usage.js';
 import { randomUUID } from 'node:crypto';
@@ -180,8 +181,8 @@ export async function main(args = process.argv.slice(2), output = console, signa
   }
   if (mode === 'provider-models') {
     if(!value||rest.length<1||rest.length>2||!['codex','opencode'].includes(rest[0]))throw new TypeError('Unsupported provider catalogue');
-    const metadata=await discoverProvider(rest[0],{cwd:value,dataDirectory,modelId:rest[1],signal});
-    output.log(JSON.stringify(stream?{type:'result',metadata}:{metadata}));return 0;
+    try{const metadata=await discoverProvider(rest[0],{cwd:value,dataDirectory,modelId:rest[1],signal});
+    output.log(JSON.stringify(stream?{type:'result',metadata}:{metadata}));return 0;}catch(error){if(rest[0]!=='opencode')throw error;const diagnostic=openCodeDiagnostics.diagnostic(error,'MODEL_DISCOVERY_FAILED');output.log(JSON.stringify({type:'error',...diagnostic}));return 1;}
   }
   if (mode === 'reasoning') {
     if (!value || rest.length) { output.error(usage); return 2; }

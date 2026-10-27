@@ -27,6 +27,11 @@ let taskModelCatalogue = [];
 const providerCatalogues = new Map();
 const providerExecutionBlocked = new Set();
 const requestedCatalogues = new Set();
+function showProviderModelStatus(provider,text,loading=false){
+ const card=agentCards.querySelector(`[data-provider="${provider}"]`);if(!card)return;
+ let row=card.querySelector('.provider-model-status');if(!row){row=document.createElement('p');row.className='provider-model-status';row.setAttribute('role','status');row.setAttribute('aria-live','polite');card.append(row);}row.textContent=text;
+ const button=card.querySelector(`button[aria-label="Models ${provider}"]`);if(button)button.disabled=loading;
+}
 function showProviderMetadataObservation(card,metadata) {
   let row=card.querySelector('.provider-metadata-observation');
   if(!row){row=document.createElement('p');row.className='provider-metadata-observation';card.append(row);}
@@ -1096,7 +1101,10 @@ window.addEventListener('message', ({ data }) => {
     status.textContent = 'Ready';
     empty.textContent = 'Task steps and agent handoffs will appear here.';
     diffOutput.textContent = 'Choose a diff to review.';
+  } else if (data.type === 'provider-diagnostic') {
+    if(['codex','opencode'].includes(data.provider))showProviderModelStatus(data.provider,`${data.stage}: ${data.message} ${data.action}`,data.loading===true);
   } else if (data.type === 'provider-models-loading') {
+    showProviderModelStatus(data.provider,'Inspecting model catalogue… No inference request is started.',true);
     policyStatus.textContent = `Inspecting ${data.provider} models. No inference request is started.`;
     if(data.provider==='opencode'){
       const card=agentCards.querySelector('[data-provider="opencode"]');if(card)showProviderMetadataObservation(card,null);
@@ -1108,6 +1116,7 @@ window.addEventListener('message', ({ data }) => {
     metadata.models=(Array.isArray(metadata.models)?metadata.models:[]).slice(0,512).map(model=>({...model,reasoning:metadata.selectedModel&&model.model!==metadata.selectedModel?(previous?.models?.find(old=>old.id===model.id)?.reasoning||model.reasoning):model.reasoning}));
     if(metadata.defaultModel===null&&metadata.selectedModel)metadata.defaultModel=previous?.defaultModel||null;
     providerCatalogues.set(data.provider,metadata);
+    showProviderModelStatus(data.provider,data.diagnostic?`${data.diagnostic.stage}: ${data.diagnostic.message} ${data.diagnostic.action}`:`Models refreshed: ${metadata.models.length} catalogue entries. Choose Model in Chat; account access remains unverified.`,false);
     const card=agentCards.querySelector(`[data-provider="${data.provider}"]`);if(card){const info=card.querySelector('.provider-default-model');if(info)info.textContent=card.dataset.executionBlocked==='true'?`Discovered default: ${metadata.defaultModel || 'unknown'} · metadata only; execution blocked`:`Default model: ${metadata.defaultModel || 'unknown'}`;if(data.provider==='opencode')showProviderMetadataObservation(card,metadata);}
     const previousEffort=taskReasoning.value;
     const selected=taskModel.value;updateTaskModelControls();if([...taskModel.options].some(option=>option.value===selected))taskModel.value=selected;updateTaskReasoning();

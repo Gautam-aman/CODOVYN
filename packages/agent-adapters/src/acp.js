@@ -1,3 +1,4 @@
+import diagnostics from './opencode-diagnostics.cjs';
 import { spawn } from 'node:child_process';
 import { boundedJsonLines } from './jsonl.js';
 import { manageAgentProcess } from './process.js';
@@ -46,7 +47,7 @@ export class AcpConnection {
         this.fail(new AgentFailure('fatal','ACP disconnected; action outcomes may require reconciliation'));
       } catch (error) { this.fail(error); }
     })();
-    this.child.once('error', () => this.fail(new AgentFailure('fatal','ACP executable could not start')));
+    this.child.once('error', () => this.fail(diagnostics.mark(new AgentFailure('fatal','ACP executable could not start'),'SANDBOX_STARTUP_FAILED')));
     this.signal=signal;this.abort=()=>this.fail(new AgentFailure('cancelled','ACP inspection cancelled'));
     signal?.addEventListener('abort',this.abort,{once:true});if(signal?.aborted)this.abort();
   }

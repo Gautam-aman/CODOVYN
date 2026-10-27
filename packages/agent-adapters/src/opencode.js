@@ -1,3 +1,4 @@
+import diagnostics from './opencode-diagnostics.cjs';
 import {openCodeAccountContext} from './opencode-campaign.js';
 import {validateCampaignSpec,campaignDigest} from '../../agent-core/src/campaign-consent.js';
 import { spawn } from 'node:child_process';
@@ -95,7 +96,7 @@ async function begin(connection,cwd,model,variant,write,fileBridge) {
   let session=await connection.request('session/new',{cwd,mcpServers:fileBridge&&!fileBridge.configured?[fileBridge.descriptor()]:[]});
   if(typeof session?.sessionId!=='string'||!/^[a-zA-Z0-9_-]{1,128}$/.test(session.sessionId))throw new AgentFailure('fatal','Invalid ACP session identity');
   if(model){
-    if(!optionValues(configOption(session,'model')).some(entry=>entry.value===model))throw new AgentFailure('fatal','Selected OpenCode model is not advertised for this session');
+    if(!optionValues(configOption(session,'model')).some(entry=>entry.value===model))throw diagnostics.mark(new AgentFailure('fatal','Selected OpenCode model is not advertised for this session'),'MODEL_NOT_ADVERTISED');
     const updated=await connection.request('session/set_config_option',{sessionId:session.sessionId,configId:'model',value:model});
     if(configOption(updated,'model')?.currentValue!==model)throw new AgentFailure('fatal','OpenCode did not confirm the selected model');
     session={...session,...updated};
@@ -124,8 +125,8 @@ function scopePath(cwd,path,write) {
 }
 function statExists(path){try{lstatSync(path);return true;}catch{return false;}}
 export async function discoverOpenCode({cwd,stateDirectory,configured,model,modelId,signal}={}) {
-  const installation=await inspectOpenCodeInstallation(configured);
-  if(!installation.compatible)throw new AgentFailure('fatal',`OpenCode ${installation.version} is unverified; supported version is ${openCodeVersion}`);
+  const installation=await diagnostics.at('EXECUTABLE_INVALID',()=>inspectOpenCodeInstallation(configured));
+  if(!installation.compatible)throw diagnostics.mark(new AgentFailure('fatal',`OpenCode ${installation.version} is unverified; supported version is ${openCodeVersion}`),'EXECUTABLE_INVALID');
   if(!openCodeProjectReadiness(cwd).executionSupported){
     const {inspectBrokeredOpenCode}=await import('./opencode-metadata.js');
     return inspectBrokeredOpenCode({cwd,stateDirectory,installation,model,modelId,signal});
@@ -135,18 +136,18 @@ export async function discoverOpenCode({cwd,stateDirectory,configured,model,mode
 /** Host metadata path only; never sends a prompt and never returns a session. */
 export async function inspectOpenCodeMetadataBoundary({installation,boundary,model,modelId,signal}) {
   const started=performance.now(),ownedGroups=[];
-  const stdout=await ownedOutput(boundary.command,[...boundary.prefixArgs,'models','--standalone'],{...boundary,signal,ownedGroups,privateServer:installation.command});
-  const models=parseOpenCodeModels(stdout);
-  if(modelId){const selected=models.find(entry=>entry.id===modelId);if(!selected)throw new AgentFailure('fatal','Selected OpenCode model is no longer in the discovered catalogue');model=selected.model;}
+  const stdout=await diagnostics.at('MODEL_DISCOVERY_FAILED',()=>ownedOutput(boundary.command,[...boundary.prefixArgs,'models','--standalone'],{...boundary,signal,ownedGroups,privateServer:installation.command}));
+  let models;try{models=parseOpenCodeModels(stdout);}catch(error){throw diagnostics.mark(error,'MODEL_DISCOVERY_FAILED');}
+  if(modelId){const selected=models.find(entry=>entry.id===modelId);if(!selected)throw diagnostics.mark(new AgentFailure('fatal','Selected OpenCode model is no longer in the discovered catalogue'),'MODEL_NOT_ADVERTISED');model=selected.model;}
   const connection=new AcpConnection({...boundary,args:[...boundary.prefixArgs,'acp'],signal,execution:{starting(){},spawned(info){if(info.pid)ownedGroups.push(info.pid);},stopped(){}}});
   let server;try{
     server=await captureOpenCodeServer(connection.child,installation.command,signal);ownedGroups.push(server.group);
-    const session=await begin(connection,boundary.cwd,model,undefined,false);
+    const session=await diagnostics.at('ACP_INITIALIZATION_FAILED',()=>begin(connection,boundary.cwd,model,undefined,false));
     const selected=configOption(session,'model')?.currentValue;
     const entry=models.find(entry=>entry.model===selected);
     if(entry)entry.reasoning=optionValues(configOption(session,'effort')).map(option=>option.value).filter(value=>value!=='default'&&/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/.test(value));
     return {provider:'opencode',...installation,models,defaultModel:!model?selected:null,selectedModel:selected,metadataOwnedGroups:ownedGroups,metadataSessionIdHash:createHash('sha256').update(session.sessionId).digest('hex'),elapsedMs:performance.now()-started,authentication:'unknown',availability:'unknown',isolatedAuthentication:true};
-  }finally{try{await connection.dispose();}finally{if(server)await server.verifyStopped();}}
+  }finally{try{await diagnostics.at('CLEANUP_UNVERIFIED',()=>connection.dispose());}finally{if(server)await diagnostics.at('CLEANUP_UNVERIFIED',()=>server.verifyStopped());}}
 }
 export function createOpenCodeAdapter({cwd,stateDirectory,command,write=false,model,reasoning}={},runtime={inspect:inspectOpenCodeInstallation,boundary:openCodeBoundary}) {
   if(typeof write !== 'boolean')throw new TypeError('OpenCode write scope must be explicit');
@@ -197,9 +198,9 @@ export function createOpenCodeAdapter({cwd,stateDirectory,command,write=false,mo
       signal?.addEventListener('abort',abort,{once:true});if(signal?.aborted)abort();
       try{
         if(secured){execution.authority.bindProcess(connection.child,{executable:installation.command,sha256:installation.binarySha256});privateServer=runtime.taskBound?null:await captureOpenCodeServer(connection.child,installation.command,signal);if(privateServer)execution.authority.ownPrivateProcess(privateServer.pid);await taskRuntime.attach(privateServer?.pid||connection.child.pid);}
-        const session=await begin(connection,boundary.cwd,model,reasoning,write,taskRuntime?.bridge);sessionId=session.sessionId;
+        const session=await diagnostics.at('ACP_INITIALIZATION_FAILED',()=>begin(connection,boundary.cwd,model,reasoning,write,taskRuntime?.bridge));sessionId=session.sessionId;
         enqueue({type:'session',sessionId,model:configOption(session,'model')?.currentValue,reasoning:configOption(session,'effort')?.currentValue});
-        if(secured&&!runtime.taskBound){try{await taskRuntime.bridge.waitForCatalogue();}catch(error){error.cause={observations:taskRuntime.bridge.observations};throw error;}const observations=taskRuntime.bridge.observations;if(!observations.some(o=>o.route==='/mcp'&&o.method==='initialize')||!observations.some(o=>o.route==='/mcp'&&o.method==='tools/list'))throw new AgentFailure('fatal','Task MCP catalogue was not initialized');yield {type:'execution-boundary',provider:'opencode',mode:write?'agent':execution.authority.intent,metadataOnly:true,acpMethods:[...connection.methods],repositoryIdentity:taskRuntime.repository.identity.id,mcpMethods:observations.map(o=>({route:o.route,method:o.method}))};if(!campaign)throw new AgentFailure('fatal','Live inference is disabled: secured ACP task initialization completed without session/prompt');}
+        if(secured&&!runtime.taskBound){try{await taskRuntime.bridge.waitForCatalogue();}catch(error){error.cause={observations:taskRuntime.bridge.observations};throw diagnostics.mark(error,'MCP_INITIALIZATION_FAILED');}const observations=taskRuntime.bridge.observations;if(!observations.some(o=>o.route==='/mcp'&&o.method==='initialize')||!observations.some(o=>o.route==='/mcp'&&o.method==='tools/list'))throw new AgentFailure('fatal','Task MCP catalogue was not initialized');yield {type:'execution-boundary',provider:'opencode',mode:write?'agent':execution.authority.intent,metadataOnly:true,acpMethods:[...connection.methods],repositoryIdentity:taskRuntime.repository.identity.id,mcpMethods:observations.map(o=>({route:o.route,method:o.method}))};if(!campaign)throw new AgentFailure('fatal','Live inference is disabled: secured ACP task initialization completed without session/prompt');}
         if(campaign){
           const spec=validateCampaignSpec(campaign.selection);
           const submit=async({signal:requestSignal,onAcknowledged})=>{let acknowledged=false;campaignAck=()=>acknowledged||(acknowledged=onAcknowledged());const cancel=()=>{try{connection.notify('session/cancel',{sessionId});}catch{}connection.fail(new AgentFailure('cancelled','Approved Ask cancelled; do not retry'));};requestSignal.addEventListener('abort',cancel,{once:true});
@@ -223,6 +224,6 @@ export function createOpenCodeAdapter({cwd,stateDirectory,command,write=false,mo
         if(violation||actions.size)throw new AgentFailure('fatal','OpenCode permission refusal or unresolved tool action requires review');
         if(result?.stopReason!=='end_turn')throw new AgentFailure('fatal','OpenCode stopped without a verified completed turn');
         if(!secured)await connection.dispose();yield {type:'completed'};
-      }finally{signal?.removeEventListener('abort',abort);if(!secured)await connection.dispose();else{let failure;for(const close of [()=>taskRuntime.close(),()=>connection.dispose(),async()=>{if(privateServer){await privateServer.verifyStopped();execution.authority.privateProcessStopped(privateServer.pid);}}])try{await close();}catch(error){failure ||= error;}if(failure)throw failure;execution.stopped();}}
+      }finally{signal?.removeEventListener('abort',abort);if(!secured)await connection.dispose();else{let failure;for(const close of [()=>taskRuntime.close(),()=>connection.dispose(),async()=>{if(privateServer){await privateServer.verifyStopped();execution.authority.privateProcessStopped(privateServer.pid);}}])try{await close();}catch(error){failure ||= error;}if(failure)throw diagnostics.mark(failure,'CLEANUP_UNVERIFIED');execution.stopped();}}
     }};
 }

@@ -275,6 +275,14 @@ try {
   // mark OpenCode execution blocked. The following selection assertions use
   // a fixed provider fixture, while native Chat independently checks that block.
   await evaluate("window.dispatchEvent(new MessageEvent('message', { data: { type: 'agent-diagnostics', agents: [{ id: 'codex', installation: 'detected', authentication: 'unknown', availability: 'unknown' }, { id: 'opencode', installation: 'detected', authentication: 'unknown', availability: 'unknown', executionSupported: true, diagnostic: 'DOM fixture only; no provider inference or execution' }] } }))");
+  await evaluate("window.dispatchEvent(new MessageEvent('message',{data:{type:'provider-models-loading',provider:'opencode'}}))");
+  assert.deepEqual(await evaluate("({disabled:document.querySelector('[aria-label=\"Models opencode\"]').disabled,live:document.querySelector('[data-provider=opencode] .provider-model-status').getAttribute('aria-live')})"),{disabled:true,live:'polite'},'Model discovery visibly disables its button and announces progress in the provider card.');
+  await evaluate("window.dispatchEvent(new MessageEvent('message',{data:{type:'provider-models',provider:'opencode',metadata:{models:[]}}}))");
+  assert.match(await evaluate("document.querySelector('[data-provider=opencode] .provider-model-status').textContent"),/Models refreshed: 0/);
+  assert.equal(await evaluate("document.querySelector('[aria-label=\"Models opencode\"]').disabled"),false,'Completed discovery restores the Models control.');
+  await evaluate("window.dispatchEvent(new MessageEvent('message',{data:{type:'provider-diagnostic',provider:'opencode',stage:'authentication-context',message:'UI fixture: stored metadata unavailable.',action:'Inspect OpenCode Setup; no inference requested.'}}))");
+  assert.match(await evaluate("document.querySelector('[data-provider=opencode] .provider-model-status').textContent"),/authentication-context.*OpenCode Setup/);
+  if(process.env.CODOVYN_CAPTURE_DIR){await selectTab('settings');await evaluate("document.querySelector('.agent-settings').open=true;document.querySelector('[data-provider=opencode] .provider-model-status').scrollIntoView({block:'center',behavior:'instant'})");await writeFile(join(resolve(process.env.CODOVYN_CAPTURE_DIR),'opencode-model-status.png'),Buffer.from((await captureApplication()).data,'base64'));await selectTab('chat');}
   await evaluate("window.dispatchEvent(new MessageEvent('message', { data: { type: 'running' } }))");
   const runningBeforeSwitch = await evaluate("({ status: document.querySelector('#status').textContent, cancelDisabled: document.querySelector('#cancel').disabled })");
   await selectTab('history');

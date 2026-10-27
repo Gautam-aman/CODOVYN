@@ -1,3 +1,4 @@
+const openCodeDiagnostics=require('../../packages/agent-adapters/src/opencode-diagnostics.cjs');
 const { spawn } = require('node:child_process');
 const { randomBytes } = require('node:crypto');
 const { lstatSync, statSync } = require('node:fs');
@@ -82,7 +83,7 @@ function runCli(command, args, options) {
     let buffer = '';
     let totalBytes = 0;
     let result = null;
-    let publicError = null;
+    let publicError = null;let diagnosticCode=null;
     let failed = false;
     const decoder = new StringDecoder('utf8');
     const consume = (line) => {
@@ -90,7 +91,7 @@ function runCli(command, args, options) {
       const message = JSON.parse(line);
       if (message.type === 'event') options.onEvent(message.event, message.taskId);
       if (message.type === 'result') result = message;
-      if (message.type === 'error' && typeof message.message === 'string') publicError = message.message.slice(0, 500);
+      if (message.type === 'error' && typeof message.message === 'string') {publicError = message.message.slice(0, 500);if(openCodeDiagnostics.known(message.code))diagnosticCode=message.code;}
     };
     child.stdout.on('data', (chunk) => {
       if (failed) return;
@@ -112,7 +113,7 @@ function runCli(command, args, options) {
       try { consume((buffer + decoder.end()).trim()); }
       catch { return reject(new Error('Task emitted invalid progress data')); }
       if (result) resolve(result);
-      else reject(new Error(publicError || `Task process exited without a result (status ${code})`));
+      else reject(Object.assign(new Error(publicError || `Task process exited without a result (status ${code})`),{openCodeDiagnosticCode:diagnosticCode}));
     });
   });
 }
@@ -194,10 +195,10 @@ function createExtension(api, runner = runCli) {
         const providerPending = new Map();
         const inspectProvider = async (provider, modelId, refresh = false) => {
           const folder = folderForTask();
-          if (!folder || !api.workspace.isTrusted || active || starting || draftBusy || !['codex','opencode'].includes(provider)) return;
+          if(!['codex','opencode'].includes(provider))return;if (!folder || !api.workspace.isTrusted || active || starting || draftBusy) {const diagnostic=openCodeDiagnostics.diagnostic(!folder||!api.workspace.isTrusted?'WORKSPACE_REQUIRED':'PROVIDER_BUSY');panel.webview.postMessage({type:'provider-diagnostic',provider,...diagnostic});return;}
           if (modelId !== undefined && (typeof modelId !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,127}$/.test(modelId))) return;
           const key = JSON.stringify([folder.uri.fsPath,provider,modelId,providerEnvironment(api).CODOVYN_OPENCODE_COMMAND]);
-          if (providerPending.has(key) || providerPending.size >= 2) return;
+          if (providerPending.has(key) || providerPending.size >= 2) {panel.webview.postMessage({type:'provider-diagnostic',provider,...openCodeDiagnostics.diagnostic('PROVIDER_BUSY')});return;}
           const cached = providerCache.get(key);
           if (provider!=='opencode' && !refresh && cached && Date.now()-cached.at < 300000) { panel.webview.postMessage({type:'provider-models',provider,metadata:cached.metadata}); return; }
           providerPending.set(key,true);
@@ -209,7 +210,7 @@ function createExtension(api, runner = runCli) {
             if (disposed || folderForTask()!==folder) return;
             providerCache.set(key,{at:Date.now(),metadata:result.metadata}); if(providerCache.size>64)providerCache.delete(providerCache.keys().next().value);
             panel.webview.postMessage({type:'provider-models',provider,metadata:result.metadata});
-          } catch { if (!disposed && folderForTask()===folder) panel.webview.postMessage({type:'provider-models',provider,metadata:{models:[],defaultModel:null},text:'Model discovery failed. Check the installed CLI/version and provider setup. No inference was started.'}); }
+          } catch(error) { if (!disposed && folderForTask()===folder) {const diagnostic=openCodeDiagnostics.diagnostic(error.openCodeDiagnosticCode,'MODEL_DISCOVERY_FAILED');panel.webview.postMessage({type:'provider-models',provider,metadata:{models:[],defaultModel:null},diagnostic,text:`${diagnostic.message} ${diagnostic.action}`});} }
           finally { providerPending.delete(key); }
         };
         const sendProjects = () => panel.webview.postMessage({ type: 'projects', selectedRoot,
