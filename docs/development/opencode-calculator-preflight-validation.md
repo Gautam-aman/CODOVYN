@@ -1,5 +1,7 @@
 # Persistent Calculator recovery and OpenCode preflight
 
+**Follow-up:** the owner-approved context migration and successful cancelled native review are documented in [the migration qualification](opencode-context-migration-validation.md). The association gate below is the historical checkpoint, not the current status.
+
 Starting remote: `900948064ffe74f1aa865c0178719a3d5564453e`. This work authorizes no inference, Agent editing or credential migration by implication. No existing spending approval is reused.
 
 ## Calculator — recovered, not regenerated

@@ -1,0 +1,483 @@
+{
+  "startingSha": "cf9978ae1f128383ebdd4668271656a3380ebf1f",
+  "migrationImplementationSha": "67a5b818d25037c27cebf70ee1e298d6a8bc894c",
+  "cancellationFixSha": "db4f25060373ebe2e40b7ce127dbacedac62c059",
+  "inferenceSubmissions": 0,
+  "migration": {
+    "authorizedScope": "Owner-approved isolated Calculator context migration only",
+    "inferenceSubmissions": 0,
+    "migration": {
+      "verified": true,
+      "sourcePreserved": true,
+      "destinationConfigurationAndCachePreserved": true,
+      "opaqueCopyVerified": true,
+      "newAccountBinding": true,
+      "inferenceSubmissions": 0
+    },
+    "credentialMetadataPreserved": true,
+    "sourceStoredIntegrations": 2,
+    "destinationStoredIntegrations": 2,
+    "freshBinding": true,
+    "accountingBefore": {
+      "tasks": 0,
+      "execution_leases": 0,
+      "campaign_consents": 0,
+      "campaign_requests": 0
+    },
+    "accountingAfter": {
+      "tasks": 0,
+      "execution_leases": 0,
+      "campaign_consents": 0,
+      "campaign_requests": 0
+    },
+    "success": true
+  },
+  "credentialScope": {
+    "originalStoredIntegrations": 2,
+    "activeRestoredStoredIntegrations": 2,
+    "priorDestinationCachePreservedPrivately": true,
+    "noGlobalImport": true,
+    "noCredentialPayloadInArtifacts": true
+  },
+  "fixture": {
+    "baseline": "ac00214528f004350bbd7b53349861726e270323",
+    "sourceBytes": 229,
+    "fileHashes": {
+      ".gitignore": "b53ee26e6ff1da219b0563333a76d2c9ec19eec713d6ee54e11a1edacb0e9f3d",
+      "README.md": "9f8d7c85cd6756f60eb1fac483e2358eff2be5b59f31d81b05d82c9cee177155",
+      "pom.xml": "038f8987ce54d1460794e05f81a4ac79401f5c7b8fed5928c5e849a7596ef6ae",
+      "src/main/java/dev/codovyn/Calculator.java": "dee76c8f9584ba9286e2bd67948499030760f3978bb6a3e4074cbcf731088c26",
+      "src/main/java/dev/codovyn/TaskService.java": "4dc81d3a1e69235b0455bb6f5835ed4bf2056e1d65edad7abc80c2fdc930eaf8",
+      "src/test/java/dev/codovyn/CalculatorTest.java": "2c6ae1209b342ca6bb414b2744fb89b8b332035be8360e7a09b2fa53aeec22fc"
+    },
+    "cleanAfterQualification": true,
+    "promptSha256": "dfe2704168df0eb12655b1a5401b9b41aff59331519b03e4b0189c307f33cc96"
+  },
+  "java17": {
+    "exitCode": 0,
+    "javaRelease": 17,
+    "offline": true,
+    "tests": [
+      "Tests run: 3, Failures: 0, Errors: 0, Skipped: 0",
+      "Tests run: 3, Failures: 0, Errors: 0, Skipped: 0"
+    ],
+    "passed": true
+  },
+  "modelMetadata": {
+    "modelCount": 39,
+    "cleanupVerified": true,
+    "metadataInitialization": "verified",
+    "credentialMetadataUnchanged": true,
+    "inferenceSubmissions": 0,
+    "stages": [
+      {
+        "stage": "repository-reader",
+        "state": "started",
+        "elapsedMs": 0
+      },
+      {
+        "stage": "repository-reader",
+        "state": "completed",
+        "elapsedMs": 157
+      },
+      {
+        "stage": "repository-identity",
+        "state": "started",
+        "elapsedMs": 0
+      },
+      {
+        "stage": "repository-identity",
+        "state": "completed",
+        "elapsedMs": 55
+      },
+      {
+        "stage": "repository-broker",
+        "state": "started",
+        "elapsedMs": 0
+      },
+      {
+        "stage": "repository-broker",
+        "state": "completed",
+        "elapsedMs": 130
+      },
+      {
+        "stage": "sandbox-admission",
+        "state": "started",
+        "elapsedMs": 0
+      },
+      {
+        "stage": "sandbox-admission",
+        "state": "completed",
+        "elapsedMs": 1
+      },
+      {
+        "stage": "model-catalogue",
+        "state": "started",
+        "elapsedMs": 0
+      },
+      {
+        "stage": "model-catalogue",
+        "state": "completed",
+        "elapsedMs": 3072
+      },
+      {
+        "stage": "acp-ownership",
+        "state": "started",
+        "elapsedMs": 0
+      },
+      {
+        "stage": "acp-ownership",
+        "state": "completed",
+        "elapsedMs": 223
+      },
+      {
+        "stage": "acp-initialize",
+        "state": "started",
+        "elapsedMs": 0
+      },
+      {
+        "stage": "acp-initialize",
+        "state": "completed",
+        "elapsedMs": 165
+      },
+      {
+        "stage": "acp-session",
+        "state": "started",
+        "elapsedMs": 0
+      },
+      {
+        "stage": "acp-session",
+        "state": "completed",
+        "elapsedMs": 1790
+      },
+      {
+        "stage": "session-configuration",
+        "state": "started",
+        "elapsedMs": 0
+      },
+      {
+        "stage": "session-configuration",
+        "state": "completed",
+        "elapsedMs": 24
+      },
+      {
+        "stage": "provider-cleanup",
+        "state": "started",
+        "elapsedMs": 0
+      },
+      {
+        "stage": "provider-cleanup",
+        "state": "completed",
+        "elapsedMs": 103
+      },
+      {
+        "stage": "broker-cleanup",
+        "state": "started",
+        "elapsedMs": 0
+      },
+      {
+        "stage": "broker-cleanup",
+        "state": "completed",
+        "elapsedMs": 3
+      }
+    ]
+  },
+  "explicitModelSelection": {
+    "model": "opencode/gpt-5.4-nano",
+    "modelAdvertised": true,
+    "modelConfirmed": true,
+    "reasoning": "Provider default",
+    "cleanupVerified": true,
+    "metadataInitialization": "verified",
+    "stages": [
+      {
+        "stage": "repository-reader",
+        "state": "started",
+        "elapsedMs": 0
+      },
+      {
+        "stage": "repository-reader",
+        "state": "completed",
+        "elapsedMs": 781
+      },
+      {
+        "stage": "repository-identity",
+        "state": "started",
+        "elapsedMs": 0
+      },
+      {
+        "stage": "repository-identity",
+        "state": "completed",
+        "elapsedMs": 403
+      },
+      {
+        "stage": "repository-broker",
+        "state": "started",
+        "elapsedMs": 0
+      },
+      {
+        "stage": "repository-broker",
+        "state": "completed",
+        "elapsedMs": 144
+      },
+      {
+        "stage": "sandbox-admission",
+        "state": "started",
+        "elapsedMs": 0
+      },
+      {
+        "stage": "sandbox-admission",
+        "state": "completed",
+        "elapsedMs": 1
+      },
+      {
+        "stage": "model-catalogue",
+        "state": "started",
+        "elapsedMs": 0
+      },
+      {
+        "stage": "model-catalogue",
+        "state": "completed",
+        "elapsedMs": 2451
+      },
+      {
+        "stage": "acp-ownership",
+        "state": "started",
+        "elapsedMs": 0
+      },
+      {
+        "stage": "acp-ownership",
+        "state": "completed",
+        "elapsedMs": 155
+      },
+      {
+        "stage": "acp-initialize",
+        "state": "started",
+        "elapsedMs": 0
+      },
+      {
+        "stage": "acp-initialize",
+        "state": "completed",
+        "elapsedMs": 61
+      },
+      {
+        "stage": "acp-session",
+        "state": "started",
+        "elapsedMs": 0
+      },
+      {
+        "stage": "acp-session",
+        "state": "completed",
+        "elapsedMs": 1635
+      },
+      {
+        "stage": "session-configuration",
+        "state": "started",
+        "elapsedMs": 0
+      },
+      {
+        "stage": "session-configuration",
+        "state": "completed",
+        "elapsedMs": 8
+      },
+      {
+        "stage": "provider-cleanup",
+        "state": "started",
+        "elapsedMs": 0
+      },
+      {
+        "stage": "provider-cleanup",
+        "state": "completed",
+        "elapsedMs": 48
+      },
+      {
+        "stage": "broker-cleanup",
+        "state": "started",
+        "elapsedMs": 0
+      },
+      {
+        "stage": "broker-cleanup",
+        "state": "completed",
+        "elapsedMs": 1
+      }
+    ],
+    "inferenceSubmissions": 0
+  },
+  "nativeModels": {
+    "realNativeSettings": true,
+    "modelsClicked": true,
+    "loadingObserved": true,
+    "models": 39,
+    "failed": false,
+    "readinessHonest": true,
+    "inferenceSubmissions": 0,
+    "selectedModel": null,
+    "accountContext": "Migrated owner-approved isolated context; account entitlement unverified"
+  },
+  "nativeReviewAndCancel": {
+    "nativeWorkbenchDialogObserved": true,
+    "model": "opencode/gpt-5.4-nano",
+    "modelMatches": true,
+    "workspaceMatches": true,
+    "providerMatches": true,
+    "reasoningDefault": true,
+    "oneSubmission": true,
+    "deadline120s": true,
+    "zeroToolsAndWrites": true,
+    "quotaWarning": true,
+    "unknownCostsAndInternalCalls": true,
+    "noSubscriptionAssumption": true,
+    "qualificationGuardVisible": true,
+    "workerReviewOnlyVerified": true,
+    "dialogPromptMatches": true,
+    "promptSha256": "dfe2704168df0eb12655b1a5401b9b41aff59331519b03e4b0189c307f33cc96",
+    "inferenceSubmissions": 0,
+    "nativeCancelClicked": true
+  },
+  "nativeCancellationAccounting": {
+    "workerPidsObserved": 1,
+    "workerAbsent": true,
+    "journalHasNoOpenWorker": true,
+    "normalCancellation": true,
+    "counts": {
+      "campaign_consents": 0,
+      "campaign_requests": 0,
+      "execution_leases": 0
+    },
+    "statuses": [
+      {
+        "status": "cancelled",
+        "n": 2
+      }
+    ],
+    "inferenceSubmissions": 0
+  },
+  "ownerJournal": {
+    "counts": {
+      "tasks": 2,
+      "campaign_consents": 0,
+      "campaign_requests": 0,
+      "execution_leases": 0
+    },
+    "tasks": [
+      {
+        "status": "cancelled",
+        "promptSha256": "dfe2704168df0eb12655b1a5401b9b41aff59331519b03e4b0189c307f33cc96",
+        "workspaceMatches": true,
+        "configuration": "{\"provider\":\"opencode\",\"permission\":\"read\",\"intent\":\"ask\",\"model\":\"opencode/gpt-5.4-nano\"}"
+      },
+      {
+        "status": "cancelled",
+        "promptSha256": "dfe2704168df0eb12655b1a5401b9b41aff59331519b03e4b0189c307f33cc96",
+        "workspaceMatches": true,
+        "configuration": "{\"provider\":\"opencode\",\"permission\":\"read\",\"intent\":\"ask\",\"model\":\"opencode/gpt-5.4-nano\"}"
+      }
+    ]
+  },
+  "earlierUnsubmittedPreparation": {
+    "nativeStyleDialogNotObservedByAutomation": true,
+    "cancellationDefect": "Partial TaskStore.update omitted mandatory active-agent and step fields",
+    "reconciliation": {
+      "unsubmittedPreparationsReconciled": 1,
+      "inferenceSubmissions": 0,
+      "replayedActions": 0
+    },
+    "exitTrigger": "Unproven; not classified as a crash"
+  },
+  "dialogPreferenceRestoration": {
+    "before": "custom",
+    "restored": "native",
+    "onlyDialogPreferenceChanged": true,
+    "inferenceSubmissions": 0
+  },
+  "normalOwnerLaunch": {
+    "applications": [
+      {
+        "appRunning": true,
+        "correctProjectArgument": true,
+        "normalLaunch": true
+      }
+    ],
+    "qualificationDebugPortClosed": true,
+    "sourceSha": "db4f25060373ebe2e40b7ce127dbacedac62c059",
+    "sourceDirty": false,
+    "inferenceSubmissions": 0
+  },
+  "fullRegression": {
+    "passed": 428,
+    "failed": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "durationMs": 123760.876792
+  },
+  "copiedApplicationChecks": [
+    {
+      "name": "build",
+      "exitCode": 0,
+      "seconds": 15.23
+    },
+    {
+      "name": "package",
+      "exitCode": 0,
+      "seconds": 28.77
+    },
+    {
+      "name": "signature",
+      "exitCode": 0,
+      "seconds": 1.66
+    },
+    {
+      "name": "extension-host",
+      "exitCode": 0,
+      "seconds": 9.36
+    },
+    {
+      "name": "host",
+      "exitCode": 0,
+      "seconds": 5.45
+    },
+    {
+      "name": "chat",
+      "exitCode": 0,
+      "seconds": 13.83
+    },
+    {
+      "name": "routing",
+      "exitCode": 0,
+      "seconds": 25.04
+    },
+    {
+      "name": "restoration",
+      "exitCode": 0,
+      "seconds": 6.08
+    }
+  ],
+  "installer": {
+    "sourceSha": "db4f25060373ebe2e40b7ce127dbacedac62c059",
+    "sourceDirty": false,
+    "version": "0.1.0-alpha",
+    "sha256": "33d6627a330b93178f0fa57e9736f5117b23be36f17f5bfaffe06bd55fe6e675",
+    "signing": "Ad-hoc development, unnotarized; not published"
+  },
+  "futureProposal": {
+    "provider": "OpenCode 2.1.2",
+    "model": "opencode/gpt-5.4-nano",
+    "reasoning": "Provider default",
+    "account": "Migrated existing owner-configured isolated OpenCode context; identity, entitlement and balance not exposed or proven by metadata",
+    "maxOuterSubmissions": 1,
+    "localDeadlineMs": 120000,
+    "modelTools": 0,
+    "mcpToolCalls": 0,
+    "projectWrites": 0,
+    "automaticHostRetries": 0,
+    "fallback": false,
+    "authorization": "NOT GRANTED",
+    "pricingReference": "https://opencode.ai/v2/docs/console/models/#pricing",
+    "pricingObservedDate": "2026-10-27",
+    "usdPerMillionTokens": {
+      "input": 0.2,
+      "output": 1.25
+    },
+    "totalCost": "Unknown; rates do not cap total bill or auxiliary/internal model calls"
+  }
+}

@@ -1,0 +1,9 @@
+Explain the division-by-zero behavior in the following approved Java excerpt and recommend the smallest safe correction. Do not call tools or modify files.
+
+File: src/main/java/dev/codovyn/Calculator.java
+package dev.codovyn;
+public final class Calculator {
+    public int add(int a, int b) { return a + b; }
+    public int subtract(int a, int b) { return a - b; }
+    public int divide(int a, int b) { return b == 0 ? 0 : a / b; }
+}
