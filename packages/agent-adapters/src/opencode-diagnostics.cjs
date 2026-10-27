@@ -28,4 +28,12 @@ const stages=new WeakMap(),known=code=>typeof code==='string'&&Object.hasOwn(ent
 function mark(error,code){if(!error||typeof error!=='object')error=new Error('OpenCode operation failed');if(known(code)&&!stages.has(error))stages.set(error,code);return error;}
 function diagnostic(error,fallback='PREPARATION_FAILED'){const code=known(error)?error:stages.get(error)||fallback;const key=known(code)?code:'PREPARATION_FAILED';const [stage,message,action]=entries[key];return Object.freeze({code:key,stage,message,action});}
 async function at(code,operation){try{return await operation();}catch(error){throw mark(error,code);}}
-module.exports={mark,diagnostic,at,known};
+const inspectionStages=new Set(['repository-reader','repository-identity','repository-broker','sandbox-admission','model-catalogue','acp-ownership','acp-initialize','acp-session','session-configuration','provider-cleanup','broker-cleanup']);
+// Host-only bounded metadata observation. No provider text, IDs, paths or
+// exception fields are forwarded; observer failures cannot skip cleanup.
+function inspection(observer){let emitted=0;return async(stage,operation)=>{
+ if(!inspectionStages.has(stage))throw new TypeError('Unknown inspection stage');
+ const start=performance.now(),emit=state=>{if(typeof observer==='function'&&emitted++<64)try{observer(Object.freeze({stage,state,elapsedMs:Math.round(performance.now()-start)}));}catch{}};
+ emit('started');try{const value=await operation();emit('completed');return value;}catch(error){emit('failed');throw error;}
+};}
+module.exports={mark,diagnostic,at,known,inspection};

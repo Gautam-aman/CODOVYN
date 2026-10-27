@@ -89,12 +89,14 @@ function optionValues(option) {
   return option.options.flatMap(group=>Array.isArray(group.options)?group.options:[group]).filter(entry=>typeof entry.value==='string'&&entry.value.length<=256);
 }
 function configOption(session,id) { return Array.isArray(session?.configOptions)?session.configOptions.find(option=>option.id===id):null; }
-async function begin(connection,cwd,model,variant,write,fileBridge) {
+async function begin(connection,cwd,model,variant,write,fileBridge,observe) {
+  const inspect=diagnostics.inspection(observe);
   if(fileBridge&&(!isTaskMcpBridge(fileBridge)||fileBridge.workspace!==cwd))throw new AgentFailure('fatal','Only a matching host-issued task file bridge may configure MCP');
-  const initialized=await connection.request('initialize',{protocolVersion:1,clientInfo:{name:'codovyn',version:'0.1.0'},clientCapabilities:{fs:{readTextFile:false,writeTextFile:false},terminal:false}});
-  if(initialized?.protocolVersion!==1)throw new AgentFailure('fatal','Unsupported ACP protocol version');
-  let session=await connection.request('session/new',{cwd,mcpServers:fileBridge&&!fileBridge.configured?[fileBridge.descriptor()]:[]});
-  if(typeof session?.sessionId!=='string'||!/^[a-zA-Z0-9_-]{1,128}$/.test(session.sessionId))throw new AgentFailure('fatal','Invalid ACP session identity');
+  await inspect('acp-initialize',async()=>{const initialized=await connection.request('initialize',{protocolVersion:1,clientInfo:{name:'codovyn',version:'0.1.0'},clientCapabilities:{fs:{readTextFile:false,writeTextFile:false},terminal:false}});
+  if(initialized?.protocolVersion!==1)throw new AgentFailure('fatal','Unsupported ACP protocol version');});
+  let session=await inspect('acp-session',async()=>{const created=await connection.request('session/new',{cwd,mcpServers:fileBridge&&!fileBridge.configured?[fileBridge.descriptor()]:[]});
+  if(typeof created?.sessionId!=='string'||!/^[a-zA-Z0-9_-]{1,128}$/.test(created.sessionId))throw new AgentFailure('fatal','Invalid ACP session identity');return created;});
+  return inspect('session-configuration',async()=>{
   if(model){
     if(!optionValues(configOption(session,'model')).some(entry=>entry.value===model))throw diagnostics.mark(new AgentFailure('fatal','Selected OpenCode model is not advertised for this session'),'MODEL_NOT_ADVERTISED');
     const updated=await connection.request('session/set_config_option',{sessionId:session.sessionId,configId:'model',value:model});
@@ -113,7 +115,7 @@ async function begin(connection,cwd,model,variant,write,fileBridge) {
   if(configOption(selectedMode,'mode')?.currentValue!==mode)throw new AgentFailure('fatal','OpenCode did not confirm the requested task mode');
   session={...session,...selectedMode};
   if((model && configOption(session,'model')?.currentValue!==model)||(variant && configOption(session,'effort')?.currentValue!==variant))throw new AgentFailure('fatal','OpenCode changed the accepted model or variant while setting task mode');
-  return session;
+  return session;});
 }
 // Trusted host initialization seam; advertises no client filesystem capability.
 export {begin as initializeOpenCodeSession};
@@ -124,7 +126,7 @@ function scopePath(cwd,path,write) {
   try { const existing=write&&!statExists(candidate)?realpathSync(dirname(candidate)):realpathSync(candidate);const actual=relative(cwd,existing);return actual!== '..'&&!actual.startsWith('../')&&!isAbsolute(actual); }catch{return false;}
 }
 function statExists(path){try{lstatSync(path);return true;}catch{return false;}}
-export async function discoverOpenCode({cwd,stateDirectory,configured,model,modelId,signal}={}) {
+export async function discoverOpenCode({cwd,stateDirectory,configured,model,modelId,signal,observe}={}) {
   // Validate the caller's current workspace before compiling helpers or starting
   // the provider. A vanished disposable project is not a sandbox failure.
   await diagnostics.at('REPOSITORY_IDENTITY_FAILED',()=>{
@@ -135,25 +137,25 @@ export async function discoverOpenCode({cwd,stateDirectory,configured,model,mode
   if(!installation.compatible)throw diagnostics.mark(new AgentFailure('fatal',`OpenCode ${installation.version} is unverified; supported version is ${openCodeVersion}`),'EXECUTABLE_INVALID');
   if(!openCodeProjectReadiness(cwd).executionSupported){
     const {inspectBrokeredOpenCode}=await import('./opencode-metadata.js');
-    return inspectBrokeredOpenCode({cwd,stateDirectory,installation,model,modelId,signal});
+    return inspectBrokeredOpenCode({cwd,stateDirectory,installation,model,modelId,signal,observe});
   }
-  return inspectOpenCodeMetadataBoundary({installation,boundary:openCodeBoundary({cwd,stateDirectory,command:installation.command}),model,modelId,signal});
+  return inspectOpenCodeMetadataBoundary({installation,boundary:openCodeBoundary({cwd,stateDirectory,command:installation.command}),model,modelId,signal,observe});
 }
 /** Host metadata path only; never sends a prompt and never returns a session. */
-export async function inspectOpenCodeMetadataBoundary({installation,boundary,model,modelId,signal}) {
-  const started=performance.now(),ownedGroups=[];
-  const stdout=await diagnostics.at('MODEL_DISCOVERY_FAILED',()=>ownedOutput(boundary.command,[...boundary.prefixArgs,'models','--standalone'],{...boundary,signal,ownedGroups,privateServer:installation.command}));
+export async function inspectOpenCodeMetadataBoundary({installation,boundary,model,modelId,signal,observe}) {
+  const inspect=diagnostics.inspection(observe),started=performance.now(),ownedGroups=[];
+  const stdout=await inspect('model-catalogue',()=>diagnostics.at('MODEL_DISCOVERY_FAILED',()=>ownedOutput(boundary.command,[...boundary.prefixArgs,'models','--standalone'],{...boundary,signal,ownedGroups,privateServer:installation.command})));
   let models;try{models=parseOpenCodeModels(stdout);}catch(error){throw diagnostics.mark(error,'MODEL_DISCOVERY_FAILED');}
   if(modelId){const selected=models.find(entry=>entry.id===modelId);if(!selected)throw diagnostics.mark(new AgentFailure('fatal','Selected OpenCode model is no longer in the discovered catalogue'),'MODEL_NOT_ADVERTISED');model=selected.model;}
   const connection=new AcpConnection({...boundary,args:[...boundary.prefixArgs,'acp'],signal,execution:{starting(){},spawned(info){if(info.pid)ownedGroups.push(info.pid);},stopped(){}}});
   let server;try{
-    server=await captureOpenCodeServer(connection.child,installation.command,signal);ownedGroups.push(server.group);
-    const session=await diagnostics.at('ACP_INITIALIZATION_FAILED',()=>begin(connection,boundary.cwd,model,undefined,false));
+    server=await inspect('acp-ownership',()=>captureOpenCodeServer(connection.child,installation.command,signal));ownedGroups.push(server.group);
+    const session=await diagnostics.at('ACP_INITIALIZATION_FAILED',()=>begin(connection,boundary.cwd,model,undefined,false,undefined,observe));
     const selected=configOption(session,'model')?.currentValue;
     const entry=models.find(entry=>entry.model===selected);
     if(entry)entry.reasoning=optionValues(configOption(session,'effort')).map(option=>option.value).filter(value=>value!=='default'&&/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/.test(value));
     return {provider:'opencode',...installation,models,defaultModel:!model?selected:null,selectedModel:selected,metadataOwnedGroups:ownedGroups,metadataSessionIdHash:createHash('sha256').update(session.sessionId).digest('hex'),elapsedMs:performance.now()-started,authentication:'unknown',availability:'unknown',isolatedAuthentication:true};
-  }finally{try{await diagnostics.at('CLEANUP_UNVERIFIED',()=>connection.dispose());}finally{if(server)await diagnostics.at('CLEANUP_UNVERIFIED',()=>server.verifyStopped());}}
+  }finally{await inspect('provider-cleanup',async()=>{try{await diagnostics.at('CLEANUP_UNVERIFIED',()=>connection.dispose());}finally{if(server)await diagnostics.at('CLEANUP_UNVERIFIED',()=>server.verifyStopped());}});}
 }
 export function createOpenCodeAdapter({cwd,stateDirectory,command,write=false,model,reasoning}={},runtime={inspect:inspectOpenCodeInstallation,boundary:openCodeBoundary}) {
   if(typeof write !== 'boolean')throw new TypeError('OpenCode write scope must be explicit');
