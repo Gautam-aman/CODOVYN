@@ -20,6 +20,7 @@ const entries=Object.freeze({
  MCP_INITIALIZATION_FAILED:['mcp-initialization','The task-bound MCP metadata connection did not initialize.','Inspect task diagnostics; file execution remains disabled.'],
  TASK_ADMISSION_FAILED:['task-admission','The task could not obtain its required execution authority.','Reconcile existing repository ownership, task state and approval before another review.'],
  CONSENT_INVALID:['consent','The exact one-use approval is missing, expired or already used.','Obtain a fresh native review; no existing approval is recreated.'],
+ REVIEW_ONLY:['consent','This qualification review cannot submit inference.','Cancel the review. A live request requires separate owner approval and a fresh native review.'],
  CLEANUP_UNVERIFIED:['cleanup','Owned-process cleanup could not be certified.','Inspect lifecycle diagnostics and reconcile ownership before starting another task.'],
  REQUEST_FAILED:['request','The approved request failed or its outcome is uncertain.','Inspect durable request accounting. Never automatically retry an uncertain submission.'],
  PREPARATION_FAILED:['preparation','OpenCode preparation did not complete.','Inspect the displayed stage and provider diagnostics. No automatic retry is performed.']
