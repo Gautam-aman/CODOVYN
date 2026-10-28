@@ -70,3 +70,8 @@ The original Calculator still has baseline `ac00214528f004350bbd7b53349861726e27
 **A fresh live test is not currently admissible.** The global uncertain-request fence and spent reservation remain intact, and the relevant provider quota has not been independently established. The smallest next investigation is owner inspection of the isolated OpenCode account's official usage/limit/entitlement information, without purchasing credits or sending inference. Any later execution requires explicit reviewed handling of the existing uncertainty, fresh exact native consent and separate inference approval. Do not clear the fence, rewrite the outcome, switch models or fund the account automatically.
 
 General coding execution, Agent mode, automatic failover and public-release readiness remain blocked. Hosted CI/billing and historical issue #16 are not declared resolved by these local tests.
+
+
+## Later read-only finding — funding rejection
+
+A subsequent inspection of the original isolated provider's `session_message` failure fields found the same session's assistant and terminal idle records with **`provider.quota`, HTTP 402, and the documented insufficient-account-funds message** in both error and parsed response-body fields. This strengthens the earlier class-only diagnosis to a provider-reported funding rejection. It does not establish current balance, invoices, usage, charges or upstream model acceptance, and the original TaskStore request remains uncertain and spent. No retry or account change was performed. See [funding validation and exact owner checks](opencode-quota-funding-validation.md).

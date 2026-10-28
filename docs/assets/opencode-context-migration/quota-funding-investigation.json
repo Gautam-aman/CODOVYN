@@ -1,0 +1,234 @@
+{
+  "schemaVersion": 1,
+  "startingCommit": "9a93c2e80a43b3d886203444b74cb1b4bedce108",
+  "implementationCommit": "f99776d7c9c163f2fe21180ce04139f2043a6f83",
+  "conclusion": "PROVIDER-REPORTED HTTP 402 INSUFFICIENT ACCOUNT FUNDS; ACCOUNT FUNDING NOT RESOLVED",
+  "localFailureMetadata": {
+    "observedAt": "2026-10-28T10:36:57.822719+00:00",
+    "metadataOnly": true,
+    "credentialPayloadRead": false,
+    "sessionFailureRecords": [
+      {
+        "messageType": "assistant",
+        "sessionMatchesOriginal": true,
+        "errorType": "provider.quota",
+        "httpStatus": 402,
+        "knownQuotaCodes": [],
+        "knownMessageCategories": [
+          "insufficient-account-funds"
+        ],
+        "errorMessageMatchesInsufficientFunds": true,
+        "responseBodyMessageMatchesInsufficientFunds": true,
+        "responseBodyParsedAsJson": true,
+        "emptyAssistantContent": true,
+        "finishPresent": true,
+        "recordedFailedOutcome": false,
+        "rawBodyAvailableLocally": true,
+        "rawBodyPublished": false
+      },
+      {
+        "messageType": "idle",
+        "sessionMatchesOriginal": true,
+        "errorType": "provider.quota",
+        "httpStatus": 402,
+        "knownQuotaCodes": [],
+        "knownMessageCategories": [
+          "insufficient-account-funds"
+        ],
+        "errorMessageMatchesInsufficientFunds": true,
+        "responseBodyMessageMatchesInsufficientFunds": true,
+        "responseBodyParsedAsJson": true,
+        "emptyAssistantContent": null,
+        "finishPresent": false,
+        "recordedFailedOutcome": true,
+        "rawBodyAvailableLocally": true,
+        "rawBodyPublished": false
+      }
+    ]
+  },
+  "originalOwnerJournal": {
+    "checkedAt": "2026-10-28T10:36:57.754467+00:00",
+    "counts": {
+      "tasks": 4,
+      "campaign_consents": 1,
+      "campaign_requests": 1,
+      "execution_leases": 1
+    },
+    "journalLogicalSha256": "a0bb3bb166f7164bba052670fd00860c59d9597655f3342592e008d1e92f0965",
+    "taskState": "interrupted",
+    "requestState": "uncertain",
+    "attempted": 1,
+    "acknowledged": 0,
+    "toolCalls": 0,
+    "model": "opencode/gpt-5.4-nano",
+    "promptSha256": "dfe2704168df0eb12655b1a5401b9b41aff59331519b03e4b0189c307f33cc96",
+    "reservationToUncertainWallClockMs": 571,
+    "originalLogObservations": [
+      {
+        "sessionMatchesOriginalJournal": true,
+        "timestamp": "2026-10-28T04:03:30.364Z",
+        "severityError": true,
+        "serverRole": true,
+        "staticMessageMatches": true,
+        "quotaExceededMarker": true,
+        "logSha256": "c01e5b876e1c84be9c63ddc839889743fcbf9c100193fc21ddf02bf6187570e4"
+      }
+    ],
+    "executionLeaseReleased": true,
+    "originalProcessGroupsAbsentNow": true,
+    "textEvents": 0,
+    "sourceSha256": "dee76c8f9584ba9286e2bd67948499030760f3978bb6a3e4074cbcf731088c26",
+    "baselineCommit": "ac00214528f004350bbd7b53349861726e270323",
+    "gitClean": true,
+    "usage": null,
+    "billing": null,
+    "newInferenceRequests": 0,
+    "rawProviderOutputPublished": false
+  },
+  "integrity": {
+    "originalJournalUnchanged": true,
+    "originalProviderFailureRecordsUnchanged": true,
+    "ownerCounts": {
+      "tasks": 4,
+      "campaign_consents": 1,
+      "campaign_requests": 1,
+      "execution_leases": 1
+    },
+    "sourceUnchanged": true,
+    "originalLeaseReleased": true,
+    "originalGroupsAbsent": true,
+    "copiedAppProcessesAbsent": true,
+    "copiedAppSignatureVerifiedAfterTests": true,
+    "nativeFailureDiagnosticsBothLaunches": [
+      true,
+      true
+    ],
+    "nativeLifecycles": [
+      {
+        "phase": "host-lifecycle.json",
+        "exitCode": 0,
+        "cleanupVerified": true,
+        "survivors": 0
+      },
+      {
+        "phase": "chat-first-launch-lifecycle.json",
+        "exitCode": 0,
+        "cleanupVerified": true,
+        "survivors": 0
+      },
+      {
+        "phase": "chat-relaunch-lifecycle.json",
+        "exitCode": 0,
+        "cleanupVerified": true,
+        "survivors": 0
+      },
+      {
+        "phase": "restoration-write-lifecycle.json",
+        "exitCode": 0,
+        "cleanupVerified": true,
+        "survivors": 0
+      },
+      {
+        "phase": "restoration-read-lifecycle.json",
+        "exitCode": 0,
+        "cleanupVerified": true,
+        "survivors": 0
+      }
+    ],
+    "newOwnerConsents": 0,
+    "newModelRequests": 0
+  },
+  "packagedWorkerFence": {
+    "packagedWorker": true,
+    "sourceCommit": "f99776d7c9c163f2fe21180ce04139f2043a6f83",
+    "blockedBeforeExecutableResolution": true,
+    "diagnosticCode": "REQUEST_FENCED",
+    "workerExitCode": 0,
+    "cleanupVerified": true,
+    "ownedGroupAbsent": true,
+    "noModelsOrReviewMessages": true,
+    "newInferenceRequests": 0,
+    "newOwnerConsents": 0
+  },
+  "accountAccess": {
+    "authenticatedConsoleInspectionAvailable": false,
+    "browserConsoleTabsObserved": 0,
+    "cookieOrCredentialExtraction": false,
+    "readOnlyBillingApiConnectionAvailable": false,
+    "billingOrPolicyChanges": 0,
+    "currentBalance": null,
+    "billingEvidence": null
+  },
+  "qualification": {
+    "focused": {
+      "passed": 54,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "full": {
+      "passed": 447,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "durationMs": 138020.589208
+    },
+    "native": {
+      "sourceCommit": "f99776d7c9c163f2fe21180ce04139f2043a6f83",
+      "sourceClean": true,
+      "version": "0.1.0-alpha",
+      "signing": "ad-hoc-development",
+      "checks": [
+        {
+          "name": "copy",
+          "passed": true,
+          "exitCode": 0,
+          "elapsedMs": 1625
+        },
+        {
+          "name": "signature",
+          "passed": true,
+          "exitCode": 0,
+          "elapsedMs": 1830
+        },
+        {
+          "name": "extension-host",
+          "passed": true,
+          "exitCode": 0,
+          "elapsedMs": 201663
+        },
+        {
+          "name": "desktop-host",
+          "passed": true,
+          "exitCode": 0,
+          "elapsedMs": 4460
+        },
+        {
+          "name": "desktop-chat",
+          "passed": true,
+          "exitCode": 0,
+          "elapsedMs": 12967
+        },
+        {
+          "name": "desktop-routing-ui",
+          "passed": true,
+          "exitCode": 0,
+          "elapsedMs": 22944
+        },
+        {
+          "name": "desktop-restoration",
+          "passed": true,
+          "exitCode": 0,
+          "elapsedMs": 5176
+        }
+      ],
+      "allPassed": true,
+      "providerMessagesSynthetic": true
+    }
+  },
+  "newInferenceSubmissions": 0,
+  "newOwnerSpendingConsents": 0,
+  "freshLiveTestReady": false,
+  "historicalUncertaintyFencePreserved": true,
+  "ownerGate": "Inspect same Console workspace Billing balance/credit agreement and Activity request log; funding decisions remain owner-controlled; unresolved accounting still prohibits another request."
+}
