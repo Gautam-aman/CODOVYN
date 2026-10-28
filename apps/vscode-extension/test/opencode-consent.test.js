@@ -10,3 +10,10 @@ test('OpenCode UI shows actionable safe auth stage and discards raw error messag
 test('OpenCode UI diagnoses unknown worker error codes without echoing secret/path text',async()=>{const f=fixture();await f.commands.get('codovyn.opencodeValidateAsk')();await f.receive({type:'error',code:'constructor',message:'PUBLIC-SECRET-WITNESS /Users/sensitive/account'});assert.match(f.messages.at(-1).text,/preparation/);assert.equal(JSON.stringify(f.messages).includes('PUBLIC-SECRET'),false);await f.session.close();});
 
 test('preparation-only native review never emits approval even when the host dialog returns the action',async()=>{const f=fixture(true,true);await f.commands.get('codovyn.opencodeValidateAsk')();assert.ok(f.launches[0][1].includes('--review-only'));await f.receive({type:'models',models:['p/model']});await f.receive(review);assert.equal(f.sent.some(x=>x.type==='approve'),false);assert.match(f.messages.at(-1).options.detail,/submission is disabled/);assert.equal(f.child.exitCode,0);});
+
+test('native request failure keeps quota classification separate from admission and retains uncertain accounting',async()=>{
+ const f=fixture(true);await f.commands.get('codovyn.opencodeValidateAsk')();await f.receive({type:'models',models:['p/model']});await f.receive(review);
+ await f.receive({type:'result',status:'interrupted',requestState:'uncertain',diagnostic:{code:'ACP_QUOTA_REPORTED',message:'PRIVATE PROVIDER OUTPUT'}});
+ assert.match(f.messages.at(-1).text,/request:.*quota or usage-limit/);assert.match(f.messages.at(-1).text,/accounting: uncertain/);
+ assert.equal(JSON.stringify(f.messages).includes('PRIVATE PROVIDER'),false);assert.equal(f.sent.filter(m=>m.type==='approve').length,1);await f.session.close();
+});

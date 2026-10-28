@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import diagnostics from '../src/opencode-diagnostics.cjs';
 import { AcpConnection } from '../src/acp.js';
 const peer = body => `const rl=require('readline').createInterface({input:process.stdin});const send=m=>console.log(JSON.stringify({jsonrpc:'2.0',...m}));${body}`;
 const connect = (script, options={}) => new AcpConnection({command:process.execPath,args:['-e',script],cwd:process.cwd(),env:process.env,timeoutMs:2000,...options});
@@ -48,4 +49,50 @@ test('ACP cleanup failure never records a stopped provider or releases recovery 
  try{await assert.rejects(client.dispose(),/cleanup failure/);assert.equal(stopped,0,'An unproven process exit must retain ownership');}
  finally{client.lifecycle.dispose=actualDispose;await client.dispose();}
  assert.equal(stopped,1);
+});
+
+test('ACP phase evidence distinguishes local enqueue, remote error and cleanup without remote text',async()=>{
+ const observations=[],secret='PRIVATE-PROVIDER-WITNESS';
+ const client=connect(peer(`rl.on('line',l=>{const m=JSON.parse(l);send({id:m.id,error:{code:-32603,message:'${secret}',data:{errorName:'provider.quota',token:'${secret}',service:'${secret}'}}});});`),{onDiagnostic:d=>observations.push(d)});
+ try{await assert.rejects(client.request('session/prompt',{text:secret}),e=>diagnostics.diagnostic(e).code==='ACP_QUOTA_REPORTED');}
+ finally{await client.dispose();}
+ assert.ok(observations.some(d=>d.phase==='write-enqueued'&&d.method==='session/prompt'));
+ assert.ok(observations.some(d=>d.phase==='remote-error'&&d.category==='quota'));
+ assert.ok(observations.some(d=>d.phase==='cleanup'&&d.category==='verified'));
+ assert.equal(observations.some(d=>d.phase==='activity-accepted'),false,'JSON-RPC error is not model acceptance');
+ assert.equal(JSON.stringify(observations).includes(secret),false);
+ assert.ok(observations.every((d,i)=>Object.isFrozen(d)&&Number.isSafeInteger(d.elapsedMs)&&(!i||d.elapsedMs>=observations[i-1].elapsedMs)));
+});
+
+test('ACP malformed response without result rejects its still-correlated request promptly',async()=>{
+ for(const fields of [{},{error:null,result:{}},{error:[]},{error:{code:'PRIVATE'}},{error:{code:-32603},result:{}}]){
+  const client=connect(peer(`rl.on('line',l=>send({id:JSON.parse(l).id,...${JSON.stringify(fields)}}));`));
+  try{await assert.rejects(client.request('session/prompt',{}),e=>diagnostics.diagnostic(e).code==='ACP_PROTOCOL_FAILED');assert.equal(client.pending.size,0);}
+  finally{await client.dispose();}
+ }
+});
+
+test('intentional ACP shutdown is not reported as a transport disconnect',async()=>{
+ const observations=[],client=connect(peer(`rl.on('line',l=>send({id:JSON.parse(l).id,result:{}}));`),{onDiagnostic:d=>observations.push(d)});
+ await client.request('initialize',{});await client.dispose();
+ assert.ok(observations.some(d=>d.phase==='cleanup'&&d.category==='verified'));
+ assert.equal(observations.some(d=>d.phase==='failed'),false);
+});
+
+test('ACP diagnostic categories cannot be forged from prose or arbitrary error fields',async()=>{
+ for(const data of [{errorName:'private-token'},{errorName:'__proto__'},{reason:'provider.quota'},{}]){
+  const observations=[],client=connect(peer(`rl.on('line',l=>send({id:JSON.parse(l).id,error:{code:-32603,message:'quota exceeded PRIVATE',data:${JSON.stringify(data)}}}));`),{onDiagnostic:d=>observations.push(d)});
+  try{await assert.rejects(client.request('session/prompt',{}),e=>diagnostics.diagnostic(e).code==='ACP_REMOTE_ERROR');}
+  finally{await client.dispose();}
+  assert.ok(observations.some(d=>d.category==='unknown-remote-error'));
+  assert.equal(JSON.stringify(observations).includes('PRIVATE'),false);
+ }
+});
+
+test('ACP bounded observers cannot suppress timeout or cleanup, or leak unknown method names',async()=>{
+ let n=0;const observations=[],client=connect(peer(`rl.on('line',()=>{});`),{timeoutMs:100,onDiagnostic:d=>{observations.push(d);if(++n%2)throw new Error('PRIVATE');}});
+ try{for(let i=0;i<140;i++)client.observe('notification','PRIVATE');assert.equal(observations.length,128);await assert.rejects(client.request('session/prompt',{}),/deadline/);}
+ finally{await client.dispose();}
+ assert.equal(JSON.stringify(observations).includes('PRIVATE'),false);
+ assert.throws(()=>process.kill(client.child.pid,0));
 });
