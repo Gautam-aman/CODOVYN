@@ -1,0 +1,187 @@
+{
+  "schemaVersion": 1,
+  "classification": "NON-INFERENCE INVESTIGATION; ORIGINAL REQUEST REMAINS UNCERTAIN",
+  "startingCommit": "14f874f3ecdd8c8291af7dae01a2588c492dd16a",
+  "implementationCommit": "f580c312f28d73d85e37aae4e2c644e0ad1e3d17",
+  "originalAttempt": {
+    "checkedAt": "2026-10-28T09:26:54.430775+00:00",
+    "counts": {
+      "tasks": 4,
+      "campaign_consents": 1,
+      "campaign_requests": 1,
+      "execution_leases": 1
+    },
+    "journalLogicalSha256": "a0bb3bb166f7164bba052670fd00860c59d9597655f3342592e008d1e92f0965",
+    "taskState": "interrupted",
+    "requestState": "uncertain",
+    "attempted": 1,
+    "acknowledged": 0,
+    "toolCalls": 0,
+    "model": "opencode/gpt-5.4-nano",
+    "promptSha256": "dfe2704168df0eb12655b1a5401b9b41aff59331519b03e4b0189c307f33cc96",
+    "reservationToUncertainWallClockMs": 571,
+    "originalLogObservations": [
+      {
+        "sessionMatchesOriginalJournal": true,
+        "timestamp": "2026-10-28T04:03:30.364Z",
+        "severityError": true,
+        "serverRole": true,
+        "staticMessageMatches": true,
+        "quotaExceededMarker": true,
+        "logSha256": "c01e5b876e1c84be9c63ddc839889743fcbf9c100193fc21ddf02bf6187570e4"
+      }
+    ],
+    "executionLeaseReleased": true,
+    "originalProcessGroupsAbsentNow": true,
+    "textEvents": 0,
+    "sourceSha256": "dee76c8f9584ba9286e2bd67948499030760f3978bb6a3e4074cbcf731088c26",
+    "baselineCommit": "ac00214528f004350bbd7b53349861726e270323",
+    "gitClean": true,
+    "usage": null,
+    "billing": null,
+    "newInferenceRequests": 0,
+    "rawProviderOutputPublished": false
+  },
+  "originalJournalUnchanged": true,
+  "testResults": {
+    "focused": {
+      "passed": 52,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "initialFull": {
+      "passed": 439,
+      "failed": 1,
+      "cancelled": 0,
+      "skipped": 0,
+      "reason": "Global Codex 0.165.0 differs from the retained 0.164.0 pin"
+    },
+    "qualifiedFull": {
+      "syntaxFiles": 218,
+      "passed": 440,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "durationMs": 146868.474083,
+      "testOnlyPinnedCodex": true
+    },
+    "native": {
+      "version": "0.1.0-alpha",
+      "sourceClean": true,
+      "signing": "ad-hoc-development",
+      "copiedApp": true,
+      "checks": [
+        {
+          "name": "copy",
+          "passed": true,
+          "exitCode": 0,
+          "elapsedMs": 1660
+        },
+        {
+          "name": "signature",
+          "passed": true,
+          "exitCode": 0,
+          "elapsedMs": 1600
+        },
+        {
+          "name": "extension-host",
+          "passed": false,
+          "exitCode": 1,
+          "elapsedMs": 8316
+        },
+        {
+          "name": "extension-host-cli",
+          "passed": false,
+          "exitCode": 1,
+          "elapsedMs": 2908
+        },
+        {
+          "name": "desktop-host",
+          "passed": true,
+          "exitCode": 0,
+          "elapsedMs": 4119
+        },
+        {
+          "name": "desktop-chat",
+          "passed": true,
+          "exitCode": 0,
+          "elapsedMs": 13679
+        },
+        {
+          "name": "desktop-routing-ui",
+          "passed": true,
+          "exitCode": 0,
+          "elapsedMs": 24170
+        },
+        {
+          "name": "desktop-restoration",
+          "passed": true,
+          "exitCode": 0,
+          "elapsedMs": 6268
+        },
+        {
+          "name": "extension-host-direct",
+          "passed": true,
+          "exitCode": 0,
+          "elapsedMs": 10948
+        }
+      ],
+      "preliminaryWrapperFailuresPreserved": true,
+      "directExtensionHostPassed": true
+    }
+  },
+  "integrity": {
+    "originalJournalUnchanged": true,
+    "ownerCounts": {
+      "tasks": 4,
+      "campaign_consents": 1,
+      "campaign_requests": 1,
+      "execution_leases": 1
+    },
+    "originalRequestState": "uncertain",
+    "originalTaskState": "interrupted",
+    "originalLeaseReleased": true,
+    "originalProcessGroupsAbsent": true,
+    "calculatorUnchanged": true,
+    "copyProcessesAbsent": true,
+    "nativeLifecycles": [
+      {
+        "name": "host-lifecycle.json",
+        "exitCode": 0,
+        "cleanupError": null,
+        "survivors": 0
+      },
+      {
+        "name": "chat-first-launch-lifecycle.json",
+        "exitCode": 0,
+        "cleanupError": null,
+        "survivors": 0
+      },
+      {
+        "name": "chat-relaunch-lifecycle.json",
+        "exitCode": 0,
+        "cleanupError": null,
+        "survivors": 0
+      },
+      {
+        "name": "restoration-write-lifecycle.json",
+        "exitCode": 0,
+        "cleanupError": null,
+        "survivors": 0
+      },
+      {
+        "name": "restoration-read-lifecycle.json",
+        "exitCode": 0,
+        "cleanupError": null,
+        "survivors": 0
+      }
+    ],
+    "newModelRequests": 0
+  },
+  "newSpendingConsents": 0,
+  "newInferenceRequests": 0,
+  "rawProviderOutputPublished": false,
+  "upstreamQuotaAndBilling": "UNVERIFIED",
+  "nextLiveTest": "BLOCKED: preserve existing uncertain-request fence; owner quota inspection and explicit reviewed authorization required"
+}
