@@ -176,3 +176,12 @@ The explicitly discovered **`opencode/gpt-5.4-nano`** was accepted by real ACP c
 Final regression: **428 passed, 0 failed/cancelled/skipped**. Copied native host, Chat, routing and restoration passed. Calculator remains clean at `ac00214528f004350bbd7b53349861726e270323`; all file hashes unchanged, Java 17 offline tests **3 passed**. Owned metadata/preparer cleanup was verified. The historical intermittent startup cause and macOS-native-alert automated visual coverage remain unproven; neither is silently declared fixed.
 
 Clean development DMG source: `db4f25060373ebe2e40b7ce127dbacedac62c059`; SHA-256 `33d6627a330b93178f0fa57e9736f5117b23be36f17f5bfaffe06bd55fe6e675`. Ad-hoc/unnotarized, not published; installed app unchanged. The final disposable GUI is open normally. The next gate is **fresh explicit authorization for the single proposed Ask**, not another sign-in. Live coding, ContextFlow and public release are not validated. **ALPHA BLOCKED — CRITICAL GATES REMAIN.**
+
+
+### First owner-approved OpenCode Ask — 2026-10-28
+
+**UNCERTAIN — live response not verified.** The owner clicked the fresh native approval for OpenCode 2.1.2, `opencode/gpt-5.4-nano`, Provider Default, the unchanged Calculator and exact approved prompt. SQLite contains one consent, one request reservation, one submission intent, zero provider acknowledgements and zero MCP tool calls. The request transitioned `submitting → uncertain`; the logical task is `interrupted`. No streamed response or usage/billing data was observed. One host attempt does not establish whether any provider-internal inference or charge occurred.
+
+ACP session creation, exact model configuration and MCP metadata initialization completed before this failure. The precise submission failure cause remains unproven; the UI task-admission fallback is not evidence that admission itself failed. No retry, fallback, Agent operation or additional inference was performed. Preserve the uncertain request and consumed reservation; never reuse this approval.
+
+The execution lease is released, journal records provider/child termination, and their recorded process groups were independently checked absent. Calculator source SHA-256 and baseline remain unchanged; Git is clean. The disposable GUI remains available. Alpha remains blocked. See [sanitized outcome](../assets/opencode-context-migration/first-ask-outcome.json). This observation did not change runtime code or rerun regression suites.
