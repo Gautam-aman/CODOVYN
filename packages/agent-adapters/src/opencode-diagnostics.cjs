@@ -20,7 +20,7 @@ const entries=Object.freeze({
  MCP_INITIALIZATION_FAILED:['mcp-initialization','The task-bound MCP metadata connection did not initialize.','Inspect task diagnostics; file execution remains disabled.'],
  ACP_REMOTE_ERROR:['request','OpenCode returned a structured ACP error.','Inspect the bounded transport diagnostics and durable accounting; do not retry an uncertain request.'],
  ACP_AUTH_REQUIRED:['request','OpenCode reported an authentication error during the request.','Inspect isolated provider setup without inference; an uncertain request remains spent.'],
- ACP_QUOTA_REPORTED:['request','OpenCode reported a quota or usage-limit error.','Inspect the provider account manually. No account funding, model fallback or retry is automatic.'],
+ ACP_QUOTA_REPORTED:['request','OpenCode reported a quota or usage-limit error.','In OpenCode Console inspect Settings > Billing, Activity > Logs and Controls budgets. The exact limit is unverified. No funding, policy change, fallback or retry is automatic.'],
  ACP_MODEL_REJECTED:['request','OpenCode rejected the selected model.','Catalogue presence does not prove entitlement; no fallback or retry is authorized.'],
  ACP_REMOTE_CANCELLED:['request','OpenCode reported request cancellation.','Preserve accounting; cancellation does not prove that no inference occurred.'],
  ACP_DISCONNECTED:['request','The ACP transport disconnected or its input stream failed.','The remote outcome may be unknown; do not retry or release an unverified process fence.'],
@@ -32,6 +32,7 @@ const entries=Object.freeze({
  REVIEW_ONLY:['consent','This qualification review cannot submit inference.','Cancel the review. A live request requires separate owner approval and a fresh native review.'],
  CLEANUP_UNVERIFIED:['cleanup','Owned-process cleanup could not be certified.','Inspect lifecycle diagnostics and reconcile ownership before starting another task.'],
  REQUEST_FAILED:['request','The approved request failed or its outcome is uncertain.','Inspect durable request accounting. Never automatically retry an uncertain submission.'],
+ REQUEST_FENCED:['request-accounting','An earlier request is pending or uncertain; another Ask is blocked.','Review the existing request and provider billing. New approval or restored credits do not clear this fence. No retry, consent or request was created by this blocked preparation.'],
  PREPARATION_FAILED:['preparation','OpenCode preparation did not complete.','Inspect the displayed stage and provider diagnostics. No automatic retry is performed.']
 });
 const stages=new WeakMap(),known=code=>typeof code==='string'&&Object.hasOwn(entries,code);

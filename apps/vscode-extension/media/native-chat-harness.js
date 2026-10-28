@@ -21,7 +21,7 @@
   const text = selector => document.querySelector(selector)?.textContent || '';
   const requireValue = (condition, message) => { if (!condition) throw new Error(message); };
 
-  async function run(token, phase, readinessCheck=false) {
+  async function run(token, phase, readinessCheck=false, failureDiagnostics=[]) {
     const prompt = 'Render this literally: <img src=x onerror=alert(1)>';
     const report = {};
     const stage = name => vscode.postMessage({ type: 'codovyn-native-chat-test-progress', token, stage: name });
@@ -31,6 +31,15 @@
     requireValue(request && chat && tabs('chat') && tabs('activity'), 'The actual CODOVYN Chat workspace did not initialize.');
     stage('webview-dom-ready');
     send({type:'agent-diagnostics',source:'native-provider-fixture',agents:[{id:'codex',installation:'detected',authentication:'unknown',availability:'unknown'},{id:'opencode',installation:'detected',authentication:'unknown',availability:'unknown',executionSupported:true,diagnostic:'DOM fixture only; no execution'}]});
+    requireValue(failureDiagnostics.length===3,'The native host did not supply packaged failure diagnostics.');
+    for(const diagnostic of failureDiagnostics){
+      send({type:'provider-diagnostic',provider:'opencode',...diagnostic});
+      const row=document.querySelector('[data-provider="opencode"] .provider-model-status');
+      requireValue(row?.textContent===`${diagnostic.stage}: ${diagnostic.message} ${diagnostic.action}`,'Provider failure guidance was not rendered literally.');
+      requireValue(row.getAttribute('role')==='status'&&row.getAttribute('aria-live')==='polite','Provider failure is not announced accessibly.');
+    }
+    requireValue(document.querySelector('[data-provider="opencode"] .provider-model-status').textContent.includes('New approval or restored credits do not clear this fence'),'Uncertain request guidance suggests approval or credits bypass accounting.');
+    report.providerFailureDiagnostics=true;
     if (phase === 'relaunch') requireValue(compactComposer.efforts['default:codex'] === 'high', 'Per-model reasoning preference did not survive normal application restart.');
     if (phase === 'relaunch') requireValue(compactComposer.favorites.includes('model:native-fixture-codex'), 'Favorite models did not restore from host storage after restart.');
 
@@ -366,7 +375,7 @@
   window.addEventListener('message', async ({ data }) => {
     if (data?.type !== 'codovyn-native-chat-test' || typeof data.token !== 'string' || !/^[a-f0-9]{32}$/.test(data.token)) return;
     let report;
-    try { report = { passed: true, checks: await run(data.token, data.phase,data.readinessCheck===true) }; }
+    try { report = { passed: true, checks: await run(data.token, data.phase,data.readinessCheck===true,data.failureDiagnostics) }; }
     catch (error) { report = { passed: false, error: String(error?.message || error) }; }
     vscode.postMessage({ type: 'codovyn-native-chat-test-result', token: data.token, report });
   });

@@ -1,12 +1,26 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import{execFileSync}from'node:child_process';import{mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync,existsSync}from'node:fs';import{tmpdir}from'node:os';import{join}from'node:path';
 import{main}from'../src/index.js';import{fileURLToPath}from'node:url';
+import{TaskStore}from'../../../packages/storage/src/index.js';import{reviewInferenceCampaign,confirmInferenceCampaign,campaignDigest}from'../../../packages/agent-core/src/campaign-consent.js';import{hostname}from'node:os';
 test('Ask worker reports a vanished workspace without opening a journal or leaking its path',()=>{
  const base=mkdtempSync(join(tmpdir(),'opencode-missing-workspace-'));try{
   const root=join(base,'PRIVATE-PATH-WITNESS'),data=join(base,'private');
   const output=execFileSync(process.execPath,[fileURLToPath(new URL('../src/opencode-ask.js',import.meta.url)),root,data,'/must-not-execute'],{encoding:'utf8',timeout:5000,stdio:['ignore','pipe','pipe']});
   const messages=output.trim().split('\n').map(x=>JSON.parse(x));assert.equal(messages[0].code,'REPOSITORY_IDENTITY_FAILED');assert.deepEqual(messages[1],{type:'closed',cleanupVerified:true});assert.equal(output.includes('PRIVATE-PATH-WITNESS'),false);assert.equal(existsSync(data),false);
  }finally{rmSync(base,{recursive:true,force:true});}
+});
+
+test('Ask worker refuses a fenced campaign before executable discovery, task creation or fresh native consent',async()=>{
+ const base=mkdtempSync(join(tmpdir(),'opencode-ask-fenced-')),root=join(base,'PRIVATE-WORKSPACE-WITNESS'),data=join(base,'private');mkdirSync(root);
+ const store=new TaskStore(join(data,'tasks.sqlite')),policy={provider:'opencode',permission:'read',intent:'ask',model:'fixture/model'},token='fixture-execution-token';
+ try{
+  store.create({id:'original',request:'PUBLIC FIXTURE ONLY',repositoryRoot:root,primaryAgent:'opencode'});store.append('original','task-configuration',policy);store.claimExecution('original',{token,pid:process.pid,host:hostname()});store.update('original',{status:'running',activeAgent:'opencode',step:0});
+  const spec={version:1,purpose:'fixture',taskId:'original',provider:'opencode',model:'fixture/model',reasoning:'',mode:'ask',repositoryRoot:root,repositoryFingerprint:'1'.repeat(64),configurationDigest:campaignDigest(policy),executableSha256:'2'.repeat(64),accountContextDigest:'3'.repeat(64),scopeDigest:'4'.repeat(64),promptSha256:'5'.repeat(64),maxRequests:1,maxMcpToolCalls:0,maxRequestMs:1000,expiresAt:Date.now()+60000};
+  store.approveCampaign({id:'original-consent',spec,approval:await confirmInferenceCampaign(reviewInferenceCampaign(spec),async()=> 'Approve bounded inference')});store.reserveCampaignRequest({consentId:'original-consent',requestId:'original-request',taskId:'original',token,segment:'original-segment',selection:spec});
+  store.transitionCampaignRequest({requestId:'original-request',token,segment:'original-segment',state:'submitting',selection:spec});store.transitionCampaignRequest({requestId:'original-request',token,segment:'original-segment',state:'uncertain'});store.update('original',{status:'interrupted',activeAgent:'opencode',step:0});store.releaseExecution('original',token);
+  const before=store.events('original');const output=execFileSync(process.execPath,[fileURLToPath(new URL('../src/opencode-ask.js',import.meta.url)),root,data,'/must-not-execute'],{encoding:'utf8',timeout:5000,stdio:['ignore','pipe','pipe']});const messages=output.trim().split('\n').map(JSON.parse);
+  assert.equal(messages[0].code,'REQUEST_FENCED');assert.deepEqual(messages[1],{type:'closed',cleanupVerified:true});assert.equal(messages.length,2);assert.equal(output.includes('PRIVATE-WORKSPACE'),false);assert.equal(output.includes('original-request'),false);assert.deepEqual(store.events('original'),before);assert.equal(store.campaignRequest('original-request').state,'uncertain');assert.equal(store.campaignAccounting('original-consent').remaining,0);assert.equal(store.campaignSubmissionGate().blocked,true);assert.equal(store.get('original').status,'interrupted');
+ }finally{store.close();rmSync(base,{recursive:true,force:true});}
 });
 
 test('OpenCode uses the existing task journal/draft review and never applies before approval',async()=>{

@@ -116,6 +116,7 @@ export class TaskStore {
   reserveCampaignToolCall(options){return campaign.reserveCampaignToolCall(this.#db,options);}
   transitionCampaignRequest(options){return campaign.transitionCampaignRequest(this.#db,options);}
   campaignRequest(id){return campaign.campaignRequest(this.#db,id);}
+  campaignSubmissionGate(){return campaign.campaignSubmissionGate(this.#db);}
   campaignAccounting(id){return campaign.campaignAccounting(this.#db,id);}
   revokeCampaign(id){return campaign.revokeCampaign(this.#db,id);}
   recoverCampaignRequests(){return campaign.recoverCampaignRequests(this.#db);}

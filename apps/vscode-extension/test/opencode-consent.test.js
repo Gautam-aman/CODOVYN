@@ -17,3 +17,8 @@ test('native request failure keeps quota classification separate from admission 
  assert.match(f.messages.at(-1).text,/request:.*quota or usage-limit/);assert.match(f.messages.at(-1).text,/accounting: uncertain/);
  assert.equal(JSON.stringify(f.messages).includes('PRIVATE PROVIDER'),false);assert.equal(f.sent.filter(m=>m.type==='approve').length,1);await f.session.close();
 });
+
+test('native fenced-request diagnostic explains that fresh approval or credits cannot reset accounting',async()=>{
+ const f=fixture(true);await f.commands.get('codovyn.opencodeValidateAsk')();await f.receive({type:'error',code:'REQUEST_FENCED',message:'PRIVATE ACCOUNT WITNESS'});
+ assert.match(f.messages.at(-1).text,/earlier request is pending or uncertain/);assert.match(f.messages.at(-1).text,/New approval or restored credits do not clear/);assert.equal(JSON.stringify(f.messages).includes('PRIVATE ACCOUNT'),false);assert.equal(f.sent.some(m=>m.type==='approve'||m.type==='prepare'),false);await f.session.close();
+});

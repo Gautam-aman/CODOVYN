@@ -10,6 +10,13 @@ function transaction(db,fn){db.exec('BEGIN IMMEDIATE');try{const value=fn();db.e
 function event(db,taskId,kind,data){db.prepare('INSERT INTO events(task_id,kind,data,created_at) VALUES(?,?,?,?)').run(taskId,kind,JSON.stringify(data),new Date().toISOString());}
 function owned(db,taskId,token){const r=db.prepare('SELECT * FROM execution_leases WHERE task_id=?').get(taskId);if(!r||r.released_at!==null||r.token!==token)throw new Error('Current task execution lease required');const o=JSON.parse(r.owner);if(o.pid!==process.pid||o.host!==hostname())throw new Error('Foreign campaign executor');return o;}
 function consent(db,consentId){const r=db.prepare('SELECT * FROM campaign_consents WHERE id=?').get(id(consentId));if(!r)throw new Error('Unknown campaign consent');return r;}
+/** Read-only advisory for native review. The reservation transaction below
+ * remains the final cross-connection authority; this never clears a fence. */
+export function campaignSubmissionGate(db){
+ const row=db.prepare("SELECT coalesce(sum(CASE WHEN state='uncertain' THEN 1 ELSE 0 END),0) uncertain,coalesce(sum(CASE WHEN state IN ('reserved','submitting','confirmed') THEN 1 ELSE 0 END),0) pending FROM campaign_requests WHERE state IN ('reserved','submitting','confirmed','uncertain')").get();
+ const uncertain=Number(row.uncertain),pending=Number(row.pending);
+ return Object.freeze({blocked:uncertain+pending>0,reason:uncertain?'uncertain':pending?'pending':null});
+}
 function current(db,consentId,selection){const r=consent(db,consentId),s=JSON.parse(r.spec);validateCampaignSpec(s);if(r.status!=='approved'||campaignDigest(s)!==r.digest||campaignDigest(validateCampaignSpec(selection))!==r.digest)throw new Error('Campaign revoked or provider/model/scope changed');return {r,s};}
 export function verifyCampaignConsent(db,consentId,selection){return current(db,consentId,selection).r.digest;}
 export function approveCampaign(db,{id:consentId,spec,approval}){id(consentId);const s=validateCampaignSpec(spec),hash=consumeInferenceApproval(approval,s);return transaction(db,()=>{
@@ -20,7 +27,7 @@ export function reserveCampaignRequest(db,{consentId,requestId,taskId,token,segm
  const {s}=current(db,consentId,selection);if(s.taskId!==taskId)throw new Error('Campaign belongs to another task');const owner=owned(db,taskId,token);
  const task=db.prepare('SELECT * FROM tasks WHERE id=?').get(taskId),configuration=JSON.parse(db.prepare("SELECT data FROM events WHERE task_id=? AND kind IN ('task-configuration','contextflow-segment-started') ORDER BY seq DESC LIMIT 1").get(taskId)?.data||'null');
  const policy=configuration?.configuration??configuration;if(task.status!=='running'||task.active_agent!==s.provider||policy?.provider!==s.provider||policy?.intent!==s.mode||policy?.permission!==(s.mode==='agent'?'read-write':'read')||campaignDigest(policy)!==s.configurationDigest)throw new Error('Campaign task configuration changed');
- if(db.prepare("SELECT 1 FROM campaign_requests WHERE state IN ('reserved','submitting','confirmed','uncertain') LIMIT 1").get())throw new Error('Campaign request is pending or uncertain; no retry or parallel submission');
+ if(campaignSubmissionGate(db).blocked)throw new Error('Campaign request is pending or uncertain; no retry or parallel submission');
  const count=Number(db.prepare('SELECT count(*) AS n FROM campaign_requests WHERE consent_id=?').get(consentId).n);if(count>=s.maxRequests)throw new Error('Campaign request budget exhausted');
  const now=Date.now();db.prepare('INSERT INTO campaign_requests(id,consent_id,task_id,segment,token,owner,state,ordinal,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)').run(requestId,consentId,taskId,segment,token,JSON.stringify(owner),'reserved',count+1,now,now);event(db,taskId,'campaign-request-reserved',{requestId,consentId,segment,ordinal:count+1});return campaignRequest(db,requestId);
 });}

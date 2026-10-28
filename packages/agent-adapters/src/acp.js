@@ -106,6 +106,8 @@ function remoteErrorCategory(error){
   if(error.code===-32800)return 'cancelled';
   const name=error.data?.errorName;
   if(['provider.quota','provider.free-limit','QuotaExceeded'].includes(name))return 'quota';
-  if(name==='ACPInvalidModelError')return 'model-unavailable';
+  // Pinned ACPInvalidModelError is serialized as invalidParams with these
+  // bounded identities, not necessarily with its original exception name.
+  if(name==='ACPInvalidModelError'||(error.code===-32602&&[error.data?.providerId,error.data?.modelId].every(v=>typeof v==='string'&&/^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,255}$/.test(v))))return 'model-unavailable';
   return 'unknown-remote-error';
 }

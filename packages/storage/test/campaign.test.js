@@ -22,6 +22,18 @@ test('cancellation, confirmed failure and uncertainty never refund reservations 
 test('a cancelled reservation stays consumed after database reopen and spending history cannot be pruned',()=>fixture(async({db,approve,reserve,state,store})=>{
  await approve();reserve();state('cancelled');store.update('task',{status:'cancelled',activeAgent:null,step:0});store.releaseExecution('task',token);const second=new TaskStore(db);try{assert.equal(second.campaignAccounting('consent').remaining,0);assert.throws(()=>second.delete('task'),/accounting history/);assert.deepEqual(second.prunable({before:'2099-01-01T00:00:00Z',repositoryRoot:store.get('task').repositoryRoot}),[]);}finally{second.close();}
 }));
+
+test('read-only campaign gate explains pending and uncertain requests across restart without exposing identities or clearing history',()=>fixture(async({db,store,approve,reserve,state})=>{
+ assert.deepEqual(store.campaignSubmissionGate(),{blocked:false,reason:null});await approve();reserve();
+ for(const phase of ['reserved','submitting','confirmed']){if(phase!=='reserved')state(phase);assert.deepEqual(store.campaignSubmissionGate(),{blocked:true,reason:'pending'});}
+ state('uncertain');const before=store.events('task'),gate=store.campaignSubmissionGate();assert.deepEqual(gate,{blocked:true,reason:'uncertain'});assert.ok(Object.isFrozen(gate));assert.throws(()=>{gate.blocked=false;},TypeError);
+ const reopened=new TaskStore(db);try{assert.deepEqual(reopened.campaignSubmissionGate(),gate);assert.deepEqual(reopened.events('task'),before);assert.equal(reopened.campaignAccounting('consent').remaining,0);assert.equal(reopened.campaignRequest('request').state,'uncertain');}finally{reopened.close();}
+}));
+
+test('an advisory clear gate cannot bypass atomic reservation or refund a terminal request',async()=>{
+ await fixture(async({store,db,spec,approve,reserve})=>{await approve();const other=new TaskStore(db);try{assert.equal(other.campaignSubmissionGate().blocked,false);reserve();assert.throws(()=>other.reserveCampaignRequest({consentId:'consent',requestId:'duplicate',taskId:'task',token,segment:'duplicate',selection:spec}),/pending|uncertain/);assert.equal(other.campaignSubmissionGate().blocked,true);}finally{other.close();}});
+ for(const terminal of ['cancelled','completed','failed'])await fixture(async({store,approve,reserve,state})=>{await approve();reserve();if(terminal!=='cancelled'){state('submitting');state('confirmed');}state(terminal);assert.deepEqual(store.campaignSubmissionGate(),{blocked:false,reason:null});assert.equal(store.campaignAccounting('consent').remaining,0);assert.throws(()=>reserve({requestId:'again',segment:'again'}),/exhausted/);});
+});
 for(const phase of ['reserved','submitting'])test('SIGKILL '+phase+' recovers uncertain with ownership fenced and no replay',()=>fixture(async({db,base,store})=>{
  // Separate task/lease owned by an actual child, not the test host.
  store.update('task',{status:'completed',activeAgent:null,step:0});store.releaseExecution('task',token);
