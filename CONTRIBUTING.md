@@ -4,6 +4,8 @@ CODOVYN is in foundation development. Small, tested changes to the runtime,
 documentation, and contributor setup are welcome. Check the issue tracker for
 duplicates and describe the problem before starting a larger integration.
 
+See the [contributor bot guide](docs/community/BOTS.md) for issue claiming, PR assignment guidance and Guardian commands. Automation starts gated pending maintainer rollout.
+
 ## Find a first contribution
 
 Browse [good first issues](https://github.com/Gautam-aman/CODOVYN/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or [testing issues](https://github.com/Gautam-aman/CODOVYN/issues?q=is%3Aissue+is%3Aopen+label%3Atesting). Check the issue scope and existing discussion before starting; for a larger change, describe your approach first. Repository access currently requires an invitation.

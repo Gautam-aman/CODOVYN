@@ -6,3 +6,9 @@ The desktop build incorporates separately licensed VSCodium/Code-OSS, Electron,
 Chromium and Node.js distributions. Their original license/third-party notices
 remain in the application bundle. See docs/release/REDISTRIBUTION.md and the
 build-generated license inventory before approving redistribution.
+
+GitHub community automation under .github/scripts is adapted from ResQNet
+(https://github.com/Gautam-aman/ResQNet), commit
+44c3058d2d3eb3d0706ebe4572065f6f3900046f. Copyright (c) 2026 ResQNet
+Contributors. The retained MIT license is .github/scripts/LICENSE-ResQNet.
+This attribution does not change CODOVYN's existing license.

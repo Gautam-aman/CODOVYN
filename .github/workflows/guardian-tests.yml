@@ -1,0 +1,49 @@
+name: Guardian tests
+
+# Read-only CI for the repository automation. This workflow runs on the
+# untrusted `pull_request` event, but it has no secrets and only `contents:
+# read`; it never runs in the privileged `pull_request_target` context.
+on:
+  pull_request:
+    paths:
+      - '.github/scripts/**'
+      - '.github/workflows/guardian.yml'
+      - '.github/workflows/guardian-tests.yml'
+      - '.github/workflows/contributor-bot.yml'
+      - '.github/workflows/pr-assignment-bot.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.github/scripts/**'
+      - '.github/workflows/guardian.yml'
+      - '.github/workflows/guardian-tests.yml'
+      - '.github/workflows/contributor-bot.yml'
+      - '.github/workflows/pr-assignment-bot.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: guardian-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: guardian + bot tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '26.12.1'
+      - name: Run Guardian and bot tests
+        run: |
+          node --test \
+            .github/scripts/contributor-bot.test.mjs \
+            .github/scripts/pr-assignment-bot.test.mjs \
+            .github/scripts/lib/*.test.mjs \
+            .github/scripts/guardian/*.test.mjs

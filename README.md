@@ -79,6 +79,8 @@ The immediate priorities are validating one real provider safely, completing a r
 
 ## Contributing
 
+See the [contributor bot guide](docs/community/BOTS.md) for issue claiming and Guardian review-readiness guidance.
+
 Contributions are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md), browse the [contributor backlog](docs/release/CONTRIBUTOR-BACKLOG.md), or report a problem through the [issue tracker](https://github.com/Gautam-aman/CODOVYN/issues). Keep changes focused, include relevant tests and distinguish simulated provider results from live validation.
 
 For security reports, use the private reporting process in [SECURITY.md](SECURITY.md). Please do not include credentials or private logs in public issues.
