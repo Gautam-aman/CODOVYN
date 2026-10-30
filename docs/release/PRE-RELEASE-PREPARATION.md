@@ -50,3 +50,11 @@ The crash-case cause has not been established and no passing rerun or cleanup ce
 Fresh `npm audit`: **2 high, 0 critical**, in Azure Identity/MSAL Node via development tooling; the report advertises remediation, whose dependency compatibility remains unqualified. Do not treat an audit fix suggestion as a tested supported update. See advisory GHSA-xcx6-jx8p-x3h5. No dependency changes were made.
 
 Draft release: https://github.com/Gautam-aman/CODOVYN/releases. API verification confirms draft=true, prerelease=true, target `65da06ac4d56c7fcb53150a5d8dff5ad47e25efc`, assets=[]. No publication or public tag/download claim is made.
+
+## Owner-approved development artifact availability — 2026-10-31
+
+After the owner was informed of the ad-hoc/unnotarized status and outstanding gates, the owner explicitly requested making the development DMG available. This supersedes the earlier no-attachment decision for this development-only artifact; it does not establish qualification as a standard public installer.
+
+A fresh clean build from `86bbe8883cfd4391f6f2a90d0a79e77650c10fe6` produced `CODOVYN-darwin-arm64-development.dmg`, SHA-256 `e3a078e6390537e2eb12bdafa4b55945ff5ef105b5bbddc7fec0ed55b1cd1fb8`. Build, package, hdiutil integrity, deep/strict signature, native host and two-launch fixture Chat checks passed. Recorded native process survivors are empty. Signature remains ad-hoc; no notarization or clean-machine qualification is claimed. No full-regression rerun or additional inference occurred.
+
+The development DMG and `SHA256SUMS-development.txt` are attached to the existing owner-published `v0.1.0-alpha` pre-release with prominent limitations. The release tag was not moved; notes explicitly identify the differing artifact source commit. Runtime security, three earlier regression failures, redistribution and other qualification blockers remain unresolved.

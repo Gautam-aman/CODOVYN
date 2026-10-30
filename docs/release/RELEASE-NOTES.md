@@ -1,6 +1,20 @@
+## Experimental development download — owner approved
+
+The attached **CODOVYN-darwin-arm64-development.dmg** is available for voluntary developer testing on **Apple Silicon macOS only**. It is **ad-hoc signed and unnotarized**, not a qualified public installer. Known regression, embedded-runtime security, redistribution and clean-machine qualification gates remain unresolved. Do not disable macOS security protections to launch it.
+
+- Artifact source: `86bbe8883cfd4391f6f2a90d0a79e77650c10fe6`, clean build provenance. This differs from the existing release tag target; the tag has not been moved.
+- SHA-256: `e3a078e6390537e2eb12bdafa4b55945ff5ef105b5bbddc7fec0ed55b1cd1fb8` (also in `SHA256SUMS-development.txt`).
+- Fresh build/package, DMG integrity, deep/strict ad-hoc signature, native host and two-launch fixture Chat checks passed. Test-owned process groups were empty after cleanup.
+- Prior full regression: 444 passed, 3 failed. No successful live AI response, live Agent editing or cross-provider continuation is claimed.
+- No inference is authorized by this download; provider execution and accounting safeguards remain active.
+
+[Installation guidance](https://github.com/Gautam-aman/CODOVYN/blob/main/docs/release/INSTALLATION.md) · [Known issues](https://github.com/Gautam-aman/CODOVYN/blob/main/docs/release/KNOWN-ISSUES.md)
+
+---
+
 # CODOVYN v0.1.0-alpha — First Developer Preview
 
-**Draft pre-release — publication blocked. No qualified installer is attached.**
+**Experimental developer preview. No qualified installer is attached.**
 
 CODOVYN is a standalone Code-OSS/VSCodium-based desktop IDE combining an editor, Explorer, Git, terminal and a local AI task workspace. This preview is intended for developers who want to explore, test and contribute to an experimental project.
 
@@ -18,7 +32,7 @@ These implementation and fixture results do not establish successful live AI cod
 
 The desktop assembly target is **macOS Apple Silicon (ARM64)**. Intel macOS, Windows and Linux installers are not qualified. The recorded local qualification environment is Apple M2 on macOS 27.0.1; a broader supported OS range and clean-machine installation remain unverified.
 
-**Do not download a historical development artifact as a public installer.** No release DMG or checksum is attached until the exact candidate passes source provenance, regression/native checks, security and redistribution review, Developer ID signing, notarization/stapling, and clean-Mac Gatekeeper validation.
+A development-only DMG is attached under the explicit owner approval described above. A qualified public installer still requires source provenance, regression/native checks, security and redistribution review, Developer ID signing, notarization/stapling, and clean-Mac Gatekeeper validation.
 
 Until then, contributors can follow [source development instructions](https://github.com/Gautam-aman/CODOVYN/blob/main/docs/release/DEVELOPMENT.md). Local development DMGs are ad-hoc signed and unnotarized. Do not disable system security protections to launch them. See [installation guidance](https://github.com/Gautam-aman/CODOVYN/blob/main/docs/release/INSTALLATION.md).
 
