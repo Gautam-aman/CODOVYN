@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
+import { expectedChecksForFiles, pathMatches, MANUAL_WORKFLOWS } from './ci-policy.mjs';
+const matrix=['test (ubuntu-latest)','test (macos-latest)','test (windows-latest)'];
+test('glob matching handles exact and nested paths',()=>{assert.ok(pathMatches('packages/storage/src/index.js','packages/**'));assert.ok(!pathMatches('packages','packages/**'));assert.ok(pathMatches('README.md','**'));});
+for(const file of ['README.md','docs/agents/opencode.md','apps/desktop/build/macos.js','apps/vscode-extension/extension.cjs','apps/cli/src/index.js','packages/agent-adapters/src/acp.js','packages/task-engine/src/index.js','packages/storage/src/index.js','packages/git-engine/src/index.js','scripts/validate-opencode-broker.js'])test(`all PR CI matrix checks required: ${file}`,()=>{assert.deepEqual(expectedChecksForFiles([file]).checks.map(x=>x.name),matrix);});
+test('automation files additionally require dedicated bot tests',()=>{assert.deepEqual(expectedChecksForFiles(['.github/scripts/guardian/index.mjs']).checks.map(x=>x.name),[...matrix,'guardian + bot tests']);});
+test('manual signing and post-merge desktop jobs are not PR requirements',()=>{assert.ok(MANUAL_WORKFLOWS.includes('Alpha qualification (no publication)'));assert.ok(!expectedChecksForFiles(['apps/desktop/build/distribution.js']).checks.some(x=>/qualify|signed|macos-arm64/.test(x.name)));});
+test('policy mirrors actual workflow event and job names',()=>{const ci=readFileSync('.github/workflows/ci.yml','utf8');for(const os of ['ubuntu-latest','macos-latest','windows-latest'])assert.ok(ci.includes(os));assert.match(ci,/pull_request:/);assert.match(readFileSync('.github/workflows/guardian-tests.yml','utf8'),/name: guardian \+ bot tests/);});

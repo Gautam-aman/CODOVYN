@@ -1,0 +1,50 @@
+{
+  "cases": [
+    {
+      "name": "external-reference",
+      "body": "Fixes other/repo#42",
+      "expected": "blocked"
+    },
+    {
+      "name": "quoted-example",
+      "body": "```md\nCloses #42\n```",
+      "expected": "blocked"
+    },
+    {
+      "name": "forged-exception-label",
+      "body": "Documentation cleanup.",
+      "labels": ["no-issue-required"],
+      "events": [["labeled", "contributor"]],
+      "permissions": { "contributor": "read" },
+      "expected": "blocked"
+    },
+    {
+      "name": "authorized-exception-label",
+      "body": "Documentation cleanup.",
+      "labels": ["no-issue-required"],
+      "events": [["labeled", "maintainer"]],
+      "permissions": { "maintainer": "write" },
+      "expected": "compliant"
+    },
+    {
+      "name": "security-sensitive-unassigned",
+      "body": "Closes #42",
+      "issue": {
+        "title": "CVE-2026-0001 in transport",
+        "labels": ["security"],
+        "assignees": []
+      },
+      "expected": "blocked"
+    },
+    {
+      "name": "security-sensitive-assigned",
+      "body": "Closes #42",
+      "issue": {
+        "title": "CVE-2026-0001 in transport",
+        "labels": ["security"],
+        "assignees": ["alice"]
+      },
+      "expected": "compliant"
+    }
+  ]
+}

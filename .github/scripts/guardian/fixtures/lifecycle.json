@@ -1,0 +1,38 @@
+{
+  "name": "assignment-to-ready lifecycle",
+  "repository": "Gautam-aman/CODOVYN",
+  "pr": 90,
+  "author": "alice",
+  "issue": 42,
+  "steps": [
+    {
+      "name": "opened",
+      "assignee": null,
+      "checks": [["test", "success"]],
+      "reviews": [],
+      "expected": "AWAITING_ASSIGNMENT"
+    },
+    {
+      "name": "claimed",
+      "assignee": "alice",
+      "checks": [["test", "success"]],
+      "reviews": [],
+      "expected": "READY_FOR_MAINTAINER_REVIEW"
+    },
+    {
+      "name": "human-approved",
+      "assignee": "alice",
+      "checks": [["test", "success"]],
+      "reviews": [["maintainer", "APPROVED"]],
+      "expected": "READY_FOR_MAINTAINER_REVIEW"
+    },
+    {
+      "name": "stale",
+      "assignee": "alice",
+      "checks": [["test", "success"]],
+      "reviews": [["maintainer", "APPROVED"]],
+      "updatedAt": "2026-08-01T00:00:00Z",
+      "expected": "STALE"
+    }
+  ]
+}

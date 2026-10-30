@@ -1,0 +1,58 @@
+{
+  "shapes": [
+    {
+      "name": "pr-comment-write-403-with-issues-write",
+      "method": "POST",
+      "path": "/repos/Gautam-aman/CODOVYN/issues/58/comments",
+      "status": 403,
+      "headers": {
+        "x-github-request-id": "A1B2:PR58",
+        "x-accepted-github-permissions": "issues=write; pull_requests=write"
+      },
+      "body": {
+        "message": "Resource not accessible by integration",
+        "documentation_url": "https://docs.github.com/rest/issues/comments#create-an-issue-comment"
+      },
+      "expected": "permission"
+    },
+    {
+      "name": "pr-label-write-403-with-issues-write",
+      "method": "POST",
+      "path": "/repos/Gautam-aman/CODOVYN/issues/60/labels",
+      "status": 403,
+      "headers": {
+        "x-github-request-id": "C3D4:PR60",
+        "x-accepted-github-permissions": "issues=write; pull_requests=write"
+      },
+      "body": {
+        "message": "Resource not accessible by integration",
+        "documentation_url": "https://docs.github.com/rest/issues/labels#add-labels-to-an-issue"
+      },
+      "expected": "permission"
+    },
+    {
+      "name": "pr-label-write-secondary-rate-limit",
+      "method": "POST",
+      "path": "/repos/Gautam-aman/CODOVYN/issues/61/labels",
+      "status": 403,
+      "headers": {
+        "x-ratelimit-remaining": "0",
+        "retry-after": "60"
+      },
+      "body": {
+        "message": "You have exceeded a secondary rate limit"
+      },
+      "expected": "rate_limit"
+    },
+    {
+      "name": "missing-token",
+      "method": "GET",
+      "path": "/repos/Gautam-aman/CODOVYN/pulls/58",
+      "status": 401,
+      "body": {
+        "message": "Requires authentication"
+      },
+      "expected": "authentication"
+    }
+  ]
+}
