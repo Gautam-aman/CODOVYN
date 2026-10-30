@@ -4,10 +4,22 @@ CODOVYN is in foundation development. Small, tested changes to the runtime,
 documentation, and contributor setup are welcome. Check the issue tracker for
 duplicates and describe the problem before starting a larger integration.
 
+## Find a first contribution
+
+Browse [good first issues](https://github.com/Gautam-aman/CODOVYN/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or [testing issues](https://github.com/Gautam-aman/CODOVYN/issues?q=is%3Aissue+is%3Aopen+label%3Atesting). Check the issue scope and existing discussion before starting; for a larger change, describe your approach first. Repository access currently requires an invitation.
+
 ## Setup
 
-Install Node.js 26 or newer and Git. Clone the repository, switch to `main`, run `npm ci --ignore-scripts`, then
-`npm run check`. The core runtime tests use Node built-ins; extension packaging
+Install Node.js 26.12.1 or newer and Git. Clone the repository, then install dependencies and run the baseline checks:
+
+```sh
+git clone https://github.com/Gautam-aman/CODOVYN.git
+cd CODOVYN
+npm ci --ignore-scripts
+npm run check
+```
+
+ The core runtime tests use Node built-ins; extension packaging
 and graphical host tests use the development dependencies. Use `node apps/cli/src/index.js demo . "Inspect"`
 to exercise a handoff without provider credentials.
 
@@ -23,7 +35,7 @@ Preserve users' repository changes. Agent integrations must use documented
 provider interfaces and declare unsupported capabilities. Never infer quota
 exhaustion from generic error text or silently retry an unfinished tool action.
 
-The maintainers review and merge pull requests. See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+Open a pull request using the repository template, summarize the problem and solution, and include the commands and results you verified. Maintainers may request changes or clarification before merging; respond to review comments and keep the branch updated. See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## Standalone desktop development
 
