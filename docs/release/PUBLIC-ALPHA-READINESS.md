@@ -209,7 +209,7 @@ Owner action: inspect the same Console workspace's **Settings > Billing** and **
 
 ## First GitHub pre-release preparation — 2026-10-31
 
-**BLOCKED — draft only, no release assets uploaded.** The evaluated main revision is `65da06ac4d56c7fcb53150a5d8dff5ad47e25efc`. The repository is now public, as observed through GitHub metadata; this task did not change visibility. An asset-free draft `v0.1.0-alpha` pre-release targets that revision: [owner draft](https://github.com/Gautam-aman/CODOVYN/releases/tag/untagged-f6d9ee98dc10c174e858). Draft access is restricted to authorized maintainers; it is not a public download.
+**BLOCKED — draft only, no release assets uploaded.** The evaluated main revision is `65da06ac4d56c7fcb53150a5d8dff5ad47e25efc`. The repository is now public, as observed through GitHub metadata; this task did not change visibility. An asset-free draft `v0.1.0-alpha` pre-release targets that revision: [owner draft](https://github.com/Gautam-aman/CODOVYN/releases). Draft access is restricted to authorized maintainers; it is not a public download.
 
 [Preparation evidence](PRE-RELEASE-PREPARATION.md) identifies the current app and historical DMG separately. Deep/strict app signature and historical DMG integrity pass, but the app is ad-hoc signed, its embedded editor runtime remains unqualified for the October security fixes, and no clean-Mac distribution test exists. The latest VSCodium release is now 1.143.17232; this corrects older statements that no newer artifact was available, without qualifying or changing the pin. No historical binary is uploaded.
 

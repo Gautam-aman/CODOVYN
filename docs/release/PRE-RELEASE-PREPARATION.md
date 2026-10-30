@@ -49,4 +49,4 @@ The crash-case cause has not been established and no passing rerun or cleanup ce
 
 Fresh `npm audit`: **2 high, 0 critical**, in Azure Identity/MSAL Node via development tooling; the report advertises remediation, whose dependency compatibility remains unqualified. Do not treat an audit fix suggestion as a tested supported update. See advisory GHSA-xcx6-jx8p-x3h5. No dependency changes were made.
 
-Draft release: https://github.com/Gautam-aman/CODOVYN/releases/tag/untagged-f6d9ee98dc10c174e858. API verification confirms draft=true, prerelease=true, target `65da06ac4d56c7fcb53150a5d8dff5ad47e25efc`, assets=[]. No publication or public tag/download claim is made.
+Draft release: https://github.com/Gautam-aman/CODOVYN/releases. API verification confirms draft=true, prerelease=true, target `65da06ac4d56c7fcb53150a5d8dff5ad47e25efc`, assets=[]. No publication or public tag/download claim is made.
