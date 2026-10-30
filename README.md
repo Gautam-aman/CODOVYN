@@ -4,10 +4,6 @@
 
 CODOVYN is an independent desktop IDE built on Code-OSS/VSCodium. It brings an editor, terminal, Git and AI task workspace together, with a focus on developer approval, isolated changes and recoverable task history.
 
-[![License: Apache-2.0](https://img.shields.io/badge/CODOVYN_source-Apache--2.0-blue)](LICENSE)
-[![Platform: macOS ARM64](https://img.shields.io/badge/desktop-macOS_ARM64-lightgrey)](docs/release/SUPPORTED-PLATFORMS.md)
-[![Status: Pre-release](https://img.shields.io/badge/status-pre--release-orange)](docs/release/PUBLIC-ALPHA-READINESS.md)
-
 > **Pre-release:** There is no approved public installer yet. The desktop workspace has been tested locally, but a successful live AI response and live agent coding have not yet been verified. General provider execution remains restricted. See [release readiness](docs/release/PUBLIC-ALPHA-READINESS.md) for current blockers.
 
 ## What CODOVYN offers
@@ -20,18 +16,6 @@ CODOVYN is an independent desktop IDE built on Code-OSS/VSCodium. It brings an e
 - **Permission controls:** Provider-specific execution restrictions, native approvals and durable request accounting. Uncertain requests are not automatically retried.
 
 Codex, OpenCode, Claude and Gemini adapter foundations are present. Their capabilities and readiness differ; see the [provider guides](docs/agents/model-picker.md) before configuring one.
-
-## Preview
-
-<p align="center">
-  <img src="docs/assets/public-alpha/composer-dark.png" width="960" alt="CODOVYN desktop workspace and Chat panel">
-</p>
-
-*The development application. Screenshots may show test fixtures and do not demonstrate live AI inference.*
-
-<p align="center">
-  <img src="docs/assets/public-alpha/model-picker.png" width="760" alt="CODOVYN model selection menu">
-</p>
 
 ## Build from source
 
