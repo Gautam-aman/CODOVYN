@@ -6,7 +6,7 @@ The implementation is proposed for maintainer review. Contributor Bot and PR Ass
 
 ## Claiming an issue
 
-Read the issue and existing discussion first. A message such as “I would like to work on this” gets a welcome and contribution links; it does not assign the issue. Comment exactly `/assign` to claim an available, unrestricted issue. You may hold at most **two open issues**. Comment `/unassign` on an issue you own to release it. Finish or release work before claiming another.
+Read the issue and existing discussion first. A message such as “I would like to work on this” gets a welcome and contribution links; it does not assign the issue. Put `/assign` alone on the first line to claim an available, unrestricted issue. Ordinary explanatory prose may follow on subsequent lines; `/unassign` supports the same format. Arguments, additional slash commands, code/shell syntax and hidden control characters are rejected. You may hold at most **two open issues**. Comment `/unassign` on an issue you own to release it. Finish or release work before claiming another.
 
 An existing assignee is never displaced. Maintainers use GitHub's normal assignment controls for exceptions. Security, authentication, credentials and explicitly restricted issues are never automatically assigned—even for a maintainer's `/assign`. Ask for human review instead. A GitHub permission failure produces guidance, not repeated assignment attempts or a request for a token.
 

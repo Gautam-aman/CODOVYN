@@ -8,8 +8,8 @@ permissions:
   contents: read
   issues: write
 
-# Serialize comments on the same issue. A second lock below also serializes
-# one contributor's requests across different issues for the two-issue limit.
+# Share the repository lock with the other community bots so claims across
+# different issues cannot race the two-open-issue assignment limit.
 concurrency:
   group: community-reconcile-${{ github.repository }}
   cancel-in-progress: false
