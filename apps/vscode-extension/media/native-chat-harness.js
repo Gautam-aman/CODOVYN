@@ -98,7 +98,13 @@
     requireValue(permission.value === 'read', 'Ask mode did not restore read-only permission.');
     requireValue(!document.querySelector('.composer .task-controls') && document.querySelector('#codovyn-panel-settings .task-controls'), 'Advanced controls still clutter the primary composer.');
     const compact = document.querySelector('.composer');
+    const shortcutHint = compact.querySelector('#composer-shortcut-hint');
+    const shortcut = /^Mac/i.test(navigator.userAgentData?.platform || navigator.platform) ? 'Command+Enter' : 'Control+Enter';
+    requireValue(shortcutHint?.textContent === `Enter or ${shortcut} to send · Shift+Enter for a new line`, 'Composer shortcut hint does not match the platform.');
+    requireValue(request.getAttribute('aria-describedby')?.split(/\s+/).includes(shortcutHint.id), 'Composer shortcut hint is not associated with the textarea.');
+    requireValue(document.querySelector('#run').getAttribute('aria-label') === 'Send message', 'Shortcut text changed the send button accessible name.');
     compact.style.width = '260px';
+    requireValue(shortcutHint.getClientRects().length > 0 && getComputedStyle(shortcutHint).visibility !== 'hidden', 'Composer shortcut hint is not visible at a narrow width.');
     requireValue(compact.scrollWidth <= 262, 'Compact composer overflows a narrow panel.'); compact.style.width = '';
     requireValue(!document.querySelector('.composer #permission-help'), 'Advanced permission help still clutters the compact composer.');
     const previousTheme = document.body.dataset.codovynTheme;
