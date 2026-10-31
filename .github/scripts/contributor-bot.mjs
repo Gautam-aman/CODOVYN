@@ -24,11 +24,24 @@ function isBot(user) {
 }
 
 export function classify(body) {
+  if (typeof body !== 'string' || body.length > 65_536) return null;
   const message = body.trim();
+  // Comment text is never executable. Reject ambiguous command syntax and
+  // hidden controls before considering either commands or natural language.
+  if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u202A-\u202E\u2066-\u2069]|\$\{|\$\(|`|<[^>]*>/m.test(message)) return null;
+  const [firstLine, ...remaining] = message.split(/\r?\n/);
+  const command = firstLine.trim().match(/^\/(assign|unassign)$/i);
+  if (command) {
+    const explanation = remaining.join('\n');
+    // Only prose may follow. A second slash command (even an unknown one),
+    // shell operators or command-like argument lines invalidate the request.
+    if (/(?:^|\s)\/[a-z][a-z-]*\b|(?:^|\s)(?:&&|\|\||[|;<>])(?:\s|$)|^\s*(?:--\S|@[a-z0-9-]+\s*$)/im.test(explanation)) return null;
+    return command[1].toLowerCase();
+  }
+  // Malformed command arguments must not fall through into interest replies.
+  if (/(?:^|\s)\/[a-z][a-z-]*\b/im.test(message)) return null;
   const normalized = message.replace(/[‘’]/g, "'");
-  if (/^\/assign$/i.test(normalized)) return 'assign';
-  if (/^\/unassign$/i.test(normalized)) return 'unassign';
-  if (/\$\{/.test(normalized) || NOT_INTERESTED.test(normalized)) return null;
+  if (NOT_INTERESTED.test(normalized)) return null;
   if (INTEREST_PATTERNS.some((pattern) => pattern.test(normalized))) return 'interest';
   return null;
 }

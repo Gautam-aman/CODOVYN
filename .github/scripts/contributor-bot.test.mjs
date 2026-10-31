@@ -204,3 +204,67 @@ test('bot does not react recursively to its own welcome', async () => {
   await handle(state.event, state.api);
   assert.equal(state.replies.length, 1);
 });
+
+const ISSUE_34_COMMENT = '/assign\n\nI would like to document the existing TaskStore deletion and pruning behavior in the development guide, including a preview-first CLI example, open-draft and ownership restrictions, campaign-accounting retention, and the distinction between logical deletion and secure erasure. I am using Codex to help prepare the documentation and will verify it against the source and existing tests.';
+
+test('issue #34 exact multiline comment claims only through normal assignment checks', async () => {
+  assert.equal(classify(ISSUE_34_COMMENT), 'assign');
+  const state = setup(ISSUE_34_COMMENT);
+  await handle(state.event, state.api);
+  assert.deepEqual(state.calls, [['assign', 'alice']]);
+  assert.equal(state.replies.length, 1);
+});
+
+test('first-line commands accept ordinary explanatory prose and CRLF', async () => {
+  assert.equal(classify('/ASSIGN\r\n\r\nI will update the guide and verify the examples.'), 'assign');
+  const state = setup('/unassign\n\nI need to release this task due to other commitments.', { issue: { assignees: [{ login: 'alice' }] } });
+  await handle(state.event, state.api);
+  assert.deepEqual(state.calls, [['unassign', 'alice']]);
+});
+
+test('multiline commands reject extra commands, arguments, hidden controls and executable syntax', async () => {
+  for (const body of [
+    '/assign @bob\nI would like to work on this.',
+    '/assign --force\nPlease assign this to me.',
+    '/assign\n/unassign', '/unassign\n/assign', '/assign\n/assign',
+    '/assign\nI will also use /unassign later.', '/assign\n/guardian recheck',
+    '/assign\n@bob', '/assign\n--force', '/assign\n$(touch witness)',
+    '/assign\n${github.token}', '/assign\n`touch witness`',
+    '/assign\n<script>alert(1)</script>', '/assign\nokay && touch witness',
+    '/assign\nokay || touch witness', '/assign\nokay ; touch witness',
+    '/assign\nokay\u0000', '/assign\n\u202Ehidden',
+    '/assign; touch witness', 'I would like to work on this.\n/assign',
+  ]) {
+    assert.equal(classify(body), null, body);
+    const state = setup(body);
+    await handle(state.event, state.api);
+    assert.deepEqual(state.calls, [], body);
+    assert.deepEqual(state.replies, [], body);
+  }
+  for (const body of [null, {}, 1, '/assign\n' + 'x'.repeat(65_536)]) assert.equal(classify(body), null);
+});
+
+test('issue #34 syntax cannot bypass limits, sensitive issues or existing assignment', async () => {
+  for (const options of [
+    { active: [{ number: 1 }, { number: 2 }] },
+    { issue: { labels: [{ name: 'security' }] } },
+    { issue: { labels: [{ name: 'no-auto-assign' }] } },
+    { issue: { title: 'Protect credential storage' } },
+    { issue: { assignees: [{ login: 'bob' }] } },
+  ]) {
+    const state = setup(ISSUE_34_COMMENT, options);
+    await handle(state.event, state.api);
+    assert.deepEqual(state.calls, []);
+  }
+});
+
+test('replaying the exact issue #34 command does not duplicate writes', async () => {
+  const state = setup(ISSUE_34_COMMENT, { comment: { id: 6538501331 } });
+  const comments = [];
+  state.api.comments = async () => comments;
+  state.api.comment = async (_number, body) => comments.push({ body, user: { login: 'github-actions[bot]', type: 'Bot' } });
+  await handle(state.event, state.api);
+  await handle(state.event, state.api);
+  assert.deepEqual(state.calls, [['assign', 'alice']]);
+  assert.equal(comments.length, 1);
+});
