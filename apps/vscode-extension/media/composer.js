@@ -45,6 +45,14 @@ class CodovynComposer {
     cancel.textContent = '■'; cancel.title = 'Stop active task'; cancel.setAttribute('aria-label', 'Stop active task');
     toolbar.append(this.modelChip, this.effortChip, this.modeChip, gear, run, cancel);
     composer.querySelector('.actions').remove(); composer.append(toolbar);
+    const shortcutHint = document.createElement('p');
+    shortcutHint.id = 'composer-shortcut-hint'; shortcutHint.className = 'composer-shortcut-hint';
+    const platform = navigator.userAgentData?.platform || navigator.platform;
+    const submitShortcut = /^Mac/i.test(platform) ? 'Command+Enter' : 'Control+Enter';
+    shortcutHint.textContent = `Enter or ${submitShortcut} to send · Shift+Enter for a new line`;
+    composer.append(shortcutHint);
+    const descriptions = new Set((request.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean));
+    descriptions.add(shortcutHint.id); request.setAttribute('aria-describedby', [...descriptions].join(' '));
     request.addEventListener('input', () => this.resize());
     for (const control of Object.values(controls)) control.addEventListener('change', () => {
       if (control === controls.permission) this.setIntent(control.value === 'read-write' ? 'agent' : 'ask');
